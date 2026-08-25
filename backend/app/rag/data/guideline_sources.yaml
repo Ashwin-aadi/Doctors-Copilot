@@ -1,0 +1,207 @@
+# Public guideline/reference pages ingested into the "guidelines" collection.
+# All URLs are freely public reference material (MedlinePlus, a US National Library
+# of Medicine service). No credential or paid API required. Verified reachable at
+# authoring time; ingest_guidelines.py skips any URL that fails at ingest time and
+# tops up from the bundled offline symptom corpus instead.
+sources:
+  - url: https://medlineplus.gov/chestpain.html
+    title: Chest Pain
+    section: overview
+  - url: https://medlineplus.gov/asthma.html
+    title: Asthma
+    section: overview
+  - url: https://medlineplus.gov/abdominalpain.html
+    title: Abdominal Pain
+    section: overview
+  - url: https://medlineplus.gov/headache.html
+    title: Headache
+    section: overview
+  - url: https://medlineplus.gov/fever.html
+    title: Fever
+    section: overview
+  - url: https://medlineplus.gov/urinarytractinfections.html
+    title: Urinary Tract Infections
+    section: overview
+  - url: https://medlineplus.gov/backpain.html
+    title: Back Pain
+    section: overview
+  - url: https://medlineplus.gov/allergy.html
+    title: Allergy
+    section: overview
+  - url: https://medlineplus.gov/anxiety.html
+    title: Anxiety
+    section: overview
+  - url: https://medlineplus.gov/diabetes.html
+    title: Diabetes
+    section: overview
+  - url: https://medlineplus.gov/highbloodpressure.html
+    title: High Blood Pressure
+    section: overview
+  - url: https://medlineplus.gov/heartdiseases.html
+    title: Heart Diseases
+    section: overview
+  - url: https://medlineplus.gov/breathingproblems.html
+    title: Breathing Problems
+    section: overview
+  - url: https://medlineplus.gov/diarrhea.html
+    title: Diarrhea
+    section: overview
+  - url: https://medlineplus.gov/skinconditions.html
+    title: Skin Conditions
+    section: overview
+  - url: https://medlineplus.gov/jointdisorders.html
+    title: Joint Disorders
+    section: overview
+  - url: https://medlineplus.gov/sorethroat.html
+    title: Sore Throat
+    section: overview
+  - url: https://medlineplus.gov/dizzinessandvertigo.html
+    title: Dizziness and Vertigo
+    section: overview
+  - url: https://medlineplus.gov/fatigue.html
+    title: Fatigue
+    section: overview
+  - url: https://medlineplus.gov/eyeinjuries.html
+    title: Eye Injuries
+    section: overview
+  - url: https://medlineplus.gov/earinfections.html
+    title: Ear Infections
+    section: overview
+  - url: https://medlineplus.gov/sprainsandstrains.html
+    title: Sprains and Strains
+    section: overview
+  - url: https://medlineplus.gov/woundsandinjuries.html
+    title: Wounds and Injuries
+    section: overview
+  - url: https://medlineplus.gov/mentalhealth.html
+    title: Mental Health
+    section: overview
+  - url: https://medlineplus.gov/kidneydiseases.html
+    title: Kidney Diseases
+    section: overview
+  - url: https://medlineplus.gov/liverdiseases.html
+    title: Liver Diseases
+    section: overview
+  - url: https://medlineplus.gov/anemia.html
+    title: Anemia
+    section: overview
+  - url: https://medlineplus.gov/stroke.html
+    title: Stroke
+    section: overview
+  - url: https://medlineplus.gov/cough.html
+    title: Cough
+    section: overview
+  - url: https://medlineplus.gov/pneumonia.html
+    title: Pneumonia
+    section: overview
+  - url: https://medlineplus.gov/gerd.html
+    title: GERD
+    section: overview
+  - url: https://medlineplus.gov/constipation.html
+    title: Constipation
+    section: overview
+  - url: https://medlineplus.gov/hemorrhoids.html
+    title: Hemorrhoids
+    section: overview
+  - url: https://medlineplus.gov/kidneystones.html
+    title: Kidney Stones
+    section: overview
+  - url: https://medlineplus.gov/gout.html
+    title: Gout
+    section: overview
+  - url: https://medlineplus.gov/sciatica.html
+    title: Sciatica
+    section: overview
+  - url: https://medlineplus.gov/sinusitis.html
+    title: Sinusitis
+    section: overview
+  - url: https://medlineplus.gov/tonsillitis.html
+    title: Tonsillitis
+    section: overview
+  - url: https://medlineplus.gov/shingles.html
+    title: Shingles
+    section: overview
+  - url: https://medlineplus.gov/eczema.html
+    title: Eczema
+    section: overview
+  - url: https://medlineplus.gov/psoriasis.html
+    title: Psoriasis
+    section: overview
+  - url: https://medlineplus.gov/acne.html
+    title: Acne
+    section: overview
+  - url: https://medlineplus.gov/migraine.html
+    title: Migraine
+    section: overview
+  - url: https://medlineplus.gov/seizures.html
+    title: Seizures
+    section: overview
+  - url: https://medlineplus.gov/epilepsy.html
+    title: Epilepsy
+    section: overview
+  - url: https://medlineplus.gov/hypoglycemia.html
+    title: Hypoglycemia
+    section: overview
+  - url: https://medlineplus.gov/hyperglycemia.html
+    title: Hyperglycemia
+    section: overview
+  - url: https://medlineplus.gov/thyroiddiseases.html
+    title: Thyroid Diseases
+    section: overview
+  - url: https://medlineplus.gov/hyperthyroidism.html
+    title: Hyperthyroidism
+    section: overview
+  - url: https://medlineplus.gov/hypothyroidism.html
+    title: Hypothyroidism
+    section: overview
+  - url: https://medlineplus.gov/gallbladderdiseases.html
+    title: Gallbladder Diseases
+    section: overview
+  - url: https://medlineplus.gov/pancreatitis.html
+    title: Pancreatitis
+    section: overview
+  - url: https://medlineplus.gov/appendicitis.html
+    title: Appendicitis
+    section: overview
+  - url: https://medlineplus.gov/shock.html
+    title: Shock
+    section: overview
+  - url: https://medlineplus.gov/sepsis.html
+    title: Sepsis
+    section: overview
+  - url: https://medlineplus.gov/anaphylaxis.html
+    title: Anaphylaxis
+    section: overview
+  - url: https://medlineplus.gov/insectbitesandstings.html
+    title: Insect Bites and Stings
+    section: overview
+  - url: https://medlineplus.gov/burns.html
+    title: Burns
+    section: overview
+  - url: https://medlineplus.gov/poisoning.html
+    title: Poisoning
+    section: overview
+  - url: https://medlineplus.gov/vaccines.html
+    title: Vaccines
+    section: overview
+  - url: https://medlineplus.gov/obesity.html
+    title: Obesity
+    section: overview
+  - url: https://medlineplus.gov/cholesterol.html
+    title: Cholesterol
+    section: overview
+  - url: https://medlineplus.gov/osteoarthritis.html
+    title: Osteoarthritis
+    section: overview
+  - url: https://medlineplus.gov/rheumatoidarthritis.html
+    title: Rheumatoid Arthritis
+    section: overview
+  - url: https://medlineplus.gov/osteoporosis.html
+    title: Osteoporosis
+    section: overview
+  - url: https://medlineplus.gov/sicklecelldisease.html
+    title: Sickle Cell Disease
+    section: overview
+  - url: https://medlineplus.gov/tuberculosis.html
+    title: Tuberculosis
+    section: overview

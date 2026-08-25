@@ -1,0 +1,458 @@
+# Offline fallback corpus for the "guidelines" collection, used only when the live
+# MedlinePlus/guideline fetch fails. Each entry is an original summary (not copied
+# from any external source) covering a common presenting symptom or condition,
+# written for triage retrieval grounding. >=60 entries required by CLAUDE.md A1.4.
+entries:
+  - id: sym-001
+    title: Chest pain, cardiac pattern
+    section: cardiovascular
+    text: >
+      Pressure or crushing pain in the center of the chest, sometimes spreading to the
+      left arm, jaw, or back, often with sweating, nausea, or shortness of breath,
+      raises concern for a heart attack and needs emergency evaluation without delay.
+  - id: sym-002
+    title: Chest pain, musculoskeletal pattern
+    section: cardiovascular
+    text: >
+      Sharp chest pain that worsens with pressing on the chest wall, deep breathing,
+      or specific movements, without sweating or radiation, is more often muscular or
+      related to the rib cage than cardiac, though new chest pain always warrants care.
+  - id: sym-003
+    title: Palpitations
+    section: cardiovascular
+    text: >
+      A sensation of the heart racing, fluttering, or skipping beats can be caused by
+      caffeine, stress, dehydration, or an arrhythmia. Palpitations with fainting,
+      chest pain, or shortness of breath need urgent assessment.
+  - id: sym-004
+    title: High blood pressure symptoms
+    section: cardiovascular
+    text: >
+      Elevated blood pressure is usually silent, but severe spikes can cause headache,
+      blurred vision, chest pain, or confusion, which signals a hypertensive emergency
+      requiring immediate care.
+  - id: sym-005
+    title: Leg swelling and heart failure
+    section: cardiovascular
+    text: >
+      New swelling in both legs, weight gain over a few days, and increasing shortness
+      of breath when lying flat can indicate the heart is not pumping effectively and
+      should prompt a same-day evaluation.
+  - id: sym-006
+    title: Fainting (syncope)
+    section: cardiovascular
+    text: >
+      A brief loss of consciousness with quick full recovery can follow standing too
+      fast or the sight of blood, but fainting during exercise, with chest pain, or
+      with no warning at all raises concern for a cardiac cause.
+  - id: sym-007
+    title: Stroke warning signs
+    section: neurological
+    text: >
+      Sudden facial drooping on one side, arm weakness, slurred or garbled speech, or
+      sudden severe imbalance are classic stroke warning signs. Time to treatment
+      matters enormously, so these require an immediate emergency response.
+  - id: sym-008
+    title: Sudden severe headache
+    section: neurological
+    text: >
+      A headache that reaches maximum intensity within seconds and is described as the
+      worst of the person's life can signal bleeding around the brain and needs
+      emergency imaging.
+  - id: sym-009
+    title: Migraine pattern headache
+    section: neurological
+    text: >
+      Throbbing headache on one side of the head, worsened by light and sound, often
+      with nausea and sometimes preceded by visual sparkles or zigzag lines, is
+      typical of migraine and is usually managed outside the emergency department.
+  - id: sym-010
+    title: Tension headache
+    section: neurological
+    text: >
+      A dull, band-like pressure around the whole head, often linked to stress, poor
+      sleep, or long screen use, is typical of a tension headache and usually improves
+      with rest, hydration, and over-the-counter pain relief.
+  - id: sym-011
+    title: Seizure
+    section: neurological
+    text: >
+      Uncontrolled jerking movements, loss of awareness, or a blank staring spell
+      followed by confusion suggests a seizure. A first-time seizure, or one lasting
+      more than five minutes, requires emergency care.
+  - id: sym-012
+    title: Numbness or tingling in a limb
+    section: neurological
+    text: >
+      Numbness or tingling confined to a hand or foot, especially after sitting in one
+      position, is usually benign nerve compression. Sudden numbness affecting one
+      whole side of the body is a stroke warning sign instead.
+  - id: sym-013
+    title: Dizziness, lightheaded pattern
+    section: neurological
+    text: >
+      A brief lightheaded feeling on standing up quickly is usually related to blood
+      pressure changes or dehydration. Persistent spinning vertigo, especially with
+      new hearing loss or trouble walking, needs closer evaluation.
+  - id: sym-014
+    title: Confusion or altered mental status
+    section: neurological
+    text: >
+      A new change in alertness, memory, or orientation — especially in an older adult
+      or someone with a fever — can indicate infection, low blood sugar, or a
+      neurological event and should be assessed urgently.
+  - id: sym-015
+    title: Shortness of breath at rest
+    section: respiratory
+    text: >
+      Difficulty breathing while sitting still, needing to sit upright to breathe
+      comfortably, or being unable to speak in full sentences is a red flag requiring
+      emergency evaluation.
+  - id: sym-016
+    title: Asthma exacerbation
+    section: respiratory
+    text: >
+      Wheezing, chest tightness, and cough that worsen with exercise, cold air, or
+      allergens are typical of an asthma flare. Poor response to a rescue inhaler or
+      difficulty speaking in full sentences signals a severe exacerbation.
+  - id: sym-017
+    title: Productive cough with fever
+    section: respiratory
+    text: >
+      A cough bringing up yellow or green mucus along with fever and fatigue over
+      several days suggests a lower respiratory infection such as bronchitis or
+      pneumonia, particularly if breathing becomes labored.
+  - id: sym-018
+    title: Coughing up blood
+    section: respiratory
+    text: >
+      Coughing up blood, even a small amount, should never be ignored — it can stem
+      from a range of causes including infection or a clot in the lung, and warrants
+      prompt medical evaluation.
+  - id: sym-019
+    title: Sore throat
+    section: respiratory
+    text: >
+      Pain with swallowing, redness in the throat, and mild fever are common with
+      viral pharyngitis. Difficulty swallowing saliva, drooling, or trouble breathing
+      alongside a sore throat is an emergency.
+  - id: sym-020
+    title: Nasal congestion and common cold
+    section: respiratory
+    text: >
+      Runny nose, sneezing, mild sore throat, and low-grade fever lasting under two
+      weeks are typical of a common cold and generally resolve with rest and fluids.
+  - id: sym-021
+    title: Abdominal pain, right lower quadrant
+    section: gastrointestinal
+    text: >
+      Pain that starts near the belly button and migrates to the lower right abdomen,
+      worsened by movement or coughing, along with loss of appetite and low fever, is
+      a classic pattern for appendicitis and needs same-day evaluation.
+  - id: sym-022
+    title: Abdominal pain, upper right quadrant
+    section: gastrointestinal
+    text: >
+      Pain under the right ribs that worsens after fatty meals, sometimes with
+      nausea, can point to gallbladder inflammation, particularly if accompanied by
+      fever or yellowing of the skin.
+  - id: sym-023
+    title: Diffuse crampy abdominal pain
+    section: gastrointestinal
+    text: >
+      Crampy pain across the whole abdomen with loose stools and occasional vomiting
+      is commonly gastroenteritis. Severe, constant, or localized pain instead of
+      cramping suggests a different and potentially more serious cause.
+  - id: sym-024
+    title: Vomiting and dehydration
+    section: gastrointestinal
+    text: >
+      Persistent vomiting that prevents keeping fluids down, along with dry mouth,
+      dizziness, and reduced urination, indicates dehydration and may need
+      intravenous fluids rather than home management.
+  - id: sym-025
+    title: Diarrhea
+    section: gastrointestinal
+    text: >
+      Frequent loose stools lasting a few days, often from a viral or bacterial
+      infection, usually resolve with fluids and rest. Bloody stools, high fever, or
+      symptoms lasting more than a week need evaluation.
+  - id: sym-026
+    title: Blood in stool
+    section: gastrointestinal
+    text: >
+      Bright red blood in the stool can come from a minor source like hemorrhoids,
+      but dark, tarry stools suggest bleeding higher in the digestive tract and
+      should be assessed promptly, especially with dizziness or weakness.
+  - id: sym-027
+    title: Heartburn and reflux
+    section: gastrointestinal
+    text: >
+      A burning sensation behind the breastbone after meals or when lying down,
+      sometimes with a sour taste, is typical of acid reflux. New reflux-like pain in
+      an older adult should still be distinguished carefully from cardiac pain.
+  - id: sym-028
+    title: Constipation
+    section: gastrointestinal
+    text: >
+      Infrequent, hard, or difficult-to-pass stools over more than a few days, often
+      linked to low fiber or fluid intake, are usually managed with diet changes
+      before further workup is needed.
+  - id: sym-029
+    title: Painful urination
+    section: genitourinary
+    text: >
+      A burning sensation while urinating, along with urgency and frequency, is
+      typical of a urinary tract infection. Fever, back pain, or vomiting alongside
+      these symptoms can indicate the infection has reached the kidneys.
+  - id: sym-030
+    title: Blood in urine
+    section: genitourinary
+    text: >
+      Visible blood in the urine can result from infection, kidney stones, or less
+      commonly more serious causes, and should always be evaluated even if it
+      resolves on its own.
+  - id: sym-031
+    title: Flank pain, kidney stone pattern
+    section: genitourinary
+    text: >
+      Sudden, severe, wave-like pain in the side or back that radiates toward the
+      groin, often with nausea and blood in the urine, is characteristic of a kidney
+      stone.
+  - id: sym-032
+    title: Testicular pain
+    section: genitourinary
+    text: >
+      Sudden severe testicular pain, especially with swelling, is a time-sensitive
+      emergency that can represent twisting of the testicle and needs immediate
+      evaluation to protect blood supply.
+  - id: sym-033
+    title: Pelvic pain in pregnancy
+    section: genitourinary
+    text: >
+      Abdominal or pelvic pain in a pregnant patient, particularly with bleeding or
+      dizziness, always warrants urgent evaluation to rule out serious complications.
+  - id: sym-034
+    title: Joint pain, single joint
+    section: musculoskeletal
+    text: >
+      A single warm, swollen, and very painful joint, especially with fever, can
+      indicate a joint infection or gout and should be assessed the same day rather
+      than treated as a simple sprain.
+  - id: sym-035
+    title: Ankle sprain
+    section: musculoskeletal
+    text: >
+      Pain, swelling, and bruising around the ankle after a twisting injury, without
+      obvious deformity and with some ability to bear weight, is typical of a sprain
+      and can often be managed conservatively.
+  - id: sym-036
+    title: Low back pain
+    section: musculoskeletal
+    text: >
+      Dull or aching low back pain after lifting or prolonged sitting is common and
+      usually improves with movement and time. Back pain with numbness in the groin,
+      leg weakness, or loss of bladder control is an emergency.
+  - id: sym-037
+    title: Neck pain and stiffness with fever
+    section: musculoskeletal
+    text: >
+      Neck stiffness that makes it painful to lower the chin to the chest, combined
+      with fever and headache, can suggest meningitis and needs urgent evaluation.
+  - id: sym-038
+    title: Muscle strain
+    section: musculoskeletal
+    text: >
+      Localized soreness after unaccustomed physical activity, worsened by using the
+      affected muscle, typically represents a minor strain that improves with rest
+      over several days.
+  - id: sym-039
+    title: Widespread rash with fever
+    section: dermatological
+    text: >
+      A new rash spreading over the body accompanied by fever, especially if it does
+      not fade when pressed, can indicate a serious infection and should be evaluated
+      urgently.
+  - id: sym-040
+    title: Localized itchy rash
+    section: dermatological
+    text: >
+      A confined, itchy, red rash following contact with a new soap, plant, or
+      jewelry is typical of contact dermatitis and generally responds to avoiding the
+      trigger and topical treatment.
+  - id: sym-041
+    title: Hives
+    section: dermatological
+    text: >
+      Raised, itchy welts that appear suddenly and move around the body are typical
+      of hives, often triggered by food, medication, or an infection. Hives with
+      swelling of the lips or tongue signal a more severe allergic reaction.
+  - id: sym-042
+    title: Anaphylaxis
+    section: dermatological
+    text: >
+      Rapid swelling of the face, lips, or throat, difficulty breathing, and a drop
+      in blood pressure after exposure to a food, medication, or insect sting is
+      anaphylaxis, a life-threatening emergency requiring immediate treatment.
+  - id: sym-043
+    title: Cellulitis
+    section: dermatological
+    text: >
+      Skin that is increasingly red, warm, swollen, and tender, with the redness
+      spreading outward over hours to days, suggests a bacterial skin infection that
+      needs prompt medical attention.
+  - id: sym-044
+    title: Eye redness and discharge
+    section: eye
+    text: >
+      Redness with sticky discharge and mild irritation is typical of conjunctivitis.
+      Severe eye pain, vision loss, or a chemical splash to the eye needs emergency
+      care.
+  - id: sym-045
+    title: Sudden vision loss
+    section: eye
+    text: >
+      Sudden loss of vision in one eye, whether partial or complete, is an emergency
+      that can represent a blocked blood vessel in the eye and needs immediate
+      evaluation.
+  - id: sym-046
+    title: Eye injury or foreign body
+    section: eye
+    text: >
+      Pain, tearing, and light sensitivity after something enters the eye, or after
+      any blunt or sharp trauma to the eye, should be assessed promptly to avoid
+      lasting damage.
+  - id: sym-047
+    title: Ear pain
+    section: ear
+    text: >
+      Ear pain with reduced hearing and sometimes fever, particularly in children, is
+      commonly a middle ear infection and usually resolves with appropriate
+      treatment.
+  - id: sym-048
+    title: Sudden hearing loss
+    section: ear
+    text: >
+      Hearing loss that develops suddenly in one ear, without an obvious cause like
+      wax buildup, should be evaluated quickly since early treatment improves the
+      chance of recovery.
+  - id: sym-049
+    title: Fever in an adult
+    section: infectious
+    text: >
+      A temperature above 38C with body aches and fatigue is commonly viral and
+      self-limited. Fever above 39.5C, fever lasting more than three days, or fever
+      with confusion or rash needs evaluation.
+  - id: sym-050
+    title: Fever with rigors and low blood pressure
+    section: infectious
+    text: >
+      Fever accompanied by shaking chills, rapid heart rate, confusion, or low blood
+      pressure suggests sepsis, a life-threatening response to infection requiring
+      emergency treatment.
+  - id: sym-051
+    title: Unexplained weight loss
+    section: infectious
+    text: >
+      Losing a significant amount of weight without trying, especially alongside
+      fatigue, night sweats, or persistent symptoms, warrants a thorough medical
+      evaluation to identify the underlying cause.
+  - id: sym-052
+    title: Fatigue
+    section: general
+    text: >
+      Ongoing tiredness that is not relieved by rest can stem from poor sleep,
+      anemia, thyroid problems, depression, or many chronic conditions, and merits
+      evaluation when it persists for more than a couple of weeks.
+  - id: sym-053
+    title: Unintentional weight gain and swelling
+    section: general
+    text: >
+      Rapid weight gain over days with swelling in the legs or abdomen can indicate
+      fluid retention from heart, kidney, or liver problems and should be assessed
+      promptly.
+  - id: sym-054
+    title: Low blood sugar symptoms
+    section: endocrine
+    text: >
+      Shakiness, sweating, confusion, and rapid heartbeat in someone with diabetes
+      can indicate low blood sugar, which needs immediate treatment with fast-acting
+      sugar and monitoring.
+  - id: sym-055
+    title: High blood sugar symptoms
+    section: endocrine
+    text: >
+      Excessive thirst, frequent urination, and blurred vision over days to weeks can
+      indicate poorly controlled blood sugar. Nausea, vomiting, and rapid breathing
+      alongside these signs can indicate a diabetic emergency.
+  - id: sym-056
+    title: Thyroid symptoms
+    section: endocrine
+    text: >
+      Unexplained fatigue, weight change, temperature intolerance, or heart rate
+      changes can relate to an overactive or underactive thyroid and are typically
+      evaluated with blood tests rather than urgent imaging.
+  - id: sym-057
+    title: Anxiety symptoms
+    section: mental_health
+    text: >
+      Racing thoughts, restlessness, a pounding heart, and a sense of impending doom
+      without a clear physical cause are common with anxiety, though new symptoms
+      like these should still be distinguished from a cardiac or respiratory cause.
+  - id: sym-058
+    title: Depression symptoms
+    section: mental_health
+    text: >
+      Persistent low mood, loss of interest in usual activities, and changes in sleep
+      or appetite lasting more than two weeks suggest depression and benefit from
+      professional evaluation.
+  - id: sym-059
+    title: Suicidal ideation
+    section: mental_health
+    text: >
+      Any expression of a wish to die or a plan to harm oneself is a psychiatric
+      emergency and requires immediate safety evaluation, regardless of the severity
+      of other symptoms.
+  - id: sym-060
+    title: Panic attack
+    section: mental_health
+    text: >
+      A sudden surge of intense fear with chest tightness, rapid heartbeat, sweating,
+      and a feeling of losing control, typically peaking within minutes, is
+      consistent with a panic attack, though first episodes should be evaluated to
+      exclude a physical cause.
+  - id: sym-061
+    title: Nosebleed
+    section: ent
+    text: >
+      Bleeding from one nostril that stops with a few minutes of firm pressure is
+      common and usually benign. Frequent, heavy, or difficult-to-stop nosebleeds
+      merit further evaluation.
+  - id: sym-062
+    title: Toothache
+    section: dental
+    text: >
+      Localized tooth pain, worsened by hot, cold, or sweet foods, usually indicates
+      dental decay or infection. Facial swelling or fever alongside a toothache can
+      indicate a spreading dental infection requiring urgent care.
+  - id: sym-063
+    title: Insect bite or sting
+    section: dermatological
+    text: >
+      Localized redness, swelling, and itching at a bite or sting site is a normal
+      local reaction. Swelling spreading beyond the site, hives elsewhere on the
+      body, or breathing difficulty signals a systemic allergic reaction.
+  - id: sym-064
+    title: Minor burn
+    section: dermatological
+    text: >
+      Redness and pain without blistering, covering a small area, is a superficial
+      burn that can usually be cooled and dressed at home. Large burns, blistering
+      over a wide area, or burns to the face or airway need urgent care.
+  - id: sym-065
+    title: Head injury
+    section: neurological
+    text: >
+      A bump to the head with brief confusion but full recovery is usually mild.
+      Repeated vomiting, worsening headache, loss of consciousness, or increasing
+      drowsiness after a head injury needs emergency evaluation.

@@ -1976,7 +1976,9 @@ export interface operations {
     };
     start_session_api_v1_triage_session_post: {
         parameters: {
-            query?: never;
+            query?: {
+                patient_id?: string | null;
+            };
             header?: never;
             path?: never;
             cookie?: never;
@@ -1990,6 +1992,15 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["TriageTurnOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };
