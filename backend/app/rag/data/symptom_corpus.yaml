@@ -1,7 +1,7 @@
 # Offline fallback corpus for the "guidelines" collection, used only when the live
 # MedlinePlus/guideline fetch fails. Each entry is an original summary (not copied
 # from any external source) covering a common presenting symptom or condition,
-# written for triage retrieval grounding. >=60 entries required by CLAUDE.md A1.4.
+# written for triage retrieval grounding. >=60 entries required by the A1.4 spec.
 entries:
   - id: sym-001
     title: Chest pain, cardiac pattern
