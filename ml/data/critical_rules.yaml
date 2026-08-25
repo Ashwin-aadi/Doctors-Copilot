@@ -1,5 +1,5 @@
-# India-endemic hard critical rules from CLAUDE.md V1.4, applied in addition
-# to (not instead of) the generic 1.5x-outside-range critical check. `unit`
+# India-endemic hard critical rules, applied in addition to (not instead of)
+# the generic 1.5x-outside-range critical check. `unit`
 # is the unit the threshold is expressed in; parse_labs converts the parsed
 # value into this unit (via the small synonym table in lab_parser.py) before
 # comparing, and skips the rule silently if the unit isn't convertible.

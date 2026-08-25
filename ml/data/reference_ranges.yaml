@@ -2,8 +2,8 @@
 # range. Keyed by the canonical name in test_aliases.yaml. Each entry has a
 # `default` low/high (used when patient sex is unknown, which is the normal
 # case for parse_labs(ocr) -- it has no patient context) and, for the four
-# tests called out in CLAUDE.md as differing meaningfully from Western
-# defaults, sex-specific ICMR/NFI-aligned bounds kept alongside for callers
+# tests that differ meaningfully from Western defaults, sex-specific
+# ICMR/NFI-aligned bounds are kept alongside for callers
 # that do have patient sex (e.g. a future V2.5 lab_flags.py).
 hemoglobin: {unit: g/dL, default: {low: 12.0, high: 17.0}, male: {low: 13.0, high: 17.0}, female: {low: 12.0, high: 15.5}}
 wbc_count: {unit: cells/cu mm, default: {low: 4000, high: 11000}}

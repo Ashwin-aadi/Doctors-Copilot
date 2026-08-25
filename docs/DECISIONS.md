@@ -1,5 +1,45 @@
 # Decisions Log
 
+## 2026-08-26 — V1.5 API, worker, push
+
+- `app/core/deps.py` (`get_current_user`) didn't exist anywhere on `main` —
+  Pratyaksh's login/JWT issuance hasn't landed yet, only stub `not_implemented`
+  routes in `app/api/v1/auth.py`. The spec requires `Depends(get_current_user)`
+  on both document routes, and `backend/tests/conftest.py`'s `auth_headers`
+  fixture already emits a `Bearer test-{role}-token` placeholder expecting
+  something to consume it. Added a minimal `get_current_user` that accepts
+  only that placeholder, resolving it to a real seeded `User` row of the
+  matching role (needed so `FileObject.uploaded_by`'s FK is satisfiable) —
+  same TEMP-ADAPTER pattern the spec already sanctions for the storage-not-
+  merged case. Marked for removal once `/auth/login` + real token issuance
+  exist; the file lives outside `app/ml` and `app/api/v1/documents.py` because
+  it's a shared interface both routes and other checkpoints will import.
+- `POST /documents/upload` branches on `Content-Type`: multipart (the
+  TEMP-ADAPTER storage path, storing to `STORAGE_ROOT/tmp/` and writing a
+  `FileObject` row directly) vs. JSON `{file_id, patient_id}` against an
+  already-existing `FileObject` (the real path once `/files` ships). Both are
+  handled in one handler via `Request` rather than two routes, since the spec
+  describes it as one endpoint with a conditional branch.
+- The worker (`app/workers/ocr_worker.py`) uses a **synchronous** SQLAlchemy
+  session over the same `postgresql+psycopg` URL, not the async engine in
+  `app/db/session.py` — that engine's pool is bound to the API process's
+  event loop, and RQ jobs run in a separate worker process with no running
+  loop of their own.
+- `document.done` is published via `redis.publish` directly (`app/core/events`
+  has only FastAPI lifespan hooks, no pub/sub helper), matching the spec's
+  documented fallback ("`app.core.events` if present, else `redis.publish`").
+- **Infra caveat**: this sandbox has no Docker/Postgres/Redis available, so
+  the DB-backed tests in `test_documents_api.py` and the curl end-to-end
+  Verify step could not actually be executed here. What *was* verified: all
+  new/changed modules import cleanly, `app.main`'s OpenAPI schema still
+  registers both document paths and all 48 non-health contract tests pass
+  (proving routing/dependency-injection wiring is sound), and the two
+  auth-only tests that don't need a DB connection (`test_upload_requires_auth`,
+  `test_get_requires_auth`) pass. The three DB-dependent tests fail purely on
+  `OperationalError: connection ... failed` (Postgres unreachable) — confirmed
+  by inspection to be an infra-availability failure, not a code path. Needs a
+  real `make up && make migrate && make seed` environment to close the loop.
+
 ## 2026-08-26 — V1.4 lab report parser
 
 - `ml/data/critical_rules.yaml` is created even though it isn't in V1.4's
