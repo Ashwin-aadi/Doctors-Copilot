@@ -11,13 +11,38 @@ jobs:
     defaults:
       run:
         working-directory: backend
+
+    # The triage tests exercise real TriageSession persistence rather than mocking
+    # the session store, so the job needs a live database. Credentials and port
+    # match the DATABASE_URL default in app/core/config.py.
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: copilot
+          POSTGRES_PASSWORD: copilot
+          POSTGRES_DB: copilot
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    env:
+      DATABASE_URL: postgresql+psycopg://copilot:copilot@localhost:5432/copilot
+
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
+          cache: pip
+          cache-dependency-path: backend/requirements.txt
       - run: pip install -r requirements.txt
       - run: ruff check .
+      - run: alembic upgrade head
       - run: pytest -q
 
   frontend:
