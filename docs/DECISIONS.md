@@ -1,5 +1,26 @@
 # Decisions Log
 
+## 2026-08-26 — V1.2 ingestion & preprocessing
+
+- `reportlab` added as a dev-time dependency (not in `backend/requirements.txt`,
+  since it's only used to *generate* fixtures, never imported by app code) to
+  build the 5 lab-report PDF fixtures as realistic Indian diagnostic-lab
+  layouts. `ml/generate_fixtures.py` is kept in-repo (not deleted after the
+  one-off run) so the fixtures are reproducible/regenerable, matching
+  `ml/*` ownership.
+- The skewed/noisy scan fixture (`ml/fixtures/cbc_noisy_scan.pdf`) is built
+  by rasterising the clean `cbc.pdf` at 300 DPI, injecting Gaussian pixel
+  noise, and rotating 7.5 degrees, then saving as an image-only PDF (no
+  text layer) via Pillow. This forces `to_pages` down the image-preprocessing
+  path (`engine="ocr"`) rather than the `pdf_text` fast path, exercising
+  deskew/denoise/CLAHE/threshold the way a real phone-camera scan would.
+- `to_pages` returns `list[Page]`, a thin `np.ndarray` subclass carrying
+  `engine`/`quality`/`low_quality`/`text` metadata. Chosen over a bare
+  `list[np.ndarray]` + separate metadata list so the literal spec signature
+  (`list[np.ndarray]`) still holds by subtyping, while V1.3's OCR service
+  can read `page.engine == "pdf_text"` to skip OCR and reuse `page.text`
+  directly instead of re-extracting it.
+
 ## 2026-08-25 — V1.1 model registry + bootstrap
 
 - `transformers` pinned to `4.46.3` instead of the `4.47.1` in the original
