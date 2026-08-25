@@ -1,0 +1,80 @@
+# Emergency Severity Index (ESI) tier definitions used to ground triage finalization.
+tiers:
+  - esi: 1
+    name: Resuscitation
+    description: >
+      Immediate life-saving intervention required. Unresponsive, no pulse, not
+      breathing, or in extremis (e.g. severe respiratory distress, unresponsive
+      to painful stimuli).
+    examples:
+      - cardiac arrest
+      - not breathing
+      - unresponsive / no pulse
+      - severe traumatic injury with active uncontrolled bleeding
+
+  - esi: 2
+    name: Emergent
+    description: >
+      High-risk situation, or severe pain/distress, or any danger to life, limb,
+      or organ if not treated quickly. Patient should not wait.
+    examples:
+      - crushing chest pain radiating to arm/jaw with sweating
+      - sudden severe headache ("worst headache of life")
+      - stroke signs (facial droop, arm weakness, slurred speech)
+      - difficulty breathing at rest
+      - active suicidal or homicidal ideation with a plan
+      - severe allergic reaction with airway involvement
+      - uncontrolled bleeding
+      - signs of sepsis (fever with confusion, low blood pressure)
+
+  - esi: 3
+    name: Urgent
+    description: >
+      Requires multiple resources (labs, imaging, specialist consult) but vital
+      signs are stable. Should be seen within the hour.
+    examples:
+      - moderate abdominal pain
+      - persistent vomiting or diarrhea with dehydration signs
+      - fever over 39C in an adult with clear source
+      - moderate asthma exacerbation, responsive to home treatment
+      - deep laceration requiring sutures
+
+  - esi: 4
+    name: Less urgent
+    description: >
+      Requires one resource (e.g. a single lab test or simple imaging). Stable,
+      can safely wait.
+    examples:
+      - simple sprain or strain
+      - mild-moderate localized pain, no red flags
+      - uncomplicated urinary tract infection symptoms
+      - minor laceration without active bleeding
+
+  - esi: 5
+    name: Non-urgent
+    description: >
+      Requires no resources beyond a history and exam. Chronic or minor issues.
+    examples:
+      - prescription refill request
+      - mild cold symptoms
+      - routine follow-up question
+      - minor rash present for days without spread
+
+red_flag_patterns:
+  - crushing chest pain
+  - radiating to (the )?(left )?(arm|jaw)
+  - can'?t breathe
+  - difficulty breathing
+  - shortness of breath at rest
+  - worst headache of (my|his|her|their) life
+  - sudden weakness on one side
+  - facial droop
+  - slurred speech
+  - loss of consciousness
+  - unresponsive
+  - severe (bleeding|hemorrhage)
+  - suicidal
+  - homicidal
+  - coughing up blood
+  - blue lips
+  - anaphyla
