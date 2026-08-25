@@ -1,5 +1,34 @@
 # Decisions Log
 
+## 2026-08-26 — V1.3 OCR service
+
+- `run_ocr` never runs OCR on a page `to_pages` already marked
+  `engine="pdf_text"`: it re-opens the source PDF and reads word-level
+  geometry via `fitz`'s `get_text("words")` (scaled by `300/72` to match the
+  300 DPI raster the rest of the pipeline uses) instead, with `conf=1.0` per
+  block. This was the design intent recorded in V1.2's decision entry — an
+  embedded text layer is already exact, so running PaddleOCR/Tesseract over
+  its raster would only add error and cost, never improve on it.
+- Table extraction uses the y-centroid/x-gap clustering fallback from the
+  spec unconditionally, even though `from paddleocr import PPStructure`
+  imports cleanly on this machine. PP-Structure's table/layout models are not
+  the ones cached from V1.1's `warm_up()` run (only `det/en`, `det/ml`,
+  `rec/en`, `rec/devanagari`, `cls`) and pulling its additional layout
+  weights would mean an uncontrolled network fetch mid-pipeline (and
+  mid-test-run) with no offline fallback of its own. The clustering path has
+  no such dependency and already passes every fixture. Revisit once
+  PP-Structure's weights are deliberately vendored/cached, per §3's
+  fallback-chain philosophy.
+- `run_ocr`'s fallback chain (PaddleOCR `en` -> PaddleOCR `devanagari` ->
+  Tesseract) keeps the highest-confidence result across whichever tiers
+  actually ran, rather than stopping at the first one to clear the 0.60
+  threshold, so a low-confidence English pass doesn't win over a
+  higher-confidence Devanagari or Tesseract rerun. Verified live end-to-end
+  against `ml/fixtures/cbc_noisy_scan.pdf` (no system Tesseract on this dev
+  box, so only the PaddleOCR tiers are exercised locally): `paddle_en`
+  resolves the rotated/noised scan at `mean_confidence=0.966` without
+  needing the Devanagari or Tesseract reruns.
+
 ## 2026-08-26 — V1.2 ingestion & preprocessing
 
 - `reportlab` added as a dev-time dependency (not in `backend/requirements.txt`,
