@@ -63,7 +63,7 @@ Codes: `AUTH_INVALID_CREDENTIALS, AUTH_TOKEN_EXPIRED, AUTH_FORBIDDEN, CAPTCHA_RE
 | GET | `/api/v1/medications/generic` | N | any | – |
 | GET | `/health` | A | – | – |
 
-All routes above are live in the OpenAPI schema as of A1.2, returning `NOT_IMPLEMENTED` until their owning checkpoint lands the real handler. `/health` and the triage/copilot/kg/visits scaffolding are Ashwin's own routes and fill in across CP1–CP3 per `CLAUDE.md`.
+All routes above are live in the OpenAPI schema as of A1.2, returning `NOT_IMPLEMENTED` until their owning checkpoint lands the real handler. `/health` and the triage/copilot/kg/visits scaffolding are Ashwin's own routes and fill in across the CP1–CP3 build sequence.
 
 ## Core schemas
 
