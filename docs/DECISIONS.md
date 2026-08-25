@@ -1,5 +1,42 @@
 # Decisions Log
 
+## 2026-08-26 — V1.4 lab report parser
+
+- `ml/data/critical_rules.yaml` is created even though it isn't in V1.4's
+  `Files:` header, because the `Do:` text explicitly requires it
+  (`ml/data/critical_rules.yaml` hard rules for platelets/haemoglobin/
+  glucose/creatinine) and it's `ml/data/*`, squarely Virat-owned. Same for
+  `ml/fixtures/expected/*.yaml`, needed to satisfy the "≥85% field accuracy,
+  asserted against a hand-written expected YAML" requirement.
+- Per-cell OCR confidence doesn't survive table clustering — `OcrResult`'s
+  `tables` field is `list[list[list[str]]]`, plain strings with no `conf`.
+  `parse_labs` recovers a confidence proxy by looking up each cell's exact
+  stripped text against the page's `blocks` (which do carry `conf`), falling
+  back to the page's mean block confidence when a cell's text doesn't match
+  any single block exactly (e.g. a cell joined from multiple OCR blocks).
+  `confidence = min(that proxy, alias-match score)` per the spec formula.
+- `reference_ranges.yaml` is a fallback only: all 5 fixtures print their own
+  reference range in the table's range column, so `_default_range()` never
+  fires against them. Its sex-specific (`male`/`female`) bounds for
+  haemoglobin/creatinine/uric_acid/ESR/iron/ferritin are populated for a
+  future caller with patient context (e.g. V2.5 `lab_flags.py`); `parse_labs`
+  itself has no patient argument (per the V1.4 signature), so it always uses
+  `default`.
+- "Critical when value is beyond 1.5x outside the range" is implemented as
+  `abs(value - nearest_bound) > 1.5 * (high - low)` (range-width multiple),
+  not `value > 1.5 * bound`, and only when both bounds are known. The
+  bound-multiple reading would misfire on ordinary `high`/`low` results with
+  a narrow range relative to the boundary (e.g. CBC's ESR 28 vs 0–15 would
+  wrongly flip to `critical` under a literal `value > 1.5*high` reading);
+  the width-multiple reading matches all 5 fixtures' hand-verified expected
+  flags with no false-positive criticals, and only the 4 explicit hard rules
+  in `critical_rules.yaml` can mark a result critical outside that.
+- Hard critical-rule unit conversion (`_to_rule_unit`) only handles the
+  specific unit strings the fixtures/spec actually use (`lakhs/cu mm` ->
+  `/uL` for the platelet rule; direct match for `g/dL`/`mg/dL`). It returns
+  `None` (rule skipped, never guessed) for any other unit spelling rather
+  than attempting a general unit-parser — safer than a wrong critical flag.
+
 ## 2026-08-26 — V1.3 OCR service
 
 - `run_ocr` never runs OCR on a page `to_pages` already marked

@@ -1,0 +1,5 @@
+- {normalized_name: tsh, value: 6.8, unit: uIU/mL, flag: high}
+- {normalized_name: free_t3, value: 2.4, unit: pg/mL, flag: normal}
+- {normalized_name: free_t4, value: 0.9, unit: ng/dL, flag: normal}
+- {normalized_name: total_t3, value: 108, unit: ng/dL, flag: normal}
+- {normalized_name: total_t4, value: 7.1, unit: ug/dL, flag: normal}

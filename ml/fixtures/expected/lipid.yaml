@@ -1,0 +1,6 @@
+- {normalized_name: total_cholesterol, value: 218, unit: mg/dL, flag: high}
+- {normalized_name: triglycerides, value: 168, unit: mg/dL, flag: high}
+- {normalized_name: hdl_cholesterol, value: 38, unit: mg/dL, flag: low}
+- {normalized_name: ldl_cholesterol, value: 146, unit: mg/dL, flag: high}
+- {normalized_name: vldl_cholesterol, value: 33.6, unit: mg/dL, flag: normal}
+- {normalized_name: cholesterol_hdl_ratio, value: 5.7, unit: ratio, flag: high}

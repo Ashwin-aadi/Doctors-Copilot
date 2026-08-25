@@ -1,0 +1,254 @@
+# Canonical lab test names -> alias list (+ optional LOINC code).
+# Aliases are matched case-insensitively via rapidfuzz (score >= 80) against
+# whatever name string OCR/table extraction produced. Keep aliases as they
+# actually appear on Indian diagnostic-lab report templates (Dr. Lal
+# PathLabs / Metropolis / SRL / NABL-accredited local labs), including
+# common abbreviations and parenthetical forms.
+
+hemoglobin:
+  loinc: "718-7"
+  aliases: ["Hb", "HGB", "Haemoglobin", "Hemoglobin", "Hb Conc", "Hemoglobin (Hb)"]
+
+wbc_count:
+  loinc: "6690-2"
+  aliases: ["TLC", "WBC", "WBC Count", "Total Leukocyte Count", "Total Leukocyte Count (TLC)", "Total WBC Count", "Leukocytes"]
+
+platelet_count:
+  loinc: "777-3"
+  aliases: ["Platelets", "PLT", "Platelet Count"]
+
+rbc_count:
+  loinc: "789-8"
+  aliases: ["RBC", "RBC Count", "Red Blood Cell Count", "Erythrocytes"]
+
+pcv:
+  loinc: "4544-3"
+  aliases: ["PCV", "Hematocrit", "Haematocrit", "HCT", "Packed Cell Volume", "Packed Cell Volume (PCV)"]
+
+mcv:
+  loinc: "787-2"
+  aliases: ["MCV", "Mean Corpuscular Volume"]
+
+mch:
+  loinc: "785-6"
+  aliases: ["MCH", "Mean Corpuscular Hemoglobin"]
+
+mchc:
+  loinc: "786-4"
+  aliases: ["MCHC", "Mean Corpuscular Hemoglobin Concentration"]
+
+neutrophils:
+  loinc: "770-8"
+  aliases: ["Neutrophils", "Neutrophils %", "Polymorphs"]
+
+lymphocytes:
+  loinc: "736-9"
+  aliases: ["Lymphocytes", "Lymphocytes %"]
+
+eosinophils:
+  loinc: "713-8"
+  aliases: ["Eosinophils", "Eosinophils %"]
+
+basophils:
+  loinc: "706-2"
+  aliases: ["Basophils", "Basophils %"]
+
+monocytes:
+  loinc: "5905-5"
+  aliases: ["Monocytes", "Monocytes %"]
+
+esr:
+  loinc: "4537-7"
+  aliases: ["ESR", "Erythrocyte Sedimentation Rate"]
+
+bilirubin_total:
+  loinc: "1975-2"
+  aliases: ["Bilirubin Total", "Total Bilirubin", "Bilirubin (Total)", "TBIL"]
+
+bilirubin_direct:
+  loinc: "1968-7"
+  aliases: ["Bilirubin Direct", "Direct Bilirubin", "Bilirubin (Direct)", "DBIL"]
+
+bilirubin_indirect:
+  loinc: "1971-1"
+  aliases: ["Bilirubin Indirect", "Indirect Bilirubin", "Bilirubin (Indirect)"]
+
+sgot_ast:
+  loinc: "1920-8"
+  aliases: ["SGOT", "AST", "SGOT (AST)", "Aspartate Aminotransferase"]
+
+sgpt_alt:
+  loinc: "1742-6"
+  aliases: ["SGPT", "ALT", "SGPT (ALT)", "Alanine Aminotransferase"]
+
+alp:
+  loinc: "6768-6"
+  aliases: ["ALP", "Alkaline Phosphatase", "Alkaline Phosphatase (ALP)"]
+
+total_protein:
+  loinc: "2885-2"
+  aliases: ["Total Protein", "TP"]
+
+albumin:
+  loinc: "1751-7"
+  aliases: ["Albumin", "ALB"]
+
+globulin:
+  loinc: "10834-0"
+  aliases: ["Globulin"]
+
+ag_ratio:
+  loinc: "1759-0"
+  aliases: ["A/G Ratio", "Albumin Globulin Ratio", "A G Ratio"]
+
+ggt:
+  loinc: "2324-2"
+  aliases: ["GGT", "Gamma GT", "Gamma-Glutamyl Transferase"]
+
+urea:
+  loinc: "3091-6"
+  aliases: ["Urea", "Blood Urea"]
+
+bun:
+  loinc: "3094-0"
+  aliases: ["BUN", "Blood Urea Nitrogen", "Blood Urea Nitrogen (BUN)"]
+
+creatinine:
+  loinc: "2160-0"
+  aliases: ["Creatinine", "Creat", "Serum Creatinine"]
+
+uric_acid:
+  loinc: "3084-1"
+  aliases: ["Uric Acid"]
+
+sodium:
+  loinc: "2951-2"
+  aliases: ["Sodium", "Na", "Na+"]
+
+potassium:
+  loinc: "2823-3"
+  aliases: ["Potassium", "K", "K+"]
+
+chloride:
+  loinc: "2075-0"
+  aliases: ["Chloride", "Cl", "Cl-"]
+
+egfr:
+  loinc: "48642-3"
+  aliases: ["eGFR", "Estimated GFR", "Glomerular Filtration Rate"]
+
+total_cholesterol:
+  loinc: "2093-3"
+  aliases: ["Total Cholesterol", "Cholesterol"]
+
+triglycerides:
+  loinc: "2571-8"
+  aliases: ["Triglycerides", "TG"]
+
+hdl_cholesterol:
+  loinc: "2085-9"
+  aliases: ["HDL", "HDL Cholesterol", "HDL-C"]
+
+ldl_cholesterol:
+  loinc: "2089-1"
+  aliases: ["LDL", "LDL Cholesterol", "LDL-C"]
+
+vldl_cholesterol:
+  loinc: "13458-5"
+  aliases: ["VLDL", "VLDL Cholesterol"]
+
+cholesterol_hdl_ratio:
+  loinc: "9830-1"
+  aliases: ["Total Cholesterol/HDL Ratio", "Cholesterol/HDL Ratio"]
+
+tsh:
+  loinc: "3016-3"
+  aliases: ["TSH", "Thyroid Stimulating Hormone", "TSH (Thyroid Stimulating Hormone)"]
+
+free_t3:
+  loinc: "3053-6"
+  aliases: ["Free T3", "FT3"]
+
+free_t4:
+  loinc: "3024-7"
+  aliases: ["Free T4", "FT4"]
+
+total_t3:
+  loinc: "3053-6"
+  aliases: ["Total T3", "T3"]
+
+total_t4:
+  loinc: "3026-2"
+  aliases: ["Total T4", "T4"]
+
+fasting_glucose:
+  loinc: "1558-6"
+  aliases: ["Fasting Blood Sugar", "FBS", "Glucose Fasting"]
+
+random_glucose:
+  loinc: "2345-7"
+  aliases: ["Random Blood Sugar", "RBS", "Glucose Random"]
+
+hba1c:
+  loinc: "4548-4"
+  aliases: ["HbA1c", "Glycosylated Hemoglobin", "Glycated Hemoglobin"]
+
+vitamin_d:
+  loinc: "1989-3"
+  aliases: ["Vitamin D", "25-OH Vitamin D", "Vitamin D3"]
+
+vitamin_b12:
+  loinc: "2132-9"
+  aliases: ["Vitamin B12", "B12", "Cobalamin"]
+
+folate:
+  loinc: "2284-8"
+  aliases: ["Folate", "Folic Acid"]
+
+calcium:
+  loinc: "17861-6"
+  aliases: ["Calcium", "Ca"]
+
+phosphorus:
+  loinc: "2777-1"
+  aliases: ["Phosphorus", "Phosphate"]
+
+magnesium:
+  loinc: "2601-3"
+  aliases: ["Magnesium", "Mg"]
+
+iron:
+  loinc: "2498-4"
+  aliases: ["Serum Iron", "Iron"]
+
+ferritin:
+  loinc: "2276-4"
+  aliases: ["Ferritin"]
+
+crp:
+  loinc: "1988-5"
+  aliases: ["CRP", "C-Reactive Protein"]
+
+pt:
+  loinc: "5902-2"
+  aliases: ["PT", "Prothrombin Time"]
+
+inr:
+  loinc: "6301-6"
+  aliases: ["INR", "International Normalized Ratio"]
+
+aptt:
+  loinc: "3173-2"
+  aliases: ["APTT", "Activated Partial Thromboplastin Time"]
+
+amylase:
+  loinc: "1798-8"
+  aliases: ["Amylase"]
+
+lipase:
+  loinc: "3040-3"
+  aliases: ["Lipase"]
+
+ldh:
+  loinc: "2532-0"
+  aliases: ["LDH", "Lactate Dehydrogenase"]
