@@ -1,0 +1,2 @@
+-- placeholder: schema is managed by Alembic migrations (backend/alembic).
+-- This file exists only to satisfy the postgres image entrypoint mount point.
