@@ -1,5 +1,21 @@
 # Decisions Log
 
+## 2026-08-25 — A1.4 finalize() confidence without a Groq credential
+
+- `finalize()` calls `json_complete` for the structured `TriageResult`. With no
+  `GROQ_API_KEY` set (this project's only paid/free-tier credential, left
+  blank in `.env` until a teammate supplies one) and no local Ollama daemon
+  running, the LLM gateway exhausts both providers and returns the extractive
+  fallback string, which is not valid JSON for the schema. `json_complete`
+  degrades to a schema-default instance rather than raising, so `finalize()`
+  still returns a well-formed `TriageResult` — just with `citations=[]` and
+  `confidence=0.0` — instead of crashing the request. Red-flag detection
+  (regex-based) still works with zero external dependencies, so severity
+  routing stays correct even fully offline. The A1.4 verify line asserting
+  `citations|length>=2` will only pass once a real `GROQ_API_KEY` is present;
+  `tests/test_triage.py` covers the business logic deterministically via
+  monkeypatched LLM calls instead of depending on a live credential.
+
 ## 2026-08-25 — A1.4 triage RAG ingestion
 
 - `ingest_guidelines.py` fetches ESI tier definitions plus ~65 MedlinePlus
