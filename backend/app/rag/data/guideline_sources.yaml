@@ -1,207 +1,403 @@
-# Public guideline/reference pages ingested into the "guidelines" collection.
-# All URLs are freely public reference material (MedlinePlus, a US National Library
-# of Medicine service). No credential or paid API required. Verified reachable at
-# authoring time; ingest_guidelines.py skips any URL that fails at ingest time and
-# tops up from the bundled offline symptom corpus instead.
+# Public reference pages ingested into the "guidelines" collection, used to ground
+# pre-assessment triage.
+#
+# The list is India-first, in the priority order the product commits to:
+#   1. Indian government / programme material (MoHFW, NCVBDC, NTEP, NCDC, ICMR, NHM)
+#      and WHO India country pages                                    -> region: IN
+#   2. WHO fact sheets for the communicable and tropical disease burden that
+#      dominates Indian OPD and casualty presentations                -> region: INTL
+#   3. MedlinePlus plain-language pages for the general symptom set    -> region: INTL
+#
+# Everything here is freely public reference material; no credential or paid API is
+# required. ingest_guidelines.py skips any URL that fails at ingest time and tops up
+# from the bundled offline symptom corpus, so a dead link never empties the corpus.
 sources:
+  # --- Indian government and programme sources -------------------------------
+  - url: https://www.mohfw.gov.in/?q=en/diseasealerts/national-guidelines-clinical-management-dengue-fever
+    title: National Guidelines for Clinical Management of Dengue Fever (MoHFW)
+    section: dengue
+    region: IN
+  - url: https://ncvbdc.mohfw.gov.in/index4.php?lang=1&level=0&linkid=431&lid=3715
+    title: National Centre for Vector Borne Diseases Control — Dengue
+    section: dengue
+    region: IN
+  - url: https://ncvbdc.mohfw.gov.in/index1.php?lang=1&level=1&sublinkid=5776&lid=3689
+    title: National Centre for Vector Borne Diseases Control — Malaria
+    section: malaria
+    region: IN
+  - url: https://ncvbdc.mohfw.gov.in/index1.php?lang=1&level=1&sublinkid=5784&lid=3689
+    title: National Centre for Vector Borne Diseases Control — Vector Borne Disease Programme
+    section: vector_borne
+    region: IN
+  - url: https://tbcindia.mohfw.gov.in/
+    title: National Tuberculosis Elimination Programme (NTEP)
+    section: tuberculosis
+    region: IN
+  - url: https://ncdc.mohfw.gov.in/
+    title: National Centre for Disease Control, India
+    section: communicable_disease
+    region: IN
+  - url: https://www.icmr.gov.in/
+    title: Indian Council of Medical Research
+    section: research_guidance
+    region: IN
+  - url: https://nhm.gov.in/
+    title: National Health Mission, India
+    section: programme
+    region: IN
+  - url: https://www.mohfw.gov.in/
+    title: Ministry of Health and Family Welfare, India
+    section: programme
+    region: IN
+  - url: https://janaushadhi.gov.in/
+    title: Pradhan Mantri Bhartiya Janaushadhi Pariyojana
+    section: generic_medicines
+    region: IN
+  - url: https://abdm.gov.in/
+    title: Ayushman Bharat Digital Mission
+    section: digital_health
+    region: IN
+  - url: https://cdsco.gov.in/opencms/opencms/en/Home/
+    title: Central Drugs Standard Control Organisation
+    section: drug_regulation
+    region: IN
+  - url: https://www.who.int/india/health-topics/tuberculosis
+    title: Tuberculosis in India (WHO India)
+    section: tuberculosis
+    region: IN
+  - url: https://www.who.int/india/health-topics/malaria
+    title: Malaria in India (WHO India)
+    section: malaria
+    region: IN
+  - url: https://www.who.int/india/health-topics/diabetes
+    title: Diabetes in India (WHO India)
+    section: diabetes
+    region: IN
+  - url: https://www.who.int/india/health-topics/hypertension
+    title: Hypertension in India (WHO India)
+    section: hypertension
+    region: IN
+
+  # --- WHO fact sheets: the India communicable / tropical burden -------------
+  - url: https://www.who.int/news-room/fact-sheets/detail/dengue-and-severe-dengue
+    title: Dengue and Severe Dengue
+    section: dengue
+    region: INTL
+  - url: https://www.who.int/news-room/fact-sheets/detail/malaria
+    title: Malaria
+    section: malaria
+    region: INTL
+  - url: https://www.who.int/news-room/fact-sheets/detail/chikungunya
+    title: Chikungunya
+    section: chikungunya
+    region: INTL
+  - url: https://www.who.int/news-room/fact-sheets/detail/typhoid
+    title: Typhoid (Enteric Fever)
+    section: enteric_fever
+    region: INTL
+  - url: https://www.who.int/news-room/fact-sheets/detail/tuberculosis
+    title: Tuberculosis
+    section: tuberculosis
+    region: INTL
+  - url: https://www.who.int/news-room/fact-sheets/detail/japanese-encephalitis
+    title: Japanese Encephalitis
+    section: encephalitis
+    region: INTL
+  - url: https://www.who.int/news-room/fact-sheets/detail/leishmaniasis
+    title: Leishmaniasis (Kala-azar)
+    section: leishmaniasis
+    region: INTL
+  - url: https://www.who.int/news-room/fact-sheets/detail/leptospirosis
+    title: Leptospirosis
+    section: leptospirosis
+    region: INTL
+  - url: https://www.who.int/news-room/fact-sheets/detail/cholera
+    title: Cholera
+    section: cholera
+    region: INTL
+  - url: https://www.who.int/news-room/fact-sheets/detail/hepatitis-a
+    title: Hepatitis A
+    section: hepatitis
+    region: INTL
+  - url: https://www.who.int/news-room/fact-sheets/detail/hepatitis-b
+    title: Hepatitis B
+    section: hepatitis
+    region: INTL
+  - url: https://www.who.int/news-room/fact-sheets/detail/diarrhoeal-disease
+    title: Diarrhoeal Disease
+    section: gastroenteritis
+    region: INTL
+  - url: https://www.who.int/news-room/fact-sheets/detail/snakebite-envenoming
+    title: Snakebite Envenoming
+    section: envenoming
+    region: INTL
+  - url: https://www.who.int/news-room/fact-sheets/detail/rabies
+    title: Rabies
+    section: rabies
+    region: INTL
+  - url: https://www.who.int/news-room/fact-sheets/detail/measles
+    title: Measles
+    section: measles
+    region: INTL
+  - url: https://www.who.int/news-room/fact-sheets/detail/pneumonia
+    title: Pneumonia
+    section: pneumonia
+    region: INTL
+  - url: https://www.who.int/news-room/fact-sheets/detail/influenza-(seasonal)
+    title: Seasonal Influenza
+    section: influenza
+    region: INTL
+  - url: https://www.who.int/news-room/fact-sheets/detail/anaemia
+    title: Anaemia
+    section: anaemia
+    region: INTL
+  - url: https://www.who.int/news-room/fact-sheets/detail/malnutrition
+    title: Malnutrition
+    section: nutrition
+    region: INTL
+  - url: https://www.who.int/news-room/fact-sheets/detail/maternal-mortality
+    title: Maternal Mortality
+    section: maternal_health
+    region: INTL
+  - url: https://www.who.int/news-room/fact-sheets/detail/rheumatic-heart-disease
+    title: Rheumatic Heart Disease
+    section: cardiology
+    region: INTL
+  - url: https://www.who.int/news-room/fact-sheets/detail/cardiovascular-diseases-(cvds)
+    title: Cardiovascular Diseases
+    section: cardiology
+    region: INTL
+  - url: https://www.who.int/news-room/fact-sheets/detail/stroke
+    title: Stroke
+    section: neurology
+    region: INTL
+  - url: https://www.who.int/news-room/fact-sheets/detail/diabetes
+    title: Diabetes
+    section: endocrinology
+    region: INTL
+  - url: https://www.who.int/news-room/fact-sheets/detail/hypertension
+    title: Hypertension
+    section: cardiology
+    region: INTL
+  - url: https://www.who.int/news-room/fact-sheets/detail/chronic-obstructive-pulmonary-disease-(copd)
+    title: Chronic Obstructive Pulmonary Disease
+    section: respiratory
+    region: INTL
+  - url: https://www.who.int/news-room/fact-sheets/detail/asthma
+    title: Asthma
+    section: respiratory
+    region: INTL
+  - url: https://www.who.int/news-room/fact-sheets/detail/depression
+    title: Depression
+    section: mental_health
+    region: INTL
+  - url: https://www.who.int/news-room/fact-sheets/detail/epilepsy
+    title: Epilepsy
+    section: neurology
+    region: INTL
+  - url: https://www.who.int/news-room/fact-sheets/detail/tobacco
+    title: Tobacco
+    section: risk_factor
+    region: INTL
+
+  # --- MedlinePlus: plain-language general symptom coverage ------------------
   - url: https://medlineplus.gov/chestpain.html
     title: Chest Pain
     section: overview
-  - url: https://medlineplus.gov/asthma.html
-    title: Asthma
-    section: overview
+    region: INTL
   - url: https://medlineplus.gov/abdominalpain.html
     title: Abdominal Pain
     section: overview
+    region: INTL
   - url: https://medlineplus.gov/headache.html
     title: Headache
     section: overview
+    region: INTL
   - url: https://medlineplus.gov/fever.html
     title: Fever
     section: overview
+    region: INTL
   - url: https://medlineplus.gov/urinarytractinfections.html
     title: Urinary Tract Infections
     section: overview
+    region: INTL
   - url: https://medlineplus.gov/backpain.html
     title: Back Pain
     section: overview
+    region: INTL
   - url: https://medlineplus.gov/allergy.html
     title: Allergy
     section: overview
+    region: INTL
   - url: https://medlineplus.gov/anxiety.html
     title: Anxiety
     section: overview
-  - url: https://medlineplus.gov/diabetes.html
-    title: Diabetes
-    section: overview
-  - url: https://medlineplus.gov/highbloodpressure.html
-    title: High Blood Pressure
-    section: overview
-  - url: https://medlineplus.gov/heartdiseases.html
-    title: Heart Diseases
-    section: overview
+    region: INTL
   - url: https://medlineplus.gov/breathingproblems.html
     title: Breathing Problems
     section: overview
+    region: INTL
   - url: https://medlineplus.gov/diarrhea.html
     title: Diarrhea
     section: overview
+    region: INTL
   - url: https://medlineplus.gov/skinconditions.html
     title: Skin Conditions
     section: overview
+    region: INTL
   - url: https://medlineplus.gov/jointdisorders.html
     title: Joint Disorders
     section: overview
+    region: INTL
   - url: https://medlineplus.gov/sorethroat.html
     title: Sore Throat
     section: overview
+    region: INTL
   - url: https://medlineplus.gov/dizzinessandvertigo.html
     title: Dizziness and Vertigo
     section: overview
+    region: INTL
   - url: https://medlineplus.gov/fatigue.html
     title: Fatigue
     section: overview
+    region: INTL
   - url: https://medlineplus.gov/eyeinjuries.html
     title: Eye Injuries
     section: overview
+    region: INTL
   - url: https://medlineplus.gov/earinfections.html
     title: Ear Infections
     section: overview
+    region: INTL
   - url: https://medlineplus.gov/sprainsandstrains.html
     title: Sprains and Strains
     section: overview
+    region: INTL
   - url: https://medlineplus.gov/woundsandinjuries.html
     title: Wounds and Injuries
     section: overview
+    region: INTL
   - url: https://medlineplus.gov/mentalhealth.html
     title: Mental Health
     section: overview
+    region: INTL
   - url: https://medlineplus.gov/kidneydiseases.html
     title: Kidney Diseases
     section: overview
+    region: INTL
   - url: https://medlineplus.gov/liverdiseases.html
     title: Liver Diseases
     section: overview
-  - url: https://medlineplus.gov/anemia.html
-    title: Anemia
-    section: overview
-  - url: https://medlineplus.gov/stroke.html
-    title: Stroke
-    section: overview
+    region: INTL
   - url: https://medlineplus.gov/cough.html
     title: Cough
     section: overview
-  - url: https://medlineplus.gov/pneumonia.html
-    title: Pneumonia
-    section: overview
+    region: INTL
   - url: https://medlineplus.gov/gerd.html
     title: GERD
     section: overview
+    region: INTL
   - url: https://medlineplus.gov/constipation.html
     title: Constipation
     section: overview
-  - url: https://medlineplus.gov/hemorrhoids.html
-    title: Hemorrhoids
-    section: overview
+    region: INTL
   - url: https://medlineplus.gov/kidneystones.html
     title: Kidney Stones
     section: overview
+    region: INTL
   - url: https://medlineplus.gov/gout.html
     title: Gout
     section: overview
+    region: INTL
   - url: https://medlineplus.gov/sciatica.html
     title: Sciatica
     section: overview
+    region: INTL
   - url: https://medlineplus.gov/sinusitis.html
     title: Sinusitis
     section: overview
+    region: INTL
   - url: https://medlineplus.gov/tonsillitis.html
     title: Tonsillitis
     section: overview
+    region: INTL
   - url: https://medlineplus.gov/shingles.html
     title: Shingles
     section: overview
+    region: INTL
   - url: https://medlineplus.gov/eczema.html
     title: Eczema
     section: overview
+    region: INTL
   - url: https://medlineplus.gov/psoriasis.html
     title: Psoriasis
     section: overview
-  - url: https://medlineplus.gov/acne.html
-    title: Acne
-    section: overview
+    region: INTL
   - url: https://medlineplus.gov/migraine.html
     title: Migraine
     section: overview
+    region: INTL
   - url: https://medlineplus.gov/seizures.html
     title: Seizures
     section: overview
-  - url: https://medlineplus.gov/epilepsy.html
-    title: Epilepsy
-    section: overview
+    region: INTL
   - url: https://medlineplus.gov/hypoglycemia.html
     title: Hypoglycemia
     section: overview
-  - url: https://medlineplus.gov/hyperglycemia.html
-    title: Hyperglycemia
-    section: overview
+    region: INTL
   - url: https://medlineplus.gov/thyroiddiseases.html
     title: Thyroid Diseases
     section: overview
-  - url: https://medlineplus.gov/hyperthyroidism.html
-    title: Hyperthyroidism
-    section: overview
-  - url: https://medlineplus.gov/hypothyroidism.html
-    title: Hypothyroidism
-    section: overview
+    region: INTL
   - url: https://medlineplus.gov/gallbladderdiseases.html
     title: Gallbladder Diseases
     section: overview
+    region: INTL
   - url: https://medlineplus.gov/pancreatitis.html
     title: Pancreatitis
     section: overview
+    region: INTL
   - url: https://medlineplus.gov/appendicitis.html
     title: Appendicitis
     section: overview
+    region: INTL
   - url: https://medlineplus.gov/shock.html
     title: Shock
     section: overview
+    region: INTL
   - url: https://medlineplus.gov/sepsis.html
     title: Sepsis
     section: overview
+    region: INTL
   - url: https://medlineplus.gov/anaphylaxis.html
     title: Anaphylaxis
     section: overview
+    region: INTL
   - url: https://medlineplus.gov/insectbitesandstings.html
     title: Insect Bites and Stings
     section: overview
+    region: INTL
   - url: https://medlineplus.gov/burns.html
     title: Burns
     section: overview
+    region: INTL
   - url: https://medlineplus.gov/poisoning.html
     title: Poisoning
     section: overview
-  - url: https://medlineplus.gov/vaccines.html
-    title: Vaccines
-    section: overview
-  - url: https://medlineplus.gov/obesity.html
-    title: Obesity
-    section: overview
-  - url: https://medlineplus.gov/cholesterol.html
-    title: Cholesterol
-    section: overview
+    region: INTL
   - url: https://medlineplus.gov/osteoarthritis.html
     title: Osteoarthritis
     section: overview
+    region: INTL
   - url: https://medlineplus.gov/rheumatoidarthritis.html
     title: Rheumatoid Arthritis
     section: overview
-  - url: https://medlineplus.gov/osteoporosis.html
-    title: Osteoporosis
-    section: overview
+    region: INTL
   - url: https://medlineplus.gov/sicklecelldisease.html
     title: Sickle Cell Disease
     section: overview
-  - url: https://medlineplus.gov/tuberculosis.html
-    title: Tuberculosis
+    region: INTL
+  - url: https://medlineplus.gov/cholesterol.html
+    title: Cholesterol
     section: overview
+    region: INTL

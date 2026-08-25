@@ -11,7 +11,7 @@ import pytest_asyncio
 from app.db.session import SessionLocal
 from app.rag import triage_rag
 from app.rag.store import Hit
-from app.schemas.triage import TriageResult
+from app.schemas.triage import TriageResult, colour_for_esi
 
 
 @pytest_asyncio.fixture
@@ -63,6 +63,8 @@ async def test_red_flag_short_circuits_and_finalizes(db, monkeypatch):
     assert isinstance(result, TriageResult)
     assert result.severity_esi <= 2
     assert result.red_flags
+    # An ESI 1-2 patient must show up as red on the casualty board.
+    assert result.triage_colour == "red"
 
 
 async def test_benign_conversation_does_not_trigger_red_flag(db, monkeypatch):
@@ -98,6 +100,52 @@ def test_regex_red_flag_detects_known_patterns():
     assert triage_rag._regex_red_flag("worst headache of my life")
     assert triage_rag._regex_red_flag("suicidal thoughts")
     assert triage_rag._regex_red_flag("mild stomach ache for two days") is None
+
+
+@pytest.mark.parametrize(
+    "statement",
+    [
+        # Phrased the way patients actually phrase it, in varying word order —
+        # the earlier patterns required a fixed "X with fever" form and missed these.
+        "day 5 of fever, now bleeding gums and severe abdominal pain",
+        "my gums are bleeding since morning",
+        "black stools this morning",
+        "persistent vomiting for two days",
+        "vomiting blood",
+        "snakebite while working in the field",
+        "drooping eyelid and cannot swallow properly",
+        "he consumed pesticide an hour ago",
+        "frothing at the mouth",
+        "neck stiffness with fever",
+        "convulsions with fever in my child",
+        "heavy bleeding in pregnancy",
+        "dog bite on the hand",
+    ],
+)
+def test_regex_red_flag_detects_india_prevalent_emergencies(statement):
+    assert triage_rag._regex_red_flag(statement) is not None
+
+
+@pytest.mark.parametrize(
+    "statement",
+    [
+        "mild stomach ache for two days",
+        "slight bleeding from a cut on my finger",
+        "routine follow up for blood pressure",
+        "i have a mild cough and runny nose",
+        "vomited once last night, feeling better now",
+    ],
+)
+def test_regex_red_flag_does_not_over_fire_on_benign_statements(statement):
+    assert triage_rag._regex_red_flag(statement) is None
+
+
+@pytest.mark.parametrize(
+    ("esi", "colour"),
+    [(1, "red"), (2, "red"), (3, "yellow"), (4, "green"), (5, "green")],
+)
+def test_esi_maps_to_mohfw_casualty_colour(esi, colour):
+    assert colour_for_esi(esi) == colour
 
 
 async def test_finalize_result_not_found_before_finalizing(db, monkeypatch):
