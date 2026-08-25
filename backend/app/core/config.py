@@ -41,6 +41,29 @@ class Settings(BaseSettings):
     captcha_ttl_seconds: int = 120
     captcha_difficulty: int = 50000
 
+    # Deployment locale. The product targets Indian primary and secondary care:
+    # fees are rupees, times are IST, and emergency copy must cite 112/108.
+    country_code: str = "IN"
+    default_timezone: str = "Asia/Kolkata"
+    currency: str = "INR"
+    emergency_number: str = "112"
+    ambulance_number: str = "108"
+
+    # India-first clinical sources, consulted ahead of international ones.
+    who_base: str = "https://www.who.int"
+    mohfw_base: str = "https://www.mohfw.gov.in"
+    icmr_base: str = "https://www.icmr.gov.in"
+    ncdc_base: str = "https://ncdc.mohfw.gov.in"
+    ncvbdc_base: str = "https://ncvbdc.mohfw.gov.in"
+    ntep_base: str = "https://tbcindia.mohfw.gov.in"
+    cdsco_base: str = "https://cdsco.gov.in"
+    janaushadhi_base: str = "https://janaushadhi.gov.in"
+    abdm_base: str = "https://abdm.gov.in"
+    nlem_version: str = "2022"
+
+    # International pharmacology backbone. Interaction chemistry is universal;
+    # treatment protocol and drug availability are not, so these support an
+    # Indian recommendation rather than replacing it.
     openfda_base: str = "https://api.fda.gov"
     rxnav_base: str = "https://rxnav.nlm.nih.gov/REST"
     pubmed_base: str = "https://eutils.ncbi.nlm.nih.gov/entrez/eutils"

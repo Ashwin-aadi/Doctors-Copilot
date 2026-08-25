@@ -1,7 +1,7 @@
 from datetime import datetime
 from typing import Literal
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 from app.schemas.common import Citation
 
@@ -56,3 +56,10 @@ class MedCandidate(BaseModel):
     safety_flags: list[str]
     rationale: str
     source_url: str | None = None
+    nlem_listed: bool = Field(
+        default=False, description="Listed on India's National List of Essential Medicines"
+    )
+    jan_aushadhi_available: bool = Field(
+        default=False, description="Generic equivalent stocked at Jan Aushadhi Kendras"
+    )
+    mrp_inr: float | None = Field(default=None, description="Indicative retail price in INR")

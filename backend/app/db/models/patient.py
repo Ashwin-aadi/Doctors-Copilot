@@ -18,6 +18,10 @@ class Patient(Base, UUIDPKMixin, TimestampMixin):
     lat: Mapped[float | None] = mapped_column(Float, nullable=True)
     lng: Mapped[float | None] = mapped_column(Float, nullable=True)
     address: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    state: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    pin_code: Mapped[str | None] = mapped_column(String(6), nullable=True)
+    # Ayushman Bharat Health Account ID — optional, patients may not have one yet.
+    abha_id: Mapped[str | None] = mapped_column(String(20), nullable=True, index=True)
     conditions: Mapped[list] = mapped_column(JSONB, default=list)
     allergies: Mapped[list] = mapped_column(JSONB, default=list)
     medications: Mapped[list] = mapped_column(JSONB, default=list)

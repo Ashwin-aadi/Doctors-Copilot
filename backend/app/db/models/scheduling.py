@@ -15,6 +15,8 @@ class Clinic(Base, UUIDPKMixin):
     lat: Mapped[float] = mapped_column(Float)
     lng: Mapped[float] = mapped_column(Float)
     is_emergency_capable: Mapped[bool] = mapped_column(Boolean, default=False)
+    state: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    pin_code: Mapped[str | None] = mapped_column(String(6), nullable=True)
 
 
 class Doctor(Base, UUIDPKMixin):
@@ -24,6 +26,9 @@ class Doctor(Base, UUIDPKMixin):
     name: Mapped[str] = mapped_column(String(255))
     specialties: Mapped[list] = mapped_column(JSONB, default=list)
     qualifications: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    # National Medical Commission registration number.
+    nmc_reg_no: Mapped[str | None] = mapped_column(String(32), nullable=True)
+    # Consultation fee in INR.
     fee: Mapped[float] = mapped_column(Float, default=0.0)
     rating: Mapped[float] = mapped_column(Float, default=0.0)
     clinic_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("clinics.id"))

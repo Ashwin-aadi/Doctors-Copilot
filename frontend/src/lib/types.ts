@@ -908,8 +908,16 @@ export interface components {
             queue_load: number;
             /** Rating */
             rating: number;
-            /** Fee */
+            /**
+             * Fee
+             * @description Consultation fee in INR
+             */
             fee: number;
+            /**
+             * Nmc Reg No
+             * @description National Medical Commission registration number
+             */
+            nmc_reg_no?: string | null;
             /** Score */
             score: number;
             /** Reasons */
@@ -1047,6 +1055,23 @@ export interface components {
             rationale: string;
             /** Source Url */
             source_url?: string | null;
+            /**
+             * Nlem Listed
+             * @description Listed on India's National List of Essential Medicines
+             * @default false
+             */
+            nlem_listed: boolean;
+            /**
+             * Jan Aushadhi Available
+             * @description Generic equivalent stocked at Jan Aushadhi Kendras
+             * @default false
+             */
+            jan_aushadhi_available: boolean;
+            /**
+             * Mrp Inr
+             * @description Indicative retail price in INR
+             */
+            mrp_inr?: number | null;
         };
         /** PatientIn */
         PatientIn: {
@@ -1062,6 +1087,21 @@ export interface components {
             lng?: number | null;
             /** Address */
             address?: string | null;
+            /**
+             * State
+             * @description Indian state or union territory
+             */
+            state?: string | null;
+            /**
+             * Pin Code
+             * @description 6-digit postal PIN code
+             */
+            pin_code?: string | null;
+            /**
+             * Abha Id
+             * @description Ayushman Bharat Health Account ID, 14 digits
+             */
+            abha_id?: string | null;
             /**
              * Conditions
              * @default []
@@ -1096,6 +1136,12 @@ export interface components {
             dob?: string | null;
             /** Sex */
             sex?: string | null;
+            /** State */
+            state?: string | null;
+            /** Pin Code */
+            pin_code?: string | null;
+            /** Abha Id */
+            abha_id?: string | null;
             /**
              * Conditions
              * @default []
@@ -1140,6 +1186,12 @@ export interface components {
             clinic_id: string;
             /** Severity Esi */
             severity_esi: number;
+            /**
+             * Triage Colour
+             * @description MoHFW casualty colour code derived from severity_esi
+             * @enum {string}
+             */
+            triage_colour: "red" | "yellow" | "green";
             /** Emergency */
             emergency: boolean;
             /** Position */
@@ -1230,6 +1282,11 @@ export interface components {
             patient_id: string | null;
             /** Severity Esi */
             severity_esi: number;
+            /**
+             * Triage Colour
+             * @enum {string}
+             */
+            triage_colour: "red" | "yellow" | "green";
             /** Specialty */
             specialty: string;
             /** Red Flags */
