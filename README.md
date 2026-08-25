@@ -1,9 +1,32 @@
 # Doctor's Copilot
 
-Clinic platform: RAG-based patient triage and doctor booking, lab report OCR, a
-patient knowledge graph, and a cited clinical brief for the treating doctor —
-grounded in FDA labels and public guidelines, with drug-interaction and allergy
-checks and every clinical approval locked behind doctor signature + captcha.
+A clinic platform for **Indian primary and secondary care**: RAG-based patient
+triage and doctor booking, lab report OCR, a patient knowledge graph, and a cited
+clinical brief for the treating doctor — with drug-interaction and allergy checks
+and every clinical approval locked behind doctor signature + captcha.
+
+An Indian OPD runs on long queues, uneven specialist access, paper lab reports and
+out-of-pocket drug costs. This system is built around those constraints rather than
+adapted to them:
+
+- **Grounded in Indian guidance first.** Retrieval prefers MoHFW, NCVBDC, NTEP,
+  NCDC, ICMR and NHM material, plus WHO coverage of the communicable and tropical
+  burden that actually fills Indian OPDs — dengue, malaria, chikungunya, enteric
+  fever, tuberculosis, scrub typhus, leptospirosis, snakebite, rheumatic heart
+  disease. International drug labels stay in the loop as pharmacology backbone,
+  never as the primary voice on first-line management.
+- **Triage in the local idiom.** Severity is carried as ESI 1–5 *and* as the
+  MoHFW/AIIMS casualty colour — red, yellow, green — which is what triage counters
+  and queue boards run on. Red-flag detection covers dengue warning signs,
+  snakebite envenoming, pesticide poisoning, heat stroke, febrile seizures and
+  obstetric bleeding alongside the universal emergencies.
+- **Affordable prescribing.** Medication suggestions are checked against the
+  National List of Essential Medicines and flagged when a Jan Aushadhi generic
+  exists, with indicative ₹ MRP.
+- **ABDM-ready.** Patients carry an optional ABHA ID, doctors an NMC registration
+  number. Consent and retention follow the DPDP Act 2023.
+
+Emergency guidance in the product cites **112**, or **108** for an ambulance.
 
 Full quickstart and architecture docs land at the end of the build in
 `docs/ARCHITECTURE.md` and `docs/DEMO_SCRIPT.md`.
@@ -15,7 +38,7 @@ cp .env.example .env
 make up        # postgres, redis, neo4j
 make install   # backend + frontend deps
 make migrate
-make seed      # demo clinics/doctors/patients, fixed UUIDs — see docs/ARCHITECTURE.md
+make seed      # Indian demo clinics/doctors/patients, fixed UUIDs — see docs/ARCHITECTURE.md
 make api       # backend on :8000
 make web       # frontend on :5173
 ```

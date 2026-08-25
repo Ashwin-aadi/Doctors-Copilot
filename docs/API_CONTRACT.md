@@ -2,6 +2,23 @@
 
 Version: v1 (draft — additive only once tagged `## FROZEN` at CP4).
 
+## Locale
+
+The API is built for Indian deployment. Consumers should assume:
+
+| Concern | Convention |
+|---|---|
+| Currency | INR. `fee`, `mrp_inr` and any price field are rupees. |
+| Timezone | `Asia/Kolkata`. All timestamps are serialised as UTC ISO-8601; render in IST. |
+| Phone | `+91` E.164. |
+| Address | `address` plus `state` (Indian state or union territory) and `pin_code` (6 digits). |
+| Patient identity | Optional `abha_id` — Ayushman Bharat Health Account, 14 digits. |
+| Doctor identity | Optional `nmc_reg_no` — National Medical Commission registration. |
+| Triage | `severity_esi` (1–5) is the machine value; `triage_colour` (`red`/`yellow`/`green`) is the MoHFW/AIIMS casualty code derived from it — ESI 1–2 red, 3 yellow, 4–5 green. |
+| Emergency copy | Emergency guidance cites **112**, ambulance **108**. Never 911. |
+| Medicines | `nlem_listed` marks India's National List of Essential Medicines; `jan_aushadhi_available` marks a generic stocked at Jan Aushadhi Kendras. |
+| Data protection | Consent and retention follow the DPDP Act 2023, not HIPAA. |
+
 ## Error envelope
 
 Every non-2xx response follows:
@@ -62,6 +79,8 @@ Codes: `AUTH_INVALID_CREDENTIALS, AUTH_TOKEN_EXPIRED, AUTH_FORBIDDEN, CAPTCHA_RE
 | GET | `/api/v1/lab-orders/{id}` | N | owner/doctor | – |
 | GET | `/api/v1/medications/generic` | N | any | – |
 | GET | `/health` | A | – | – |
+
+`/api/v1/medications/generic` maps an Indian brand name to its ingredient/generic and returns NLEM listing, Jan Aushadhi availability and indicative ₹ MRP.
 
 All routes above are live in the OpenAPI schema as of A1.2, returning `NOT_IMPLEMENTED` until their owning checkpoint lands the real handler. `/health` and the triage/copilot/kg/visits scaffolding are Ashwin's own routes and fill in across the CP1–CP3 build sequence.
 
