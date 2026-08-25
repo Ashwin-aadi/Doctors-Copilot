@@ -1,18 +1,40 @@
-# Emergency Severity Index (ESI) tier definitions used to ground triage finalization.
+# Triage severity definitions used to ground triage finalization.
+#
+# The numeric scale is the Emergency Severity Index (ESI) 1-5, which is what the
+# `severity_esi` field on TriageResult and QueueEntry carries. Indian casualty and
+# OPD counters run on the MoHFW/AIIMS three-colour code instead, so every tier also
+# declares the colour it maps to and that is surfaced alongside the number:
+#   ESI 1-2 -> red (immediate)   ESI 3 -> yellow (urgent)   ESI 4-5 -> green (routine)
+#
+# Examples are drawn from Indian OPD and casualty presentations, so the retrieved
+# tier text matches the way patients here actually describe their complaints.
+colour_map:
+  1: red
+  2: red
+  3: yellow
+  4: green
+  5: green
+
 tiers:
   - esi: 1
+    colour: red
     name: Resuscitation
     description: >
       Immediate life-saving intervention required. Unresponsive, no pulse, not
       breathing, or in extremis (e.g. severe respiratory distress, unresponsive
-      to painful stimuli).
+      to painful stimuli). Move to resuscitation bay; call 108 for ambulance
+      transfer if the facility cannot manage the airway.
     examples:
       - cardiac arrest
       - not breathing
       - unresponsive / no pulse
       - severe traumatic injury with active uncontrolled bleeding
+      - organophosphate or pesticide poisoning with frothing and pinpoint pupils
+      - snakebite with drooping eyelids, difficulty swallowing or breathing
+      - heat stroke with altered consciousness and very high body temperature
 
   - esi: 2
+    colour: red
     name: Emergent
     description: >
       High-risk situation, or severe pain/distress, or any danger to life, limb,
@@ -26,20 +48,34 @@ tiers:
       - severe allergic reaction with airway involvement
       - uncontrolled bleeding
       - signs of sepsis (fever with confusion, low blood pressure)
+      - dengue warning signs — severe abdominal pain, persistent vomiting,
+        bleeding gums, black stools, restlessness on day 4-6 of fever
+      - high fever with neck stiffness, confusion or seizures
+      - coughing up blood in a patient on or awaiting tuberculosis treatment
+      - heavy bleeding in pregnancy or after delivery
+      - severe dehydration in a child — sunken eyes, no urine, very lethargic
 
   - esi: 3
+    colour: yellow
     name: Urgent
     description: >
       Requires multiple resources (labs, imaging, specialist consult) but vital
       signs are stable. Should be seen within the hour.
     examples:
       - moderate abdominal pain
-      - persistent vomiting or diarrhea with dehydration signs
+      - persistent vomiting or diarrhoea with dehydration signs
       - fever over 39C in an adult with clear source
       - moderate asthma exacerbation, responsive to home treatment
       - deep laceration requiring sutures
+      - fever for more than five days with headache and body ache — needs dengue,
+        malaria and enteric fever workup
+      - cough for more than two weeks with evening fever and weight loss
+      - dog or monkey bite needing wound care and rabies post-exposure vaccination
+      - known diabetic with very high sugar reading but alert and oriented
+      - severe pallor and breathlessness on exertion suggesting severe anaemia
 
   - esi: 4
+    colour: green
     name: Less urgent
     description: >
       Requires one resource (e.g. a single lab test or simple imaging). Stable,
@@ -49,8 +85,11 @@ tiers:
       - mild-moderate localized pain, no red flags
       - uncomplicated urinary tract infection symptoms
       - minor laceration without active bleeding
+      - short-duration fever with cold and cough, drinking normally
+      - itchy rash after a suspected insect bite, no swelling of face or throat
 
   - esi: 5
+    colour: green
     name: Non-urgent
     description: >
       Requires no resources beyond a history and exam. Chronic or minor issues.
@@ -59,6 +98,8 @@ tiers:
       - mild cold symptoms
       - routine follow-up question
       - minor rash present for days without spread
+      - routine antenatal check-up with no complaints
+      - request for a fitness or vaccination certificate
 
 red_flag_patterns:
   - crushing chest pain
@@ -72,9 +113,32 @@ red_flag_patterns:
   - slurred speech
   - loss of consciousness
   - unresponsive
-  - severe (bleeding|hemorrhage)
+  - severe (bleeding|hemorrhage|haemorrhage)
   - suicidal
   - homicidal
   - coughing up blood
   - blue lips
   - anaphyla
+  # India-prevalent emergencies seen at OPD and casualty counters
+  # Dengue warning signs. Deliberately matched on their own rather than in
+  # combination: patients rarely state them in a fixed order, and each is a
+  # genuine reason to be seen immediately regardless of the suspected cause.
+  - bleeding (gums|from the (gums|nose|mouth))
+  - gums? (are |is )?bleeding
+  - black (tarry )?stools?
+  - vomiting blood
+  - persistent vomiting
+  - (snake|serpent) ?bite
+  - drooping eyelid
+  - (pesticide|organophosphate|insecticide|rat poison)( poisoning| ingestion)?
+  - consumed (poison|pesticide|insecticide)
+  - frothing (at|from) the mouth
+  - neck stiffness with fever
+  - (convulsion|fit|seizure)s? with fever
+  - very high fever with confusion
+  - no urine (output )?(for|since)
+  - heavy bleeding (in|during) pregnancy
+  - bleeding after delivery
+  - (dog|monkey|bat) bite
+  - unable to (swallow|speak) after
+  - sunken eyes

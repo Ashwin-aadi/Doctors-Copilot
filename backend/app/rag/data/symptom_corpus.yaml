@@ -1,7 +1,13 @@
 # Offline fallback corpus for the "guidelines" collection, used only when the live
-# MedlinePlus/guideline fetch fails. Each entry is an original summary (not copied
-# from any external source) covering a common presenting symptom or condition,
-# written for triage retrieval grounding. >=60 entries required by the A1.4 spec.
+# guideline fetch fails. Each entry is an original summary (not copied from any
+# external source) covering a common presenting symptom or condition, written for
+# triage retrieval grounding. >=60 entries required by the A1.4 spec.
+#
+# Entries sym-001..sym-065 cover the general symptom set. Entries sym-066 onward
+# cover presentations that dominate Indian OPD and casualty counters — vector-borne
+# and enteric fevers, tuberculosis, envenoming, pesticide poisoning, heat illness
+# and nutritional anaemia — so the offline path stays useful for the deployment
+# this product actually targets.
 entries:
   - id: sym-001
     title: Chest pain, cardiac pattern
@@ -456,3 +462,183 @@ entries:
       A bump to the head with brief confusion but full recovery is usually mild.
       Repeated vomiting, worsening headache, loss of consciousness, or increasing
       drowsiness after a head injury needs emergency evaluation.
+
+  # --- Presentations common in Indian primary and secondary care --------------
+  - id: sym-066
+    title: Dengue fever, early phase
+    section: vector_borne
+    text: >
+      Sudden high fever with severe headache, pain behind the eyes, intense muscle
+      and joint ache, and sometimes a fine rash, occurring in the monsoon or
+      post-monsoon months, suggests dengue. A platelet count and dengue NS1 or
+      antibody test are the usual first investigations. Paracetamol is the safe
+      antipyretic; aspirin and ibuprofen should be avoided because they worsen
+      bleeding risk.
+  - id: sym-067
+    title: Dengue warning signs
+    section: vector_borne
+    text: >
+      Around the fourth to sixth day of a dengue illness, as the fever settles, the
+      patient can deteriorate. Severe abdominal pain, persistent vomiting, bleeding
+      from the gums or nose, black tarry stools, restlessness or lethargy, and cold
+      clammy skin are warning signs of plasma leakage or haemorrhage and require
+      immediate admission rather than outpatient review.
+  - id: sym-068
+    title: Malaria
+    section: vector_borne
+    text: >
+      Fever with chills and rigors, often in a recurring pattern with sweating and
+      exhaustion afterwards, headache and body ache, in someone living in or
+      returning from a malaria-endemic district, points to malaria. A rapid
+      diagnostic test and peripheral smear confirm it. Confusion, seizures, very
+      dark urine, jaundice or difficulty breathing suggest severe malaria and need
+      emergency admission.
+  - id: sym-069
+    title: Enteric fever (typhoid)
+    section: infectious_disease
+    text: >
+      A fever that climbs step by step over a week, with abdominal discomfort,
+      constipation or loose stools, poor appetite, headache and marked weakness,
+      suggests enteric fever. Blood culture is the confirmatory test. Sudden severe
+      abdominal pain with a rigid abdomen late in the illness may mean intestinal
+      perforation and is a surgical emergency.
+  - id: sym-070
+    title: Chikungunya
+    section: vector_borne
+    text: >
+      Abrupt fever with severe, often disabling joint pain affecting the hands,
+      wrists, ankles and knees, sometimes with a rash, suggests chikungunya. The
+      joint pain can persist for weeks or months after the fever settles. It
+      overlaps clinically with dengue, so a platelet count and dengue testing are
+      done alongside to avoid missing a bleeding risk.
+  - id: sym-071
+    title: Pulmonary tuberculosis
+    section: respiratory
+    text: >
+      Cough lasting more than two weeks, evening rise of temperature, night sweats,
+      loss of appetite and unexplained weight loss suggest pulmonary tuberculosis.
+      Sputum testing, including rapid molecular testing, and a chest X-ray are the
+      standard first steps. Coughing up blood, breathlessness at rest or chest pain
+      needs urgent assessment.
+  - id: sym-072
+    title: Snakebite
+    section: envenoming
+    text: >
+      After a snakebite, local swelling and pain may be the only early sign, but
+      drooping eyelids, blurred or double vision, difficulty swallowing or
+      speaking, weakness of the neck muscles or difficulty breathing indicate
+      neurotoxic envenoming. Bleeding from the bite site, gums or urine indicates
+      haemotoxic envenoming. Both are emergencies. The limb should be immobilised,
+      no cutting or tourniquet applied, and the patient moved immediately to a
+      facility stocking antivenom.
+  - id: sym-073
+    title: Organophosphate and pesticide poisoning
+    section: toxicology
+    text: >
+      Exposure to or ingestion of a pesticide or insecticide can cause excessive
+      salivation and frothing at the mouth, watering eyes, pinpoint pupils,
+      vomiting, loose stools, muscle twitching, confusion and difficulty breathing.
+      A characteristic chemical smell is often present. This is a life-threatening
+      emergency needing immediate airway protection, decontamination and antidote
+      therapy.
+  - id: sym-074
+    title: Heat exhaustion and heat stroke
+    section: environmental
+    text: >
+      Prolonged heat exposure causing heavy sweating, weakness, cramps, headache,
+      nausea and dizziness suggests heat exhaustion, which improves with rest in a
+      cool place and oral rehydration. Very high body temperature with hot dry
+      skin, confusion, agitation, seizures or unconsciousness indicates heat stroke
+      and requires immediate aggressive cooling and emergency transfer.
+  - id: sym-075
+    title: Acute gastroenteritis and dehydration
+    section: gastrointestinal
+    text: >
+      Frequent loose stools with vomiting, often after contaminated food or water,
+      commonly settles with oral rehydration solution and zinc in children.
+      Dehydration is the danger: sunken eyes, a dry mouth, reduced or absent urine,
+      marked lethargy, or skin that stays pinched, means the patient needs
+      intravenous fluids rather than home management. Rice-water stools with rapid
+      collapse raise the possibility of cholera.
+  - id: sym-076
+    title: Iron deficiency anaemia
+    section: haematology
+    text: >
+      Long-standing tiredness, breathlessness on climbing stairs, palpitations,
+      pale conjunctiva and tongue, brittle nails and a craving to eat soil or chalk
+      suggest iron deficiency anaemia, which is very common in adolescent girls and
+      pregnant women. A haemoglobin level and peripheral smear are the first tests.
+      Severe pallor with breathlessness at rest needs same-day assessment.
+  - id: sym-077
+    title: Anaemia in pregnancy
+    section: maternal_health
+    text: >
+      Anaemia detected during pregnancy raises the risk of preterm birth, low birth
+      weight and postpartum haemorrhage. Increasing breathlessness, swelling of the
+      feet, dizziness or a very low haemoglobin reading needs prompt obstetric
+      review rather than routine follow-up. Any bleeding during pregnancy, or heavy
+      bleeding after delivery, is an emergency.
+  - id: sym-078
+    title: Rheumatic heart disease
+    section: cardiovascular
+    text: >
+      A history of repeated sore throats or joint pains in childhood, followed
+      years later by breathlessness on exertion, palpitations, swelling of the feet
+      or a heart murmur, suggests rheumatic heart disease. It remains an important
+      cause of heart failure in young adults in India and needs echocardiography
+      and cardiology referral.
+  - id: sym-079
+    title: Animal bite and rabies exposure
+    section: infectious_disease
+    text: >
+      A bite or deep scratch from a dog, cat, monkey or bat needs immediate wound
+      washing with soap under running water for fifteen minutes, followed by rabies
+      post-exposure vaccination. Bites on the face, hands or neck, deep wounds, or
+      bites from an unprovoked or unwell animal also require rabies immunoglobulin.
+      Rabies is fatal once symptoms begin, so prophylaxis is never delayed.
+  - id: sym-080
+    title: Scrub typhus and other rickettsial fevers
+    section: infectious_disease
+    text: >
+      Fever with severe headache, body ache, swollen lymph nodes and sometimes a
+      painless black scab at a bite site, in someone with rural, agricultural or
+      scrub exposure, suggests scrub typhus. It responds well to specific
+      antibiotics but can progress to breathing difficulty, jaundice or organ
+      failure if missed, so a fever without an obvious source in an endemic area
+      deserves testing.
+  - id: sym-081
+    title: Leptospirosis
+    section: infectious_disease
+    text: >
+      Fever with severe calf muscle pain, red eyes, headache and jaundice, in
+      someone exposed to flood water, waterlogged fields or sewage, suggests
+      leptospirosis. Reduced urine output, breathlessness or bleeding indicates
+      severe disease requiring admission.
+  - id: sym-082
+    title: Uncontrolled type 2 diabetes
+    section: endocrine
+    text: >
+      Excessive thirst, frequent urination especially at night, unexplained weight
+      loss, blurred vision, slow-healing wounds and repeated skin or urinary
+      infections suggest poorly controlled diabetes. A fasting glucose and HbA1c
+      guide management. Vomiting with abdominal pain, rapid deep breathing,
+      drowsiness or a fruity breath odour suggests a diabetic emergency needing
+      immediate care.
+  - id: sym-083
+    title: Chronic obstructive lung disease from smoke exposure
+    section: respiratory
+    text: >
+      Long-standing cough with sputum and progressive breathlessness in a smoker,
+      or in someone with years of cooking-fire or biomass smoke exposure, suggests
+      chronic obstructive pulmonary disease. Increasing breathlessness, more
+      sputum, or a change in sputum colour indicates an exacerbation. Breathlessness
+      at rest, blue lips or drowsiness needs emergency care.
+  - id: sym-084
+    title: Fever of more than five days without a clear source
+    section: infectious_disease
+    text: >
+      A fever persisting beyond five days without an obvious cause deserves a
+      structured workup rather than repeated antipyretics alone. In Indian
+      practice this usually means a complete blood count, malaria testing, dengue
+      testing, blood culture for enteric fever, urine examination and a chest
+      X-ray, guided by season and local outbreak patterns.

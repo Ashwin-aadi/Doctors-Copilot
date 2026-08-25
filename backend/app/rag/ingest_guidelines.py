@@ -1,6 +1,10 @@
-"""Populate the "guidelines" collection: ESI tiers + public MedlinePlus guideline
-pages, topped up with a bundled offline symptom corpus when live fetching yields
-too little content (network unavailable, pages moved, CI sandboxing, etc.)."""
+"""Populate the "guidelines" collection: ESI tiers with their MoHFW colour mapping,
+plus an India-first set of public guideline pages (Indian government and programme
+sources, WHO material for the Indian disease burden, then MedlinePlus for general
+symptom coverage), topped up with a bundled offline symptom corpus when live
+fetching yields too little content (network unavailable, pages moved, CI
+sandboxing, etc.). Every chunk carries a `region` of "IN" or "INTL" so retrieval
+can prefer Indian guidance."""
 
 import re
 from pathlib import Path
@@ -40,9 +44,10 @@ def _esi_chunks() -> list[Chunk]:
     data = yaml.safe_load((DATA_DIR / "esi_rules.yaml").read_text(encoding="utf-8"))
     chunks: list[Chunk] = []
     for tier in data["tiers"]:
+        colour = tier["colour"]
         text = (
-            f"ESI {tier['esi']} — {tier['name']}. {tier['description'].strip()} "
-            f"Examples: {'; '.join(tier['examples'])}."
+            f"ESI {tier['esi']} — {tier['name']} (MoHFW casualty colour: {colour}). "
+            f"{tier['description'].strip()} Examples: {'; '.join(tier['examples'])}."
         )
         chunks.append(
             Chunk(
@@ -50,11 +55,12 @@ def _esi_chunks() -> list[Chunk]:
                 text=text,
                 metadata={
                     "source": "esi_rules",
-                    "title": f"ESI {tier['esi']} — {tier['name']}",
+                    "title": f"ESI {tier['esi']} — {tier['name']} ({colour})",
                     "url": "internal://esi_rules.yaml",
                     "section": "esi",
                     "doc_type": "esi_rules",
                     "published": "2024",
+                    "region": "IN",
                 },
             )
         )
@@ -76,6 +82,7 @@ def _symptom_corpus_chunks() -> list[Chunk]:
                     "section": entry.get("section", "general"),
                     "doc_type": "symptom_corpus",
                     "published": "2024",
+                    "region": "IN",
                 },
             )
         )
@@ -106,6 +113,7 @@ async def _fetch_guideline_source_chunks(client: httpx.AsyncClient) -> list[Chun
                         "section": src.get("section", "overview"),
                         "doc_type": "guideline",
                         "published": "2024",
+                        "region": src.get("region", "INTL"),
                     },
                 )
             )

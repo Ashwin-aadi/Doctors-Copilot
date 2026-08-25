@@ -1,6 +1,10 @@
 #!/usr/bin/env python
 """Idempotent demo data seed: clinics, doctors, patients, availability, one visit.
 
+All demo data is Indian: clinics in Delhi, Pune and Bengaluru, consultation fees in
+INR, +91 phone numbers, state and PIN code addresses, NMC registration numbers for
+doctors and placeholder ABHA IDs for patients.
+
 Fixed UUIDs (documented in docs/ARCHITECTURE.md) so every teammate's tests and
 manual curl sessions can reference the same records:
   clinics       00000000-0000-0000-0000-0000000000{01-03}
@@ -31,13 +35,15 @@ from app.db.session import SessionLocal  # noqa: E402
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 DEMO_PASSWORD_HASH = pwd_context.hash("demo-password-123")
 
+# Three real Indian cities so distance ranking and clinic choice look plausible
+# in the demo: Delhi, Pune and Bengaluru.
 CLINICS = [
-    {"id": "00000000-0000-0000-0000-000000000001", "name": "Riverside Family Clinic",
-     "lat": 28.6139, "lng": 77.2090, "is_emergency_capable": True},
-    {"id": "00000000-0000-0000-0000-000000000002", "name": "Northside Community Health",
-     "lat": 28.7041, "lng": 77.1025, "is_emergency_capable": False},
-    {"id": "00000000-0000-0000-0000-000000000003", "name": "Lakeside Specialty Center",
-     "lat": 28.5355, "lng": 77.3910, "is_emergency_capable": True},
+    {"name": "Yamuna Nagar Primary Health Centre", "lat": 28.6139, "lng": 77.2090,
+     "is_emergency_capable": True, "state": "Delhi", "pin_code": "110002"},
+    {"name": "Shivaji Nagar Community Health Centre", "lat": 18.5308, "lng": 73.8470,
+     "is_emergency_capable": False, "state": "Maharashtra", "pin_code": "411005"},
+    {"name": "Jayanagar Multispecialty Clinic", "lat": 12.9250, "lng": 77.5938,
+     "is_emergency_capable": True, "state": "Karnataka", "pin_code": "560041"},
 ]
 
 DOCTOR_SPECIALTIES = [
@@ -52,11 +58,27 @@ DOCTOR_NAMES = [
     "Dr. Ananya Rao", "Dr. Vikram Shah", "Dr. Meera Iyer",
     "Dr. Rohan Kapoor", "Dr. Priya Nair", "Dr. Arjun Malhotra",
 ]
+DOCTOR_QUALIFICATIONS = [
+    "MBBS, MD (General Medicine)",
+    "MBBS, MD (General Medicine), DM (Cardiology)",
+    "MBBS, MD (Paediatrics)",
+    "MBBS, MD (Dermatology)",
+    "MBBS, MS (Orthopaedics)",
+    "MBBS, MD (Medicine), DM (Neurology)",
+]
+# Consultation fees in INR, in the range an Indian clinic actually charges.
+DOCTOR_FEES = [300.0, 800.0, 400.0, 500.0, 600.0, 900.0]
 
 PATIENT_NAMES = [
     "Aarav Sharma", "Diya Patel", "Kabir Singh", "Ishita Gupta",
     "Vivaan Reddy", "Ananya Joshi", "Aditya Kumar", "Saanvi Menon",
     "Reyansh Verma", "Myra Choudhary", "Arnav Bose", "Kiara Pillai",
+]
+# One address per patient, cycling through the three clinic cities.
+PATIENT_LOCALES = [
+    ("Delhi", "110002", 28.61, 77.20),
+    ("Maharashtra", "411005", 18.53, 73.84),
+    ("Karnataka", "560041", 12.92, 77.59),
 ]
 
 
@@ -101,6 +123,7 @@ async def seed() -> None:
                 session, Clinic, clinic_id(i),
                 name=c["name"], lat=c["lat"], lng=c["lng"],
                 is_emergency_capable=c["is_emergency_capable"],
+                state=c["state"], pin_code=c["pin_code"],
             )
         await session.flush()
 
@@ -108,7 +131,7 @@ async def seed() -> None:
             u_id = doctor_user_id(i)
             await _get_or_create(
                 session, User, u_id,
-                email=f"doctor{i}@doctorcopilot.dev", phone=None,
+                email=f"doctor{i}@doctorcopilot.dev", phone=f"+9198{i:04d}10000"[:15],
                 password_hash=DEMO_PASSWORD_HASH, role="doctor", is_active=True,
             )
             clinic = clinic_id(((i - 1) % 3) + 1)
@@ -116,7 +139,9 @@ async def seed() -> None:
                 session, Doctor, doctor_id(i),
                 user_id=u_id, name=DOCTOR_NAMES[i - 1],
                 specialties=DOCTOR_SPECIALTIES[i - 1],
-                qualifications="MBBS, MD", fee=500.0 + i * 50,
+                qualifications=DOCTOR_QUALIFICATIONS[i - 1],
+                nmc_reg_no=f"NMC-{2015 + i}-{100000 + i * 7:06d}",
+                fee=DOCTOR_FEES[i - 1],
                 rating=4.2 + (i % 5) * 0.1, clinic_id=clinic,
             )
         await session.flush()
@@ -136,9 +161,10 @@ async def seed() -> None:
 
         for i in range(1, 13):
             u_id = patient_user_id(i)
+            state, pin, base_lat, base_lng = PATIENT_LOCALES[(i - 1) % 3]
             await _get_or_create(
                 session, User, u_id,
-                email=f"patient{i}@doctorcopilot.dev", phone=None,
+                email=f"patient{i}@doctorcopilot.dev", phone=f"+9199{i:04d}20000"[:15],
                 password_hash=DEMO_PASSWORD_HASH, role="patient", is_active=True,
             )
             await _get_or_create(
@@ -146,8 +172,11 @@ async def seed() -> None:
                 user_id=u_id, name=PATIENT_NAMES[i - 1],
                 dob=date(1980 + i, (i % 12) + 1, (i % 28) + 1),
                 sex="female" if i % 2 == 0 else "male",
-                lat=28.6 + i * 0.01, lng=77.2 + i * 0.01,
-                address=f"{i} Demo Street, New Delhi",
+                lat=base_lat + i * 0.005, lng=base_lng + i * 0.005,
+                address=f"{i}, Gandhi Road, {state}",
+                state=state, pin_code=pin,
+                # Placeholder ABHA IDs in the real 14-digit format, for demo only.
+                abha_id=f"91{i:04d}0000{i:04d}"[:14],
                 conditions=[], allergies=[], medications=[], consent_at=None,
             )
         await session.flush()

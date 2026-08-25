@@ -17,7 +17,7 @@ from app.llm.gateway import complete, json_complete
 from app.llm.prompts import RED_FLAG_SYSTEM, TRIAGE_FINALIZE_SYSTEM, TRIAGE_QUESTION_SYSTEM
 from app.rag.retriever import hybrid
 from app.schemas.common import Citation
-from app.schemas.triage import SuggestedLab, TriageResult, TriageTurnOut
+from app.schemas.triage import SuggestedLab, TriageResult, TriageTurnOut, colour_for_esi
 
 log = get_logger(__name__)
 
@@ -113,10 +113,11 @@ async def turn(db: AsyncSession, session_id: UUID, content: str) -> TriageTurnOu
         session.transcript = transcript
         await db.commit()
         closing = (
-            "Thanks — based on what you've described, this needs prompt clinical "
-            "attention. Finalizing your triage now."
+            "Thank you — based on what you have described, this needs immediate "
+            "medical attention. Please go to the nearest emergency department now, "
+            "or call 112 (or 108 for an ambulance). Finalizing your triage."
             if red_flags
-            else "Thanks, that's everything I need. Finalizing your triage now."
+            else "Thank you, that is everything I need. Finalizing your triage now."
         )
         await finalize(db, session.id)
         return TriageTurnOut(
@@ -205,6 +206,7 @@ async def finalize(db: AsyncSession, session_id: UUID) -> TriageResult:
         session_id=session.id,
         patient_id=session.patient_id,
         severity_esi=severity,
+        triage_colour=colour_for_esi(severity),
         specialty=raw.specialty or "general_medicine",
         red_flags=list({*raw.red_flags, *red_flags}),
         suggested_labs=raw.suggested_labs,
@@ -216,7 +218,12 @@ async def finalize(db: AsyncSession, session_id: UUID) -> TriageResult:
     session.result = triage_result.model_dump(mode="json")
     await db.commit()
 
-    log.info("triage_finalized", session_id=str(session.id), esi=triage_result.severity_esi)
+    log.info(
+        "triage_finalized",
+        session_id=str(session.id),
+        esi=triage_result.severity_esi,
+        colour=triage_result.triage_colour,
+    )
     return triage_result
 
 
