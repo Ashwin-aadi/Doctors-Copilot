@@ -1,5 +1,19 @@
 # Decisions Log
 
+## 2026-08-25 — A1.1 dev environment note
+
+- Local dev machine already runs an unrelated postgres container bound to host
+  port 5432 (a different project's stack), so `infra-postgres-1` could not bind
+  on this box during manual verification. `docker compose config` validates
+  clean and redis/neo4j both reach `healthy`. Not a defect in
+  `infra/docker-compose.yml` — CI and any other machine will bind fine. No
+  change made to the compose file; noted here rather than remapping ports,
+  since the pinned `5432` must stay consistent with `.env.example`.
+- A1.1 committed straight to `main` (no `feat/ashwin/cp1` branch) since this is
+  the initial bootstrap commit with no prior integrated history to branch from.
+  Branch/merge/tag flow starts applying from A1.5 onward per the daily protocol.
+
+
 Running log of architectural decisions, drift notes, and offline-fallback triggers. Newest entries at the top.
 
 ## 2026-08-25 — Repo bootstrap
