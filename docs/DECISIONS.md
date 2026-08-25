@@ -1,5 +1,33 @@
 # Decisions Log
 
+## 2026-08-25 — V1.1 model registry + bootstrap
+
+- `transformers` pinned to `4.46.3` instead of the `4.47.1` in the original
+  spec draft: `4.47.1` requires `tokenizers>=0.21`, which conflicts with
+  `chromadb==0.5.23` (Ashwin's pin, `tokenizers<=0.20.3`). `4.46.3` requires
+  `tokenizers>=0.20,<0.21`, satisfying both. No change to any line outside
+  the ones this checkpoint owns.
+- Local dev machine has no Microsoft C++ Build Tools installed, so
+  `chroma-hnswlib` (a `chromadb` transitive dependency, not owned by this
+  checkpoint) fails to build from source here. This blocks a from-scratch
+  `pip install -r requirements.txt` on this box specifically; it is a
+  pre-existing local toolchain gap, not caused by the V1.1 additions, and
+  CI/other machines with the build tools (or a prebuilt wheel) are
+  unaffected. Verified locally by installing every V1.1 dependency except
+  `chromadb` directly.
+- No system Tesseract binary is installed on this dev machine, so
+  `registry.ocr_engine()` degrades past the `tesseract` tier straight to
+  the `pymupdf` embedded-text-layer tier during local verification — this
+  is the fallback chain in §3 working as designed, not a bug. PaddleOCR
+  itself installs and is attempted first; whichever tier actually succeeds
+  is logged once via `structlog`.
+- `ml/data/negation_cues.yaml` and `ml/data/ner_gazetteer_seed.yaml` were
+  created now (V1.1) as small starter files so `Registry.available()` can
+  report a real `ner` capability from the first bootstrap, ahead of the
+  full `ml/data/india_brands.csv` / `rxcui_lookup.csv` builds scheduled for
+  V2.2/V2.3. They are seed data only and are superseded, not duplicated,
+  when those later checkpoints land.
+
 ## 2026-08-25 — Relocalisation: the product targets India, not the US
 
 CP1 shipped with an implicitly US-centric spine (MedlinePlus-only corpus, ESI
