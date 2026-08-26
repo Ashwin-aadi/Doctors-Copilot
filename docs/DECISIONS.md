@@ -1,5 +1,57 @@
 # Decisions Log
 
+## 2026-08-26 — CP2 P2.4 audit middleware, append-only log, query endpoint
+
+- `app/core/middleware_audit.py`'s `AuditMiddleware` logs every
+  `POST`/`PATCH`/`PUT`/`DELETE` request as an `AuditLog` row: actor/role
+  decoded best-effort from the bearer token (never blocks the request on a
+  decode failure -- an anonymous mutation like `/auth/register` is still
+  logged with a null actor), `action` = `"<METHOD> <route template>"` (the
+  template, e.g. `/patients/{patient_id}`, not the literal path, so entries
+  group by endpoint), `entity`/`entity_id` best-effort from the first
+  non-`api/v1` path segment and the first path param, IP, user agent, and
+  `diff_hash = sha256(raw request body)` -- **never the body itself**, so
+  no personal + health data (DPDP/SPDI) sits in the audit trail. A failure
+  to write the audit row is logged via `structlog` and swallowed rather
+  than turned into a 500 for an otherwise-successful request -- audit
+  logging is a compliance control here, not a request-blocking gate.
+- **Small, deliberate addition to `app/main.py`** (not in this
+  checkpoint's owned-paths list, but every checkpoint needs to eventually
+  register its own middleware there): added a single
+  `app.add_middleware(AuditMiddleware)` line plus its import, immediately
+  after the existing `RequestContextMiddleware` registration. This is
+  routine middleware wiring, not a conflict with anyone else's code --
+  logged here per the Autonomy Contract rather than treated as a `DRIFT:`
+  (DRIFT is for actual conflicts; this is a one-line, additive, minimal-
+  diff registration of a file this checkpoint is explicitly required to
+  ship).
+- `alembic/versions/c7e2a9f01b3d_audit_log_append_only.py` (additive,
+  `down_revision=a3f9c1d84b77`) revokes `UPDATE, DELETE` on `audit_logs`
+  from the `copilot` role. **Known limitation, documented in the
+  migration's own docstring and here**: `settings.database_url` connects
+  as `copilot`, which is also the role that *owns* the table (it ran the
+  `CREATE TABLE` via this same migration chain) -- PostgreSQL table owners
+  always retain full DML rights regardless of REVOKE, so as configured
+  today this does **not** actually stop the running app from updating or
+  deleting audit rows via its own DB credential. The REVOKE is still
+  applied for defense-in-depth against a future split (a lower-privileged
+  runtime role distinct from the migration-runner role) and is flagged as
+  a CP4 hardening item in `docs/SECURITY.md`'s OWASP table rather than
+  silently claimed as enforced -- shipping something that "does not
+  actually enforce append-only" without saying so would be exactly the
+  overclaim CLAUDE.md's compliance section warns against.
+- `GET /audit` restricted to `doctor|admin` via `require_role`, paginated
+  (`limit` default 50 max 200, `offset`), newest-first, filterable by
+  `entity`, `entity_id`, `actor_id`, `from`, `to`. No mutation endpoint
+  exists on this router at all.
+- `test_audit.py` follows the same split as prior CP2 test files:
+  route-template/entity-parsing/actor-decoding logic is pure and covered
+  directly with a hand-built ASGI `scope` dict (no live server needed); the
+  full "mutating request produces a queryable AuditLog row, restricted to
+  doctor/admin" round trip and a live demonstration of the ownership-bypass
+  limitation above are documented as written and reviewed but not locally
+  executed (needs Postgres) per the standing infra-gap note.
+
 ## 2026-08-26 — CP2 P2.3 doctor approval + immutable lock
 
 - **Note to Ashwin**: `Prescription` (app/db/models/clinical.py) has no
