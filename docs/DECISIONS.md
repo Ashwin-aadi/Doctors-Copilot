@@ -1,5 +1,130 @@
 # Decisions Log
 
+## 2026-08-26 — N1.3-N1.5: reasons_hi/token via owned-path subclassing, Redis side-channel, route shape calls
+
+Section 7 mandates `reasons_hi: list[str]` alongside `DoctorRanked.reasons`
+and `QueueEntryOut.reasons`, and N1.4 mandates a printable `token` on every
+queue entry. Both schemas live in `app/schemas/scheduling.py`, which is not
+an owned path ("Never modify app/db/models/ or app/schemas/"). Rather than
+edit Ashwin's file, added `app/services/scheduling/schemas.py::DoctorRankedOut`
+and `app/services/queueing/schemas.py::QueueEntryOut`, both additive
+subclasses of the frozen base schemas, used as the actual return/response
+types from `rank_doctors`/`pq.py`/the API routes. A `DoctorRankedOut` still
+satisfies "`rank_doctors(...) -> list[DoctorRanked]`" (it's-a `DoctorRanked`
+with one extra optional-defaulted field). DRIFT: ask Ashwin to fold
+`reasons_hi` into `DoctorRanked`/`QueueEntryOut` and add `token` +
+`priority_group` columns to `QueueEntry` directly, so these two local
+subclasses can be deleted.
+
+**Token/priority_group side-channel.** `QueueEntry` (Ashwin's model) has no
+`token` or statutory-`priority_group` column and I can't add one without
+editing `app/db/models/scheduling.py`. `pq.py` stores both in Redis
+(`queue:meta:{entry_id}`, 3-day TTL) instead, keyed by entry id, following
+the same TEMP-ADAPTER precedent as N1.1's locale overrides. Known limitation:
+a Redis flush loses the token/priority_group for any entry still physically
+in the queue at that moment (their DB row survives; only the display token
+and statutory bonus are lost, entries fall back to a `?-NNN` placeholder
+token). Acceptable for a hackathon/offline-first demo scope; a real
+deployment needs the columns.
+
+**Neutral scoring when a preference isn't stated.** The optimizer spec gives
+`language_score`/`scheme_score` formulas assuming the patient always states a
+preference. When `language`/`scheme` is `None` (patient didn't specify),
+scored both as `1.0` (neutral -- don't penalize free/other-language clinics
+just because nothing was requested) rather than `0.0`.
+
+**CP1 distance cutoff is a single bound, not urban/rural travel bands.**
+N1.3's own text says "CP1 may use `1/(1+km/5)`" and defers real travel bands
+to N3.3. Implemented that simple formula for `distance_score`, and used
+`max_distance_km_rural` (60 km, the more permissive of the two) as the single
+hard outer cutoff for now; N3.3 replaces both with the urban/rural band
+tables.
+
+**`POST /queue/{clinic_id}/next?doctor_id=...`.** The frozen `pq.pop_next`
+signature is `pop_next(clinic_id, doctor_id, *, now)`, but the original API
+stub was `POST /queue/{queue_entry_id}/next` (only one path segment). Since
+route shapes in `app/api/v1/queue.py` are an owned path (only the `pq.py`
+function signatures are frozen), renamed the path param to `clinic_id` and
+added `doctor_id` as a required query param so the route can actually supply
+both frozen-interface arguments.
+
+**Appointment + QueueEntry creation is not a single DB transaction.** The
+frozen `enqueue(entry, *, now)` opens its own session/advisory-lock
+transaction internally, separate from `create_appointment`'s own session
+that inserts the `Appointment` row. So "create Appointment + QueueEntry
+atomically" (N1.5) is not literally one transaction yet -- a crash between
+the two calls could leave a booked appointment with no queue entry. Flagging
+this rather than claiming atomicity; true atomicity needs either merging the
+two sessions or a saga/outbox pattern, deferred to CP4 hardening.
+
+## 2026-08-26 — N1.2 slot engine: sync DB access inside a frozen sync signature
+
+`free_slots` (`app/services/scheduling/slots.py`) is frozen by the CP1
+interface section as a **synchronous** function taking only `doctor_id`,
+`clinic_id`, `date_from`, `date_to`, `booked` -- no `db` session, no `now`,
+and critically no `availability` parameter, so it cannot receive its
+templates from a caller. Since every other repo helper (`repo.py`) is async
+(`SessionLocal` is an `async_sessionmaker`), and the frozen signature can't
+be changed to `async def` without breaking the interface freeze, `slots.py`
+opens its own short-lived **sync** SQLAlchemy session against the same
+`postgresql+psycopg` DSN (`create_engine`, psycopg3 supports both sync and
+async over one driver) to read `Availability`/`Clinic` rows. This keeps the
+function pure in the sense the spec cares about -- no wall-clock reads, no
+hidden mutable state, same DB content + same `booked` always yields the same
+slots -- even though it is not pure in the strict FP sense of taking all its
+inputs as arguments.
+
+Reused `repo.py`'s `_CLINIC_LOCALE_OVERRIDES` / `_clinic_locale_default`
+(imported, not duplicated) to resolve `facility_type` for the Sunday-closure
+rule, so the PHC/CHC/DH classification has exactly one source of truth
+between the two modules.
+
+Added `app/services/rules/packs/queue.yaml` early (it's an owned path,
+officially due at N1.4) with just the two keys N1.2 needs --
+`holidays: [...]` (the four dates already fixed in the CP1 spec) and a new
+`inter_clinic_travel_minutes: 30`, used to enforce a gap between a doctor's
+sessions at two different clinics on the same day so a slot is never offered
+at a time they can't physically reach the clinic by. N1.4 will extend this
+file with the remaining priority-queue keys (`aging_minutes`,
+`avg_consult_minutes`, etc.) without touching these two.
+
+## 2026-08-26 — N1.1 scheduling repo layer, DRIFT: missing locale/scheme columns
+
+`app/services/scheduling/repo.py` (niyati, owned path) needs four fields the
+CP1 spec's interface section assumes exist but don't, on models I'm not
+allowed to edit (`app/db/models/` is Ashwin's):
+
+- `Doctor.languages` (ISO-639-1 list) and `Doctor.registration_council` --
+  `Doctor` currently only has `nmc_reg_no`.
+- `Clinic.facility_type` (`phc|chc|sdh|dh|medical_college|...`) and
+  `Clinic.schemes` (`pmjay|cghs|esic|state_scheme`) -- `Clinic` currently only
+  has `is_emergency_capable`.
+
+Rather than an additive migration (which would still need `db/models/` edited
+to map the new columns into the ORM, an owned-path violation), added a
+TEMP-ADAPTER in `repo.py`: `_DOCTOR_LOCALE_OVERRIDES` /
+`_CLINIC_LOCALE_OVERRIDES`, dicts keyed by the fixed demo UUIDs used in
+`tests/services/conftest.py`'s Chennai fixture (doctor ids `...201`-`...206`,
+clinic ids `...0001`-`...0003`), with a generic fallback (`languages=["en"]`,
+`registration_council=None`; `facility_type` inferred from
+`is_emergency_capable`, `schemes=[]`) for any row not in the table. `DoctorRow`
+and `ClinicRow` (both mine, in `repo.py`) always populate these fields, so
+downstream optimizer code never has to know the columns are synthetic.
+
+DRIFT for Ashwin: please add `languages JSONB`, `registration_council
+VARCHAR`, `facility_type VARCHAR`, `schemes JSONB` to `doctors`/`clinics` via
+an additive migration when convenient. Once those land, delete the two
+override dicts and the `_clinic_locale_default`/`_DOCTOR_LOCALE_DEFAULT`
+fallbacks in `repo.py` and read the real columns directly.
+
+`tests/services/conftest.py`'s Chennai fixture (3 clinics -- 1 PHC, 1 CHC, 1
+emergency-capable PM-JAY district hospital -- and 6 doctors with mixed
+`ta/hi/te/en` languages, IST split-session availability, fixed
+`now = 2026-01-12T09:00:00Z` / 14:30 IST) seeds real rows via `SessionLocal`
+so `repo.py`'s own internal sessions (opened per-call, matching the frozen
+no-`db`-param interface signatures) see committed data, not a rolled-back
+test transaction.
+
 ## 2026-08-26 — CI fixes after integrating pratyaksh cp1
 
 Full `pytest -q` run on CI (post-merge of `feat/pratyaksh/cp1`) surfaced

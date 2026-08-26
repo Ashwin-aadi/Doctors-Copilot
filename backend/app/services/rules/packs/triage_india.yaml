@@ -1,0 +1,19 @@
+# MoHFW / NELS three-colour casualty scheme, expanded to 5 ordering tiers.
+# `severity_esi` (Ashwin's frozen schema field, 1-5) carries these semantics
+# throughout this project -- it is not the US Emergency Severity Index.
+tiers:
+  1: {colour: red,    label_en: "Resuscitation",  label_hi: "पुनर्जीवन",      target_minutes: 0}
+  2: {colour: red,    label_en: "Emergency",      label_hi: "आपातकाल",       target_minutes: 10}
+  3: {colour: yellow, label_en: "Urgent",         label_hi: "अत्यावश्यक",     target_minutes: 60}
+  4: {colour: green,  label_en: "Less urgent",    label_hi: "कम अत्यावश्यक",  target_minutes: 120}
+  5: {colour: green,  label_en: "Non-urgent",     label_hi: "सामान्य",        target_minutes: 240}
+
+# Statutory / policy priority, applied as a bounded bonus at the queue --
+# never enough to displace a RED patient. Order is significant: it is the
+# deterministic tie-break when a patient qualifies for more than one group.
+priority_groups:
+  - {id: pregnant_third_trimester, bonus: 1, reason_en: "Pregnancy - priority under ANC norms", reason_hi: "गर्भावस्था - एएनसी नियमों के तहत प्राथमिकता"}
+  - {id: infant_under_1,           bonus: 1, reason_en: "Infant under 1 year",                  reason_hi: "1 वर्ष से कम आयु का शिशु"}
+  - {id: senior_citizen_60_plus,   bonus: 1, reason_en: "Senior citizen priority",               reason_hi: "वरिष्ठ नागरिक प्राथमिकता"}
+  - {id: divyangjan,               bonus: 1, reason_en: "Divyangjan priority",                   reason_hi: "दिव्यांगजन प्राथमिकता"}
+priority_group_max_bonus: 1

@@ -1,0 +1,29 @@
+weights: {specialty: 0.30, availability: 0.20, distance: 0.13, queue: 0.13,
+          language: 0.10, scheme: 0.09, rating: 0.03, fee: 0.02}
+
+related_specialties:
+  general_medicine:    [family_medicine, emergency_medicine]
+  cardiology:          [general_medicine, emergency_medicine]
+  neurology:           [general_medicine]
+  paediatrics:         [neonatology, general_medicine]
+  obstetrics_gynaecology: [general_surgery, general_medicine]
+  orthopaedics:        [general_surgery, physical_medicine]
+  pulmonology:         [general_medicine, tb_chest]
+  dermatology:         [general_medicine]
+  ophthalmology:       [general_medicine]
+  ent:                 [general_medicine]
+  psychiatry:          [general_medicine]
+  general_surgery:     [orthopaedics, emergency_medicine]
+  ayush:               [general_medicine]
+
+min_facility_type:
+  cardiology: dh
+  neurology: dh
+  obstetrics_gynaecology: chc
+  general_medicine: phc
+
+free_facility_types: [phc, chc, sdh, dh]
+max_distance_km: 40
+max_distance_km_rural: 60
+horizon_days: 7
+holidays_pack: queue.yaml
