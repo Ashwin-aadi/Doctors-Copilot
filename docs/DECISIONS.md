@@ -1,5 +1,342 @@
 # Decisions Log
 
+## 2026-08-27 — B2.5: approval flow, role nav, notifications (CP2 close)
+
+- Pulled `origin/main` (5 commits ahead: Niyati's CP2 lab rules/queue
+  escalation/generic mapping merge, plus fixes) into `feat/divyanshi/cp2`
+  before starting -- clean auto-merge, only `docs/DECISIONS.md` needed a
+  trivial merge (both sides only appended). `npx tsc -b` was clean
+  immediately after merging, so no contract breaks in my files from that
+  merge itself (see the `page` field note below for what I *did* catch,
+  separately, from build).
+- **Correction to earlier verify runs, not new work:** `npx tsc --noEmit`
+  with no project flag silently checks nothing -- the root `tsconfig.json`
+  is a bare project-reference pointer (`files: []`). Every prior
+  checkpoint's "tsc clean" in this log actually only proved that. Caught
+  it here because `npm run build` (`tsc -b && vite build`) failed on a
+  real error `npx tsc --noEmit` had been silently skipping: `LabResultOut`
+  gained a required `page: number` field (regenerated into `types.ts` by
+  whoever landed the OCR/document work on `main` before I merged it), and
+  my `upload.test.tsx` fixture predated that field. Fixed the fixture.
+  Going forward, `npx tsc -b` (matching the real `build` script) is the
+  command that actually verifies -- noting this so B3+ don't repeat the
+  false-green.
+- Built `src/lib/api/endpoints/{approvals.ts,notifications.ts}`,
+  `src/features/approvals/LabOrderApprovalContainer.tsx`, `src/app/Nav.tsx`,
+  `src/features/notifications/{NotificationsContainer.tsx,useNotificationSocket.ts}`.
+- `approvals.ts` is hand-typed against `backend/app/api/v1/{lab_orders,approvals}.py`
+  (both endpoints return a bare `-> dict`, so `types.ts` only has
+  `Record<string, never>` for them -- same precedent as `auth.ts`/`files.ts`).
+  `GET /lab-orders/{id}` backs the container's query; `POST
+  /approvals/lab-order/{id}` is the captcha-gated approve mutation.
+- `LabOrderApprovalContainer`: draft items render read-only (no
+  Abhishek-built lab-order page exists yet, so this is a
+  `TEMP-PLACEHOLDER` list, not styled UI -- **UI-BUGS (Abhishek, P2)**);
+  "Approve lab order" opens a `Modal` with `CaptchaWidget`; on success the
+  order + its visit are invalidated and the locked view renders in place.
+  On `409 LOCKED` (someone else, or a retried request, already approved
+  it) the mutation's `onError` closes the modal and refetches instead of
+  toasting -- confirmed via a test where the approve POST always 409s and
+  the UI still lands on the locked view, not an error state.
+- `Nav.tsx`: link set keyed strictly by `auth.user.role` (a
+  `Record<Role, NavItem[]>` lookup), never by the current route --
+  verified with a test that renders a doctor's nav while sitting on the
+  patient-and-doctor-shared `/visit/:id` route and confirms doctor links
+  render, patient links don't. Wired into `RootLayout.tsx` (mine to
+  touch, `src/app/**`) alongside a new `<NotificationsContainer />` in the
+  header.
+- **BLOCKER:** `backend/app/api/v1/notify.py` raises `not_implemented(...)`
+  (501) on all three routes -- literally `"notifications owned by
+  pratyaksh"` in the source. Built `NotificationsContainer` against the
+  real contract anyway (list, unread count, optimistic mark-read) so it's
+  ready the moment the backend lands; today it renders the bell with the
+  translated "isn't ready yet" state instead of crashing or retry-looping
+  forever (`retry: false` on the query). Also **no `/ws/notify/{userId}`
+  channel exists at all** -- not even a stub in `ws.py` (only `/ws/visit`
+  and `/ws/queue` exist, both stubs too, see the B2.3 entry). Wrote
+  `useNotificationSocket` against the same `WsClient` used for the queue
+  board, pointed at `/api/v1/ws/notify/{userId}`; it degrades to the
+  normal reconnect-backoff loop against a route that doesn't exist, never
+  crashing. **API-BUGS (Pratyaksh, P2):** notifications list/create/read,
+  plus the `notify.{userId}` socket, whenever that's picked up.
+- Side note, not a regression: a GET that 501s still goes through
+  `client.ts`'s retry-on-5xx path (it only special-cases `>=500`, not
+  `>=500 && <501`), adding ~1.2s of retry latency before the "not ready"
+  notice appears. Harmless (finite, bounded retries) but worth knowing if
+  that delay ever shows up in a demo.
+- Unit tests: `approvals.test.tsx` (2: approve-and-lock end to end with a
+  real solved captcha, 409-race lands on the locked view),
+  `notifications.test.tsx` (2: 501 shows the not-ready notice, unread
+  count + optimistic mark-read), `app/__tests__/Nav.test.tsx` (3: signed
+  out renders nothing, patient links, doctor links independent of route)
+  -- 7/7 passing. Full suite: 49/49 across 15 files. `npx tsc -b`,
+  `npm run lint`, and `npm run build` all clean.
+- `tests/e2e/approval.spec.ts` added: creates a lab order via `POST
+  /lab-orders/recommend` against the seeded visit (there's no UI trigger
+  for lab-order creation yet -- that's backend-only so far), then drives
+  the real approve-with-captcha UI end to end, asserts the locked view,
+  and reloads to confirm the locked state survives a refetch without a
+  crash. Ran the full local e2e suite (`triage`, `booking`, `copilot`,
+  `queue`, `upload`, `approval`, plus the हिंदी-only checks): 2 pass (the
+  language checks, which don't need a backend), 7 fail at the same
+  pre-existing captcha/no-live-backend blocker logged since B2.1 -- no
+  regressions from this branch.
+- `./scripts/guard.sh` passes (no assistant footprint in commits, no
+  banned files staged, clean `git grep`).
+
+**CP2 GATE:** live queue reorders across tabs -- built, gated on the
+`/ws/queue/{clinic_id}` backend stub (B2.3 BLOCKER). Upload → OCR →
+correction → brief refetch -- built and unit-tested end to end (B2.4);
+gated on the `PATCH /documents/{id}/labs` backend gap (B2.4 BLOCKER) for
+the persistence half. Approval locks the UI -- built, unit-tested, and
+e2e-specced against the real backend contract (this entry). All three
+gate items are code-complete and green everywhere except against a live
+backend, which remains the standing environment blocker for this machine
+(no Python 3.12 + Rust toolchain -- logged since B2.1, 2026-08-26).
+Merging to `main` now per the daily protocol; CP2's backend-completeness
+gap is Ashwin/Pratyaksh/Virat's to close, tracked via the API-BUGS/BLOCKER
+entries above and in B2.2-B2.4.
+
+## 2026-08-27 — B2.4: document upload pipeline
+
+- Built `src/features/documents/{UploadContainer.tsx,useUpload.ts,useDocumentPolling.ts}`
+  plus `src/lib/api/endpoints/{files.ts,documents.ts}`.
+- `uploadFileWithProgress` (`files.ts`) posts to `POST /files` via raw
+  `XMLHttpRequest`, not `fetch` — that's the only way to get real
+  `upload.onprogress` events and a genuinely cancellable in-flight upload
+  (`xhr.abort()`), matching the spec. It reimplements the same header set
+  as `client.ts`'s `request()` (`X-Request-ID`, `Accept-Language`,
+  `Authorization`, `X-Captcha-Token`, `credentials`) since `request()` is
+  fetch-only and doesn't expose progress. `POST /files`' generated type in
+  `types.ts` is an empty `Record<string, never>` (the backend endpoint
+  takes `Form()`/`File()` params and returns a bare `-> dict`, which
+  `openapi-typescript` can't capture), so the request/response shape here
+  is hand-typed against `backend/app/api/v1/files.py`, same precedent as
+  `endpoints/auth.ts`.
+- `useUpload` manages the multi-file list; each item's state
+  (`uploading|uploaded|failed|cancelled`) is independent, so one file's
+  422 never blocks the others — verified in
+  `__tests__/upload.test.tsx`. Cancel is captured via a `clientId ->
+  UploadHandle` map so `cancelUpload()` can call the in-flight XHR's
+  `abort()`, or short-circuit a still-captcha-solving upload before its
+  XHR has started.
+- `useDocumentPolling` backs off `GET /documents/{id}` on the specified
+  schedule (1s x5, 3s x10, then a steady 5s) via TanStack's
+  `refetchInterval`, and gives up (stops polling, but leaves the last
+  known "processing" state on screen rather than erroring) after 3
+  minutes total. There is no document- or visit-scoped push channel to
+  stop polling early on a `document.done` event — `/ws/visit/{id}` is
+  also a stub today (same file as the queue socket, see the B2.3 entry
+  above), and wiring that up is B3.5's job (`VisitContainer`/`useVisitSocket`),
+  not something to bolt on here ahead of that container existing. Noted
+  so B3.5 remembers to make `useDocumentPolling` stop early once that
+  channel is real.
+- **BLOCKER:** `PATCH /api/v1/documents/{document_id}/labs` (the OCR
+  correction endpoint from the B2.4 spec) does not exist on the backend —
+  `backend/app/api/v1/documents.py` only implements `POST /upload` and
+  `GET /{document_id}`. Also, `LabResultOut` has no per-row `id`, so there
+  is no way to address a single corrected value; `correctDocumentLabs()`
+  in `documents.ts` is written to PATCH the *entire* `labs` array back
+  (full replace) since that's the only addressable shape available.
+  `DocumentPanel` in `UploadContainer.tsx` calls it as specified, and on a
+  404 shows "This feature isn't ready yet" (reusing `errorCodes.NOT_IMPLEMENTED`
+  copy) while keeping the user's edits on screen rather than discarding
+  them — so the UI is honest about not having synced, instead of silently
+  losing the correction or crashing. **API-BUGS (Virat/Ashwin, P1):**
+  please add the correction endpoint (ideally with row ids on
+  `LabResultOut` so future corrections can be partial, not full-replace)
+  and confirm invalidation targets (`document`, `visit`, `brief` per the
+  §4.2 table) once it's live; re-verify `tests/e2e/upload.spec.ts` then.
+- Both `POST /files` and `POST /documents/upload` are exercised through
+  the real `DocumentUploadIn` JSON path (`startDocumentUpload` sends
+  `{file_id, patient_id}` as spec'd), not the documents.py TEMP-ADAPTER
+  multipart fallback Pratyaksh left in place for when `/files` wasn't
+  merged yet — that adapter is his to remove once he confirms `/files` is
+  stable; not touching it from here since it's outside my owned paths.
+- Wired `UploadContainer` onto `/doctor/patient/:id`, replacing its
+  placeholder (same interim-wiring pattern as B2.2/B2.3, pending a real
+  `PatientChartContainer`).
+- Abhishek hasn't shipped `Dropzone` or `OcrReview` yet (neither exists
+  under `src/components/`), so both are TEMP-PLACEHOLDER inline markup in
+  `UploadContainer.tsx` (a native `<input type="file">` behind a styled
+  drop target, and a plain editable `Table` for lab rows) — flagged as
+  **UI-BUGS (Abhishek, P2)**.
+- **Test-environment note, not a product bug:** jsdom's `XMLHttpRequest`
+  doesn't reproduce a real browser's auto-computed multipart
+  `Content-Type: multipart/form-data; boundary=...` header when sending a
+  `FormData` body, so msw's `request.formData()` can't read the uploaded
+  file's name inside a Vitest handler (confirmed via a standalone repro).
+  `upload.test.tsx`'s "independent per-file state" test therefore branches
+  on call order instead of filename. Production code never sets
+  `Content-Type` manually (letting the browser compute the boundary, as
+  it must), so this doesn't affect real usage — only worth remembering if
+  a future test tries to inspect multipart body contents in Vitest.
+- Unit tests: `src/features/documents/__tests__/upload.test.tsx` (3
+  tests: upload → done → editable low-confidence cell; one failed file
+  doesn't block another's success; correction save surfaces the
+  "not ready" notice on 404) — 3/3 passing. Full suite: 42/42 across 12
+  files. `tsc --noEmit` and `npm run lint` both clean.
+- `tests/e2e/upload.spec.ts` added, uploading the real fixture
+  `ml/fixtures/cbc.pdf` against the seeded doctor/patient. Fails at the
+  same pre-existing captcha/no-live-backend environment blocker as every
+  other e2e spec on this machine — not a new regression, and separately
+  gated on the labs-correction BLOCKER above for the reload-persistence
+  step once a backend is reachable.
+
+## 2026-08-26 — B2.3: live queue board
+
+- Built `src/lib/ws/client.ts` (`WsClient`): a generic reconnecting WebSocket
+  wrapper — exponential backoff with jitter (1s → 2s → 4s → 8s → capped at
+  30s), a 20s heartbeat ping so lossy-mobile-network proxies don't idle-kill
+  the connection, and a `WsStatus` callback (`connecting|open|reconnecting|closed`)
+  so containers can render a live "reconnecting" chip instead of silently
+  dropping updates. `WebSocketImpl` is injectable for unit tests.
+- Built `src/features/queue/{useQueueSocket.ts,QueueBoardContainer.tsx}` and
+  `src/lib/api/endpoints/queue.ts` (`getQueue`, `nextInQueue`, `escalateQueue`
+  against the live `GET/POST /queue/*` contract).
+- **Wire contract for `/ws/queue/{clinic_id}`** — this endpoint has no
+  established message shape yet (backend/app/api/v1/ws.py is a stub, see
+  BLOCKER below), so I've defined one for `useQueueSocket.ts` to implement
+  against: `{ type: "snapshot"|"patch"|"escalated", seq: number, entries:
+  QueueEntryOut[] }`. `seq` is a monotonically increasing counter; frames
+  with `seq <= last seen` are discarded so a duplicate or out-of-order frame
+  (retries, reordering on a flaky mobile connection) can't corrupt the
+  board. `entries` is always a full array (upsert/replace by id), not a
+  diff — simplest contract, and cheap enough at clinic-queue scale that a
+  diff format isn't worth the complexity. **API-BUGS (Ashwin, P1):** please
+  implement `/ws/queue/{clinic_id}` to this shape, or tell me here if a
+  different shape is already planned so I can adjust `useQueueSocket.ts`
+  before CP2 closes.
+- On socket `open` (including every reconnect), the client invalidates
+  `qk.queue(clinicId)` so a REST refetch backstops whatever the socket
+  missed while it was down — this is also what keeps the board correct
+  today, since the socket itself is inert (see BLOCKER).
+- "Call next" (`POST /queue/{id}/next`) is optimistic: the entry is removed
+  from the cached list immediately via `onMutate`, rolled back via the
+  snapshotted previous list in `onError`, and the query is invalidated in
+  `onSettled` either way so the server's view always wins eventually.
+  "Escalate" (`POST /queue/{id}/escalate`) follows the same
+  mutate/rollback/settle shape, optimistically flagging `emergency: true`
+  and `position: 1` so the row visually jumps to the head immediately
+  rather than waiting on the round trip.
+- `clinicId` needed a home: added `clinicId?: string` to `AuthUser`
+  (`src/store/auth.ts`), sourced from `DoctorProfile.clinic_id` via a new
+  shared `mapMeToAuthUser()` in `src/lib/api/endpoints/auth.ts`. Also fixed
+  a latent gap this surfaced: `LoginContainer.tsx` was only ever setting
+  `{id,email,role,name}` from the login response, so `doctorId`/`patientId`/
+  `clinicId`/`nmcRegNo` stayed `undefined` for a freshly logged-in session
+  until a full page reload triggered `AuthProvider`'s silent-refresh path
+  (which already called `me()`). `LoginContainer.onSuccess` now also awaits
+  `me()` and merges the full profile in, best-effort (a failure there still
+  leaves the base session usable). This was pre-existing and also affected
+  `useBooking.ts`'s reliance on `user.patientId` — not something introduced
+  by this checkpoint, but worth fixing since the queue board depends on the
+  same pattern.
+- Wired `QueueBoardContainer` onto `/doctor/queue`, replacing its
+  placeholder. `src/components/queue/{QueueRow.tsx,QueueStats.tsx}` hold the
+  container-side table row and stat-card widgets (in-scope per §2 — this
+  directory is mine, unlike the rest of `components/`).
+- **BLOCKER:** `backend/app/api/v1/ws.py`'s `/ws/queue/{clinic_id}` handler
+  accepts the connection and immediately closes it with code 1013 ("queue
+  stream lands in A3.5") — it's a stub, not a bug in my client. `WsClient`
+  handles this correctly (it's just a close-then-reconnect-with-backoff
+  loop, same as any dropped connection), so the board still works via the
+  `open`-triggered REST invalidation, but there is no actual push-based
+  live reorder yet, and the CP2 B2.3 verify requirement ("escalating via
+  API in one tab reorders the board in the other within 2s") cannot be
+  demonstrated until the backend implements this socket. Flagging for
+  Ashwin; re-verify `tests/e2e/queue.spec.ts` once it lands.
+- Unit tests: `src/lib/ws/__tests__/client.test.ts` (4 tests: message
+  delivery, growing backoff on unexpected close, no reconnect on
+  intentional close, heartbeat ping) and
+  `src/features/queue/__tests__/queue.test.tsx` (3 tests: renders seeded
+  entries, empty state, optimistic call-next with rollback on failure) —
+  7/7 passing. Full suite: 39/39 across 11 files. `tsc --noEmit` and
+  `npm run lint` both clean.
+- `tests/e2e/queue.spec.ts` added (escalate-reorders-the-board;
+  reconnect-resyncs-without-duplicates), seeding a walk-in via
+  `POST /queue/walk-in` against `scripts/seed.py`'s deterministic
+  clinic/doctor/patient ids since the seed script doesn't pre-populate the
+  queue. Both fail at the same pre-existing captcha/no-live-backend
+  environment blocker as every other e2e spec on this machine (see
+  2026-08-26 B2.1/B2.2 entries) — not a new regression, and separately
+  gated on the WS BLOCKER above once a backend is reachable.
+
+## 2026-08-26 — B2.2: doctor copilot panel container
+
+- Built `src/features/copilot/{CopilotContainer.tsx,useBrief.ts,useCitations.ts}`
+  and `src/lib/api/endpoints/copilot.ts` against the live `CopilotBrief`/
+  `Citation` schemas already present in the regenerated `types.ts`
+  (`POST /api/v1/copilot/brief {visit_id}` → `CopilotBrief`).
+- `useBrief` drives the panel via `useQuery` keyed on `qk.brief(visitId)`
+  (`retry: false`, `staleTime: Infinity` — invalidated explicitly per the
+  §4.2 table, not refetched on a timer) and layers a client-side stage label
+  (`skeleton` → `retrievingSources` → `composing`) over the single request
+  via timers, since the endpoint returns once, not progressively.
+- `[n]` markers in `summary`/`differentials` are bound to `onCitationClick`
+  (`useCitations.ts`, `splitCitationMarkers`) and open a drawer with the
+  matching `Citation`. **UI-BUGS (Abhishek, P2):** no `SourceCard`/
+  `EvidenceDrawer` component exists yet in `src/components/` — the drawer
+  content in `CopilotContainer` is a marked interim placeholder
+  (`TEMP-PLACEHOLDER: replace with <SourceCard>/<EvidenceDrawer>`) to be
+  swapped in once those ship.
+- `confidence < 0.4` renders a "Low confidence" badge without hiding the
+  panel; empty `citations[]` renders an extractive-fallback notice instead of
+  hiding the panel; `MODEL_UNAVAILABLE` (and any other `ApiError`) renders
+  `ErrorState` with a retry action wired to `refetch()`, never a crash. A
+  persistent decision-support banner (`copilot.decisionSupportBanner`,
+  en + hi) is mounted above every panel state per the Telemedicine Practice
+  Guidelines 2020 requirement in CLAUDE.md §0.5.
+- Wired `CopilotContainer` directly onto the existing `/doctor/visit/:id`
+  route (replacing its `PlaceholderPage`) so it's reachable for e2e —
+  B3.5's `VisitContainer` will own that route and compose the panel
+  alongside the stepper once it exists; noted inline in `router/index.tsx`.
+- Added `src/features/copilot/__tests__/copilot.test.tsx` (msw-backed: brief
+  render + citation click, extractive fallback, `MODEL_UNAVAILABLE` retry
+  action, low-confidence badge) — **6/6 passing**. Full suite now
+  **32/32 passing** across 9 files.
+- Added `tests/e2e/copilot.spec.ts` against the deterministic seeded visit
+  `00000000-0000-0000-0000-000000000301` from `scripts/seed.py`
+  (`doctor1@demo.example`) rather than routing through the queue board,
+  since B2.3 (live queue) isn't built yet. **Unverified on this dev
+  machine** — same environment blocker as CP1/B2.1 (no Python 3.12/Rust/
+  Docker locally, so the captcha challenge is unreachable and login never
+  completes); 1/2 passing here (the हिंदी untranslated-key check, which
+  doesn't need a live backend), consistent with the existing blocker, not a
+  new regression.
+- `npx tsc --noEmit` and `npm run lint`: both clean.
+
+## 2026-08-26 — B2.1: pull integrated main, regenerate, regress
+
+- `git pull --ff-only origin main` brought in `pratyaksh cp2` (rate limiting,
+  audit middleware) and `ashwin`'s kg/RAG work, plus a regenerated
+  `frontend/src/lib/types.ts` (commit `b8babdd`) — a teammate has a working
+  live-backend environment and committed a fresh `gen:api` output, so the
+  stale/hand-typed-interim situation logged in the CP1 B1.2 entry below is
+  resolved without me running `gen:api` myself.
+- **Environment blocker persists unchanged from CP1** (see "A1.1 dev
+  environment note" is a different issue; the actual blocker is the CP1
+  "B1.1-B1.5 kickoff" entry below): this machine still has Python 3.14 only
+  (no 3.12), no Rust/Cargo, no Docker, so the FastAPI app cannot be run
+  locally, `gen:api` cannot hit a live server here, and CP1's e2e specs
+  (`booking.spec.ts`, `triage.spec.ts`) fail at the captcha step
+  (`GET /captcha/challenge` unreachable → "Verification complete." never
+  renders → login never completes) — a `TimeoutError` in
+  `waitForCaptchaSolved`, not a regression in the containers themselves.
+- `npx tsc --noEmit` against the regenerated types: **zero errors** — no
+  contract-drift type breaks to fix this round, so nothing to send to
+  Abhishek as `UI-BUGS:` from this step.
+- `npm run test -- --run`: **26/26 passing** across 8 files (store, api
+  client, forms, chat, onboarding, a11y, router) — CP1 unit-test surface is
+  green on merged main.
+- `npx playwright test --project=chromium`: 1/3 passing (the one spec/branch
+  not gated behind login+captcha); the other 2 fail only at the captcha wait,
+  per the environment blocker above — not re-verifiable as green until run
+  against a live backend (CI or another dev's machine). Logging as
+  `BLOCKER:` per rule 6 rather than pushing past it: **CP2 work proceeds**
+  (per explicit instruction to continue through B2.1 on a new branch), but
+  the CP1 e2e gate cannot be re-confirmed green from this box.
+
 ## 2026-08-26 — CP2 P2.5 rate limiting & progressive lockout
 
 - `app/core/ratelimit.py`'s `limiter` (`slowapi.Limiter`, Redis-backed via

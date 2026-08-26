@@ -7,7 +7,9 @@
     "booking": "अपॉइंटमेंट बुक करें",
     "portal": "मेरी विज़िट",
     "abha": "आभा",
+    "doctorHome": "होम",
     "doctorQueue": "कतार",
+    "admin": "एडमिन",
     "logout": "लॉग आउट",
     "emergency": "आपातकाल: 112 / 108"
   },
@@ -53,5 +55,86 @@
     "queuePosition": "कतार में स्थान {{position}}",
     "estimatedWait": "अनुमानित प्रतीक्षा: {{minutes}} मिनट",
     "slotUnavailable": "वह स्लॉट अभी-अभी बुक हुआ। दूसरा डॉक्टर या समय चुनें।"
+  },
+  "copilot": {
+    "title": "एआई क्लिनिकल ब्रीफ",
+    "decisionSupportBanner": "एआई निर्णय सहायता — यह निदान नहीं है। हर कार्रवाई की पुष्टि आप करते हैं।",
+    "lowConfidence": "कम विश्वास",
+    "differentials": "विभेदक निदान",
+    "recommendedProcedures": "अनुशंसित प्रक्रियाएं",
+    "cautions": "सावधानियां",
+    "extractiveFallback": "इस ब्रीफ के लिए कोई बाहरी स्रोत नहीं मिला; सारांश सीधे विज़िट रिकॉर्ड से लिया गया है।",
+    "sourceDrawerTitle": "स्रोत",
+    "stage": {
+      "skeleton": "लोड हो रहा है…",
+      "retrievingSources": "स्रोत खोजे जा रहे हैं…",
+      "composing": "ब्रीफ तैयार किया जा रहा है…"
+    }
+  },
+  "queue": {
+    "title": "लाइव कतार",
+    "boardTitle": "प्रतीक्षा कक्ष",
+    "connected": "लाइव",
+    "reconnecting": "पुनः जुड़ रहा है…",
+    "empty": "कोई मरीज प्रतीक्षा में नहीं है।",
+    "noClinic": "आपके खाते से अभी कोई क्लिनिक जुड़ा नहीं है।",
+    "patient": "मरीज",
+    "severity": "गंभीरता",
+    "statusLabel": "स्थिति",
+    "wait": "प्रतीक्षा",
+    "token": "टोकन",
+    "actions": "कार्रवाई",
+    "callNext": "अगला बुलाएं",
+    "escalate": "प्राथमिकता बढ़ाएं",
+    "emergency": "आपातकाल",
+    "waitedMinutes": "{{minutes}} मिनट",
+    "waitingCount": "प्रतीक्षा में",
+    "inConsultCount": "परामर्श में",
+    "avgWaitMinutes": "औसत प्रतीक्षा (मिनट)",
+    "status": {
+      "waiting": "प्रतीक्षा में",
+      "in_consult": "परामर्श में",
+      "done": "पूर्ण",
+      "cancelled": "रद्द"
+    }
+  },
+  "documents": {
+    "title": "रिपोर्ट अपलोड करें",
+    "dropzoneLabel": "लैब रिपोर्ट की फोटो या पीडीएफ चुनने के लिए टैप करें",
+    "cancel": "अपलोड रद्द करें",
+    "noPatient": "कोई मरीज चयनित नहीं है।",
+    "processing": "आपका दस्तावेज़ पढ़ा जा रहा है…",
+    "ocrFailed": "हम यह दस्तावेज़ नहीं पढ़ पाए। स्पष्ट फोटो या दूसरी फाइल आज़माएं।",
+    "noLabs": "इस दस्तावेज़ में कोई लैब मान नहीं मिला।",
+    "test": "जांच",
+    "value": "मान",
+    "unit": "इकाई",
+    "confidence": "विश्वसनीयता",
+    "lowConfidence": "कृपया जांचें",
+    "confirmCorrections": "सुधार सहेजें",
+    "corrected": "सुधार सहेजे गए।",
+    "status": {
+      "uploading": "अपलोड हो रहा है…",
+      "uploaded": "अपलोड हो गया",
+      "failed": "विफल",
+      "cancelled": "रद्द"
+    }
+  },
+  "approvals": {
+    "noLabOrder": "कोई लैब ऑर्डर निर्दिष्ट नहीं किया गया।",
+    "labOrderTitle": "लैब ऑर्डर",
+    "locked": "स्वीकृत",
+    "draft": "मसौदा",
+    "covered": "कवर किया गया",
+    "approve": "लैब ऑर्डर स्वीकृत करें",
+    "approved": "स्वीकृत और लॉक कर दिया गया।",
+    "lockedRace": "यह अभी कहीं और स्वीकृत हो गया — लॉक किया गया संस्करण दिखाया जा रहा है।",
+    "captchaTitle": "स्वीकृति के लिए सत्यापित करें",
+    "confirmApprove": "स्वीकृति की पुष्टि करें"
+  },
+  "notifications": {
+    "title": "सूचनाएं",
+    "bell": "सूचनाएं, {{count}} अपठित",
+    "empty": "आप सब कुछ देख चुके हैं।"
   }
 }

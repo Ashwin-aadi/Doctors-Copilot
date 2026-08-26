@@ -7,7 +7,9 @@
     "booking": "Book Appointment",
     "portal": "My Visits",
     "abha": "ABHA",
+    "doctorHome": "Home",
     "doctorQueue": "Queue",
+    "admin": "Admin",
     "logout": "Log out",
     "emergency": "Emergency: 112 / 108"
   },
@@ -53,5 +55,86 @@
     "queuePosition": "Queue position {{position}}",
     "estimatedWait": "Estimated wait: {{minutes}} min",
     "slotUnavailable": "That slot was just booked. Pick another doctor or time."
+  },
+  "copilot": {
+    "title": "AI Clinical Brief",
+    "decisionSupportBanner": "AI decision support — not a diagnosis. You confirm every action.",
+    "lowConfidence": "Low confidence",
+    "differentials": "Differentials",
+    "recommendedProcedures": "Recommended procedures",
+    "cautions": "Cautions",
+    "extractiveFallback": "No external sources were found for this brief; the summary is drawn directly from the visit record.",
+    "sourceDrawerTitle": "Source",
+    "stage": {
+      "skeleton": "Loading…",
+      "retrievingSources": "Retrieving sources…",
+      "composing": "Composing brief…"
+    }
+  },
+  "queue": {
+    "title": "Live Queue",
+    "boardTitle": "Waiting room",
+    "connected": "Live",
+    "reconnecting": "Reconnecting…",
+    "empty": "No patients waiting.",
+    "noClinic": "No clinic is linked to your account yet.",
+    "patient": "Patient",
+    "severity": "Severity",
+    "statusLabel": "Status",
+    "wait": "Waited",
+    "token": "Token",
+    "actions": "Actions",
+    "callNext": "Call next",
+    "escalate": "Escalate",
+    "emergency": "Emergency",
+    "waitedMinutes": "{{minutes}} min",
+    "waitingCount": "Waiting",
+    "inConsultCount": "In consult",
+    "avgWaitMinutes": "Avg. wait (min)",
+    "status": {
+      "waiting": "Waiting",
+      "in_consult": "In consult",
+      "done": "Done",
+      "cancelled": "Cancelled"
+    }
+  },
+  "documents": {
+    "title": "Upload reports",
+    "dropzoneLabel": "Tap to choose photos or PDFs of lab reports",
+    "cancel": "Cancel upload",
+    "noPatient": "No patient is selected.",
+    "processing": "Reading your document…",
+    "ocrFailed": "We couldn't read this document. Try a clearer photo or a different file.",
+    "noLabs": "No lab values were found in this document.",
+    "test": "Test",
+    "value": "Value",
+    "unit": "Unit",
+    "confidence": "Confidence",
+    "lowConfidence": "Please verify",
+    "confirmCorrections": "Save corrections",
+    "corrected": "Corrections saved.",
+    "status": {
+      "uploading": "Uploading…",
+      "uploaded": "Uploaded",
+      "failed": "Failed",
+      "cancelled": "Cancelled"
+    }
+  },
+  "approvals": {
+    "noLabOrder": "No lab order was specified.",
+    "labOrderTitle": "Lab order",
+    "locked": "Approved",
+    "draft": "Draft",
+    "covered": "Covered",
+    "approve": "Approve lab order",
+    "approved": "Approved and locked.",
+    "lockedRace": "This was just approved elsewhere — showing the locked version.",
+    "captchaTitle": "Verify to approve",
+    "confirmApprove": "Confirm approval"
+  },
+  "notifications": {
+    "title": "Notifications",
+    "bell": "Notifications, {{count}} unread",
+    "empty": "You're all caught up."
   }
 }

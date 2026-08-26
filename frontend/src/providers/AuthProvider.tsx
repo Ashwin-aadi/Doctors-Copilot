@@ -1,19 +1,7 @@
 import { useEffect, type ReactNode } from "react";
 import { env } from "../lib/env";
-import { me } from "../lib/api/endpoints/auth";
-import { useAuthStore, type AuthUser } from "../store/auth";
-
-function toAuthUser(profile: Awaited<ReturnType<typeof me>>): AuthUser {
-  return {
-    id: profile.id,
-    email: profile.email,
-    role: profile.role,
-    name: profile.name,
-    patientId: profile.patient?.id,
-    doctorId: profile.doctor?.id,
-    nmcRegNo: profile.doctor?.nmc_reg_no ?? undefined,
-  };
-}
+import { me, mapMeToAuthUser } from "../lib/api/endpoints/auth";
+import { useAuthStore } from "../store/auth";
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const setSession = useAuthStore((s) => s.setSession);
@@ -35,7 +23,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         useAuthStore.setState({ accessToken: body.access_token });
         const profile = await me();
         if (cancelled) return;
-        setSession(toAuthUser(profile), body.access_token);
+        setSession(mapMeToAuthUser(profile), body.access_token);
       } catch {
         if (!cancelled) clear();
       }

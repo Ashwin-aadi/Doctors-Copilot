@@ -17,6 +17,7 @@ export const qk = {
   doctors: (p: DoctorQuery) => ["doctors", p] as const,
   abha: (userId: string) => ["abha", userId] as const,
   queue: (clinicId: string) => ["queue", clinicId] as const,
+  labOrder: (id: string) => ["labOrder", id] as const,
   brief: (visitId: string) => ["brief", visitId] as const,
   interactions: (visitId: string) => ["interactions", visitId] as const,
   generics: (name: string) => ["generics", name] as const,
