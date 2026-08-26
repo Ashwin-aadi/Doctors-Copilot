@@ -7,7 +7,9 @@
     "booking": "Book Appointment",
     "portal": "My Visits",
     "abha": "ABHA",
+    "doctorHome": "Home",
     "doctorQueue": "Queue",
+    "admin": "Admin",
     "logout": "Log out",
     "emergency": "Emergency: 112 / 108"
   },
@@ -117,5 +119,22 @@
       "failed": "Failed",
       "cancelled": "Cancelled"
     }
+  },
+  "approvals": {
+    "noLabOrder": "No lab order was specified.",
+    "labOrderTitle": "Lab order",
+    "locked": "Approved",
+    "draft": "Draft",
+    "covered": "Covered",
+    "approve": "Approve lab order",
+    "approved": "Approved and locked.",
+    "lockedRace": "This was just approved elsewhere — showing the locked version.",
+    "captchaTitle": "Verify to approve",
+    "confirmApprove": "Confirm approval"
+  },
+  "notifications": {
+    "title": "Notifications",
+    "bell": "Notifications, {{count}} unread",
+    "empty": "You're all caught up."
   }
 }

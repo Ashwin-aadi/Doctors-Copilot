@@ -16,6 +16,7 @@ import { BookingContainer } from "../features/booking/BookingContainer";
 import { CopilotContainer } from "../features/copilot/CopilotContainer";
 import { QueueBoardContainer } from "../features/queue/QueueBoardContainer";
 import { UploadContainer } from "../features/documents/UploadContainer";
+import { LabOrderApprovalContainer } from "../features/approvals/LabOrderApprovalContainer";
 import { PreviewPage } from "../pages/preview/PreviewPage";
 
 const isDev = import.meta.env.DEV;
@@ -131,7 +132,7 @@ export function AppRouter() {
             path="/doctor/lab-order/:id"
             element={
               <ProtectedRoute roles={DOCTOR_STAFF_ROLES}>
-                <PlaceholderPage label="Lab order" />
+                <LabOrderApprovalContainer />
               </ProtectedRoute>
             }
           />

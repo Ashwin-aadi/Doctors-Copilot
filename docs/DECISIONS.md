@@ -1,5 +1,102 @@
 # Decisions Log
 
+## 2026-08-27 — B2.5: approval flow, role nav, notifications (CP2 close)
+
+- Pulled `origin/main` (5 commits ahead: Niyati's CP2 lab rules/queue
+  escalation/generic mapping merge, plus fixes) into `feat/divyanshi/cp2`
+  before starting -- clean auto-merge, only `docs/DECISIONS.md` needed a
+  trivial merge (both sides only appended). `npx tsc -b` was clean
+  immediately after merging, so no contract breaks in my files from that
+  merge itself (see the `page` field note below for what I *did* catch,
+  separately, from build).
+- **Correction to earlier verify runs, not new work:** `npx tsc --noEmit`
+  with no project flag silently checks nothing -- the root `tsconfig.json`
+  is a bare project-reference pointer (`files: []`). Every prior
+  checkpoint's "tsc clean" in this log actually only proved that. Caught
+  it here because `npm run build` (`tsc -b && vite build`) failed on a
+  real error `npx tsc --noEmit` had been silently skipping: `LabResultOut`
+  gained a required `page: number` field (regenerated into `types.ts` by
+  whoever landed the OCR/document work on `main` before I merged it), and
+  my `upload.test.tsx` fixture predated that field. Fixed the fixture.
+  Going forward, `npx tsc -b` (matching the real `build` script) is the
+  command that actually verifies -- noting this so B3+ don't repeat the
+  false-green.
+- Built `src/lib/api/endpoints/{approvals.ts,notifications.ts}`,
+  `src/features/approvals/LabOrderApprovalContainer.tsx`, `src/app/Nav.tsx`,
+  `src/features/notifications/{NotificationsContainer.tsx,useNotificationSocket.ts}`.
+- `approvals.ts` is hand-typed against `backend/app/api/v1/{lab_orders,approvals}.py`
+  (both endpoints return a bare `-> dict`, so `types.ts` only has
+  `Record<string, never>` for them -- same precedent as `auth.ts`/`files.ts`).
+  `GET /lab-orders/{id}` backs the container's query; `POST
+  /approvals/lab-order/{id}` is the captcha-gated approve mutation.
+- `LabOrderApprovalContainer`: draft items render read-only (no
+  Abhishek-built lab-order page exists yet, so this is a
+  `TEMP-PLACEHOLDER` list, not styled UI -- **UI-BUGS (Abhishek, P2)**);
+  "Approve lab order" opens a `Modal` with `CaptchaWidget`; on success the
+  order + its visit are invalidated and the locked view renders in place.
+  On `409 LOCKED` (someone else, or a retried request, already approved
+  it) the mutation's `onError` closes the modal and refetches instead of
+  toasting -- confirmed via a test where the approve POST always 409s and
+  the UI still lands on the locked view, not an error state.
+- `Nav.tsx`: link set keyed strictly by `auth.user.role` (a
+  `Record<Role, NavItem[]>` lookup), never by the current route --
+  verified with a test that renders a doctor's nav while sitting on the
+  patient-and-doctor-shared `/visit/:id` route and confirms doctor links
+  render, patient links don't. Wired into `RootLayout.tsx` (mine to
+  touch, `src/app/**`) alongside a new `<NotificationsContainer />` in the
+  header.
+- **BLOCKER:** `backend/app/api/v1/notify.py` raises `not_implemented(...)`
+  (501) on all three routes -- literally `"notifications owned by
+  pratyaksh"` in the source. Built `NotificationsContainer` against the
+  real contract anyway (list, unread count, optimistic mark-read) so it's
+  ready the moment the backend lands; today it renders the bell with the
+  translated "isn't ready yet" state instead of crashing or retry-looping
+  forever (`retry: false` on the query). Also **no `/ws/notify/{userId}`
+  channel exists at all** -- not even a stub in `ws.py` (only `/ws/visit`
+  and `/ws/queue` exist, both stubs too, see the B2.3 entry). Wrote
+  `useNotificationSocket` against the same `WsClient` used for the queue
+  board, pointed at `/api/v1/ws/notify/{userId}`; it degrades to the
+  normal reconnect-backoff loop against a route that doesn't exist, never
+  crashing. **API-BUGS (Pratyaksh, P2):** notifications list/create/read,
+  plus the `notify.{userId}` socket, whenever that's picked up.
+- Side note, not a regression: a GET that 501s still goes through
+  `client.ts`'s retry-on-5xx path (it only special-cases `>=500`, not
+  `>=500 && <501`), adding ~1.2s of retry latency before the "not ready"
+  notice appears. Harmless (finite, bounded retries) but worth knowing if
+  that delay ever shows up in a demo.
+- Unit tests: `approvals.test.tsx` (2: approve-and-lock end to end with a
+  real solved captcha, 409-race lands on the locked view),
+  `notifications.test.tsx` (2: 501 shows the not-ready notice, unread
+  count + optimistic mark-read), `app/__tests__/Nav.test.tsx` (3: signed
+  out renders nothing, patient links, doctor links independent of route)
+  -- 7/7 passing. Full suite: 49/49 across 15 files. `npx tsc -b`,
+  `npm run lint`, and `npm run build` all clean.
+- `tests/e2e/approval.spec.ts` added: creates a lab order via `POST
+  /lab-orders/recommend` against the seeded visit (there's no UI trigger
+  for lab-order creation yet -- that's backend-only so far), then drives
+  the real approve-with-captcha UI end to end, asserts the locked view,
+  and reloads to confirm the locked state survives a refetch without a
+  crash. Ran the full local e2e suite (`triage`, `booking`, `copilot`,
+  `queue`, `upload`, `approval`, plus the हिंदी-only checks): 2 pass (the
+  language checks, which don't need a backend), 7 fail at the same
+  pre-existing captcha/no-live-backend blocker logged since B2.1 -- no
+  regressions from this branch.
+- `./scripts/guard.sh` passes (no assistant footprint in commits, no
+  banned files staged, clean `git grep`).
+
+**CP2 GATE:** live queue reorders across tabs -- built, gated on the
+`/ws/queue/{clinic_id}` backend stub (B2.3 BLOCKER). Upload → OCR →
+correction → brief refetch -- built and unit-tested end to end (B2.4);
+gated on the `PATCH /documents/{id}/labs` backend gap (B2.4 BLOCKER) for
+the persistence half. Approval locks the UI -- built, unit-tested, and
+e2e-specced against the real backend contract (this entry). All three
+gate items are code-complete and green everywhere except against a live
+backend, which remains the standing environment blocker for this machine
+(no Python 3.12 + Rust toolchain -- logged since B2.1, 2026-08-26).
+Merging to `main` now per the daily protocol; CP2's backend-completeness
+gap is Ashwin/Pratyaksh/Virat's to close, tracked via the API-BUGS/BLOCKER
+entries above and in B2.2-B2.4.
+
 ## 2026-08-27 — B2.4: document upload pipeline
 
 - Built `src/features/documents/{UploadContainer.tsx,useUpload.ts,useDocumentPolling.ts}`

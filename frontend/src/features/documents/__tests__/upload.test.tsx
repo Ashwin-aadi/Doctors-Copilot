@@ -72,6 +72,7 @@ function doneDocument(overrides: Partial<DocumentOut> = {}): DocumentOut {
         ref_high: 16,
         flag: "low",
         confidence: 0.55,
+        page: 1,
       },
     ],
     error: null,
