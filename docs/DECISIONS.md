@@ -1,5 +1,84 @@
 # Decisions Log
 
+## 2026-08-26 — CP2 P2.1 pull + confirm auth deps wired
+
+- Branched `feat/pratyaksh/cp2` off latest `main` (already carrying Ashwin's
+  and Virat's CP2 merges). This sandbox still has no Docker/Postgres/Redis
+  (unchanged from CP1's noted condition) so `make migrate && make test`
+  cannot run here; ran `ruff check` on the owned stub files as the
+  infra-independent baseline check instead.
+- Grepped `app/api/v1/*.py` for routes not depending on `get_current_user`/
+  `require_role`. `app/api/v1/documents.py`'s `POST /documents/upload` and
+  `GET /documents/{id}` (Virat's/Ashwin's) already depend on
+  `get_current_user` -- no drift there. Its multipart branch is a
+  documented TEMP-ADAPTER ("remove when pratyaksh ships services/storage.py
+  + /files") that duplicates a small piece of what `app/services/storage.py`
+  now does properly (MIME sniffing, malicious-PDF rejection, EXIF
+  stripping, dedupe) -- not touching that file per the ownership rule; the
+  TEMP-ADAPTER comment already tells Virat/Ashwin when to remove it.
+- `app/api/v1/lab_orders.py` (Niyati's) currently only has `POST /recommend`
+  and `GET /{id}`, both still `not_implemented` -- no mutation route exists
+  yet for the P2.3 locked-check service guard to apply to. Noting this so
+  it isn't missed: **DRIFT (forward-looking, not yet a live gap)** — when
+  Niyati ships a `PATCH`/update route on `lab_orders.py` or `prescriptions`,
+  it must check `.locked` and raise `LOCKED` (409) before allowing writes,
+  same as the DB trigger added in P2.3 enforces at the database level.
+- No changes needed to `backend/tests/security/test_rbac_matrix.py` for
+  P2.1 -- no anonymous-reachable-but-shouldn't-be route was found.
+
+## 2026-08-26 — CP2 P2.2 secure upload pipeline
+
+- `app/services/storage.py`'s `save_file`/`open_file`/`signed_url` extend
+  the frozen §4.2 signatures with an optional trailing `db: AsyncSession`
+  parameter (each opens its own `SessionLocal()` session when omitted, so
+  the frozen call shape `save_file(patient_id, upload, uploaded_by)` still
+  works) -- none of the three can do a per-patient dedupe lookup, an
+  ownership check, or a `FileObject` read without a session, and
+  SQLAlchemy's async session has no ambient/global form to substitute.
+  `signed_url` also gains a required keyword `user_id`, since P2.2 requires
+  the token be bound to *both* `file_id` and `user_id` (the two-positional-
+  arg frozen form can't express that). `app/api/v1/files.py` is the only
+  caller so far and always uses the extended form.
+- MIME allowlist enforced via `python-magic` sniffing the first 2048 bytes
+  (`application/pdf, image/png, image/jpeg, image/webp, image/tiff`); a PDF
+  additionally gets scanned for `/JavaScript`, `/Launch`, `/EmbeddedFile`
+  byte tokens before acceptance. Images are re-encoded through Pillow
+  (`Image.new` + copy pixel data + re-save) to drop EXIF; a decode failure
+  degrades to storing the original bytes rather than failing the upload,
+  since a genuinely malformed image would already have failed MIME
+  sniffing. Dedupe is per-(patient_id, sha256): a repeat upload of the same
+  bytes for the same patient returns the existing `FileObject` row instead
+  of writing a second file.
+- Storage path is `STORAGE_ROOT/{patient_id}/{sha256[:2]}/{sha256}.{ext}`;
+  the original client filename is never written to disk or used as a path
+  component, only kept implicitly via the sniffed MIME's canonical
+  extension.
+- Added `python-magic==0.4.27` and `itsdangerous==2.2.0` to
+  `backend/requirements.txt` (both were missing; already flagged as pinned
+  additions in CLAUDE.md §3). **Note to Ashwin**: `python-magic` needs
+  `libmagic1` on the image (`apt-get install -y libmagic1`), per CLAUDE.md
+  §3 -- please add it to `Dockerfile.backend` alongside the
+  pango/weasyprint system packages already noted there. On this Windows
+  dev box, `python-magic-bin` (a bundled-libmagic Windows wheel) was
+  installed locally only for import-smoke-testing `magic.from_buffer` --
+  it is NOT added to `requirements.txt`, since CI/prod run Linux and use
+  the real `python-magic` + `libmagic1` pairing.
+- `backend/tests/security/test_files.py` follows the established pattern
+  (`test_captcha.py`/`test_ownership.py`/`test_auth_api.py`): pure-function
+  coverage for MIME sniffing, size cap, malicious-PDF rejection, EXIF
+  stripping and signed-URL binding runs with no infra; the dedupe,
+  extension-spoof-rejection and cross-patient-403 cases are full API round
+  trips needing Postgres + Redis, written and reviewed but not locally
+  executed in this sandbox (see the standing infra-gap note above) --
+  execution deferred to CI.
+- `itsdangerous`/`python-magic` import and run correctly under this
+  sandbox's Python 3.14 interpreter once installed (`python-magic-bin` for
+  the Windows smoke test); `slowapi` (P2.5, already pinned in
+  requirements.txt) could not be smoke-tested the same way since this bare
+  interpreter has no `starlette`/`fastapi` installed -- not a real blocker,
+  just this sandbox's known bare-interpreter limitation (see prior CP1
+  entries on `pip install -r requirements.txt` not having been run here).
+
 ## 2026-08-26 — CP2 re-verify: MSVC installed, full `tests/ml`/`tests/integration` now green
 
 - MSVC Build Tools got installed on this machine after the CP2 entry below,
