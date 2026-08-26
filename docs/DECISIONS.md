@@ -1,5 +1,53 @@
 # Decisions Log
 
+## 2026-08-26 — CP2 P2.3 doctor approval + immutable lock
+
+- **Note to Ashwin**: `Prescription` (app/db/models/clinical.py) has no
+  `status` column, unlike `LabOrder` which does. `approve_prescription`
+  therefore sets `approved_by`/`approved_at`/`content_hash`/`locked` but
+  cannot set a `status="approved"` the way `approve_lab_order` does.
+  Requesting an additive migration + model column
+  (`status: Mapped[str] = mapped_column(String(32), default="draft")`) on
+  `Prescription` for parity with `LabOrder` -- not added here since
+  `app/db/models/` is off limits for this checkpoint.
+- Immutability enforced twice, per spec: (1) service layer in
+  `app/api/v1/approvals.py` checks `.locked` and raises `409 LOCKED` (with
+  an audit entry of the rejected attempt) before touching the row at all;
+  (2) `alembic/versions/a3f9c1d84b77_lock_triggers.py` (additive, head is
+  now `a3f9c1d84b77`, `down_revision=fecbbce145ed`) adds a
+  `block_locked_update()` trigger function plus `BEFORE UPDATE` triggers on
+  both `lab_orders` and `prescriptions` that raise `record_locked` whenever
+  `OLD.locked` is true -- catching a raw SQL `UPDATE` or any future code
+  path that bypasses the router entirely.
+- `content_hash = sha256(canonical_json(items))` where canonical JSON is
+  `json.dumps(items, sort_keys=True, separators=(",", ":"))` -- so the hash
+  is stable under key-order differences but changes with any actual content
+  change (both covered by pure unit tests in `test_locks.py`).
+- A doctor's assignment to the visit is checked via `Visit.doctor_id ==
+  Doctor.id` (resolved from the caller's `user_id`) *after* the locked
+  check, matching CLAUDE.md's "re-approval of an already-locked record ->
+  409 before doing anything else" ordering.
+- `app/api/v1/lab_orders.py` (Niyati's) still has no mutation route as of
+  this checkpoint (see the P2.1 entry above) -- there is currently nothing
+  else in the codebase that writes to `LabOrder`/`Prescription` besides
+  this approvals router, so the "service guard on every mutation path"
+  requirement has no second call site to add yet. Standing DRIFT note from
+  P2.1 covers it for when one is added.
+- Publishes `approval.locked` to Redis (`{entity, id, content_hash}` JSON)
+  on successful approval, per spec, for Abhishek's WS layer to pick up --
+  same channel-naming convention as P3.2's planned `notify.{user_id}`.
+- Wrote an explicit `AuditLog` row inline in the approval transaction (as
+  P2.3 requires) even though P2.4's generic mutation-logging middleware
+  will *also* fire for the same `POST` request once it lands later this
+  checkpoint -- both entries are true statements about the same event so
+  the duplication is harmless, just slightly redundant; not reworking this
+  now since P2.3 was written and merged before P2.4 existed.
+- `test_locks.py` follows the same split as `test_files.py`: pure-function
+  coverage for the hash and the doctor-resolution-failure path runs with no
+  infra; the full approve/re-lock/DB-trigger flow is documented as written
+  and reviewed but not locally executed (needs Postgres) per the standing
+  infra-gap note.
+
 ## 2026-08-26 — CP2 P2.1 pull + confirm auth deps wired
 
 - Branched `feat/pratyaksh/cp2` off latest `main` (already carrying Ashwin's
