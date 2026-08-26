@@ -48,3 +48,10 @@ reportlab==4.2.5
 geopy==2.4.1
 python-dateutil==2.9.0.post0
 cachetools==5.5.0
+
+# P2.2 secure upload pipeline: content-sniffed MIME (never trust extension)
+# and itsdangerous-signed file URLs. python-magic needs libmagic1 on the
+# target image (apt-get install -y libmagic1 -- noted to Ashwin for
+# Dockerfile.backend per CLAUDE.md §3).
+python-magic==0.4.27
+itsdangerous==2.2.0
