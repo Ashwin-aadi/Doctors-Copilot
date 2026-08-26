@@ -2,10 +2,13 @@
 __pycache__/
 *.pyc
 node_modules/
-ml/.cache/
-infra/chroma/
-infra/storage/
-infra/corpus_cache/
+# Matched with a leading ** since backend commands (see Makefile) run with
+# cwd=backend, so these paths resolve as backend/ml/.cache, backend/infra/...
+# at runtime rather than the repo-root paths a naive anchor would only catch.
+**/ml/.cache/
+**/infra/chroma/
+**/infra/storage/
+**/infra/corpus_cache/
 dist/
 *.db
 .venv/
@@ -17,3 +20,4 @@ openapi.json
 coverage/
 *.log
 .DS_Store
+infra/docker-compose.override.local.yml

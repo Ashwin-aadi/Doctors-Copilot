@@ -1,5 +1,76 @@
 # Decisions Log
 
+## 2026-08-26 — A2.1-A2.5: knowledge graph + clinical RAG
+
+- **Regenerated `frontend/src/lib/types.ts` for real**, resolving the B1.1
+  drift note above (this dev machine had no working Python 3.12/Docker at
+  the time, so Abhishek hand-typed interim shapes instead). Docker is
+  available this session, so `make openapi` ran against the live app (49
+  paths) and `npm run gen:api` regenerated `types.ts` from it. `npx tsc
+  --noEmit` in `frontend/` is clean against the regenerated file — no
+  breakage in the CP1 containers.
+
+- **Verified for real, not just against stubs.** This dev machine has Docker
+  available this session; brought up postgres/redis/neo4j, ran migrations,
+  `scripts/seed.py` and `scripts/seed_users.py`, and ran the real ingestion
+  pipelines end-to-end (network access to openFDA/PubMed/guideline pages
+  confirmed working). `guidelines` collection: 577 chunks (572 live). `clinical`
+  collection: 2565 chunks (2531 live via openFDA + PubMed + clinical
+  guideline pages, topped up with the bundled `clinical_seed.jsonl`), clearing
+  the A2.3 verify threshold (`>=2000`) with real fetched content rather than
+  the offline fallback alone.
+- **Port 5432 still occupied by an unrelated project's container** on this
+  box (same conflict A1.1 already logged, this time an additional
+  `trading_timescaledb` container rather than the earlier one). Used a
+  local-only `infra/docker-compose.override.local.yml` (gitignored, not
+  committed) remapping postgres to host port 5540 for this session's manual
+  verification only; `infra/docker-compose.yml` itself is unchanged and still
+  binds the documented `5432`.
+- **`app/ml/tools.py` (Virat's `flag_labs`/`extract_entities`/
+  `check_interactions`) has not shipped yet.** Per rule 3, added a
+  TEMP-ADAPTER under my own paths: `app/rag/tool_bridge.py` wraps the real
+  functions with a 20s timeout + 3-failures/60s circuit breaker, and falls
+  back to typed-empty results via a bare `except ImportError` when the
+  module doesn't exist. `app/kg/ingest.py` similarly TEMP-ADAPTERs
+  `app/ml/ner.py` (not shipped) for structured entity extraction, falling
+  back to the patient's own free-text `conditions`/`allergies`/`medications`
+  JSONB fields. Remove both adapter blocks once Virat ships the real modules.
+- **`scripts/seed.py` (mine) now gives patient 1 real clinical history**
+  (type 2 diabetes, a penicillin allergy, metformin) and a `LabResult` row
+  (HbA1c 9.2%, flagged high) tied to the seeded visit `...0301`, so KG sync
+  and the clinical brief have real content to work against instead of an
+  empty demo record. No other seeded patient changed.
+- **`app/kg/ingest.py` ingests all of a patient's `LabResult` rows**, not
+  just ones with a `document_id` (the A2.2 spec's Cypher sketch implies
+  document-derived labs only) — CP2 lands before CP3's document upload flow
+  is wired end-to-end, so requiring `document_id` would leave the graph with
+  no lab data at all for the demo visit. Revisit once Virat's OCR pipeline
+  is populating `LabResult.document_id` routinely.
+- **`app/rag/data/clinical_sources.yaml` drops two dead URLs** found during
+  a real ingest run: `tbcindia.mohfw.gov.in/index1.php?...sublinkid=4573...`
+  (404) and `cdsco.gov.in/opencms/opencms/en/Notifications/NLEM/` (404,
+  redirects to a different path); `cdsco.gov.in/` itself 302-redirects and
+  is now pointed straight at the resolved `/opencms/opencms/en/Home/` path.
+  Neither was contributing chunks (both errored before any text was chunked),
+  so removing them doesn't affect the corpus count.
+- **One pre-existing failure, not introduced by CP2:**
+  `test_rbac_matrix.py::test_rbac_matrix[GET-/api/v1/auth/me-patient-200-None]`
+  raises `MultipleResultsFound` when both `scripts/seed.py` (mine) and
+  `scripts/seed_users.py` (Pratyaksh's) have been run against the same
+  database in one session — some query keyed on the shared fixed patient-1
+  UUID resolves two rows once both scripts have written it. 220/221 backend
+  tests pass; this one is a seed-script interaction outside A2.x scope and
+  outside `scripts/seed.py`'s own logic (which stayed idempotent before and
+  after this checkpoint's edits). `DRIFT:` for whoever owns
+  `scripts/seed_users.py` — worth deciding which script is the source of
+  truth for patient 1, or reconciling the two.
+- **`tests/conftest.py`'s per-test teardown now also disposes the cached
+  `neo4j.AsyncDriver`** (`app/kg/client._driver`, `@lru_cache`), the same
+  event-loop-per-test hazard already handled there for the SQLAlchemy engine
+  and Redis client: a driver opened inside one test's event loop breaks every
+  later test once that loop closes, surfacing as `test_kg.py` tests
+  nondeterministically skipping ("Neo4j not reachable") even with Neo4j up.
+
 ## 2026-08-26 — B1.1-B1.5 kickoff: environment constraints and contract drift
 
 - **Environment blocker (`gen:api` / live backend unreachable on this dev
