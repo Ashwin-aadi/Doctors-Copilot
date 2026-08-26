@@ -1,5 +1,92 @@
 # Decisions Log
 
+## 2026-08-26 — B1.1-B1.5 kickoff: environment constraints and contract drift
+
+- **Environment blocker (`gen:api` / live backend unreachable on this dev
+  machine):** this box has Python 3.14 only (no 3.12) and no Rust/Cargo
+  toolchain, so `pip install -r backend/requirements.txt` fails building
+  `pydantic-core` from source, and the FastAPI app can't be imported to serve
+  `/openapi.json` for `npm run gen:api`. No Docker either, so the compose
+  stack (matching A1.1's already-logged postgres-port note) isn't an option.
+  `frontend/src/lib/types.ts` is therefore the last **committed** generation
+  and is stale against `auth.py`, `appointments.py`, `doctors.py` and
+  `queue.py` (all touched again in `main` since that generation — see the
+  P1.1 auth rewrite and today's scheduling/queueing additions). I hand-typed
+  the request/response shapes my CP1 containers need straight from those
+  route files (not from `app/schemas/`, which the route files themselves
+  deviate from for the same reason) rather than leaving them as `unknown` or
+  blocking on a regeneration this machine cannot perform. Whoever next runs
+  `gen:api` against a live server should treat this as the trigger to refresh
+  `types.ts` for real; my hand-typed interim types live next to the endpoint
+  functions that use them so they're easy to delete once regenerated.
+- **No mobile+OTP endpoint exists.** the project spec's binding auth model
+  (§4.3) specifies patient mobile+OTP login; the actual backend
+  (`backend/app/api/v1/auth.py`) and Abhishek's `LoginPage`/`RegisterPage`
+  are both email+password only, for every role. Treating the already-shipped
+  UI and API as the real, converged contract rather than reverting or
+  fighting it — building an OTP flow against no backend endpoint would be
+  exactly the "fake it in the container" anti-pattern rule 4 forbids.
+  Phone number is still collected (India-formatted, validated server-side
+  against `phonenumbers`) at registration/onboarding, just not used as the
+  login credential.
+- **`RegisterPage` is missing `phone` and `name` fields** that
+  `POST /auth/register` requires (`RegisterRequest.phone`, `.name`).
+  `UI-BUGS:` for Abhishek — registering as anything will 422 until those
+  fields exist on the form. Logged here rather than silently patching fake
+  values into the request, per rule 4. Severity P1 (auth is on the CP1
+  critical path); owner: abhishek.
+- **`GET /doctors` has no PIN-code parameter**, only `lat`/`lng`. the project spec
+  §0.5/§B1.5 mandate PIN-code-first doctor search that never depends on
+  geolocation. `API-BUGS:` for ashwin (owns `app/services/scheduling`):
+  add a `pincode` query param (resolve via clinic PIN codes already on
+  `Clinic`/`Doctor` records, or a lightweight PIN centroid table) so a
+  patient who denies location still gets a ranked list. Severity P1; owner:
+  ashwin. Interim: `DoctorPicker` still renders the 6-digit PIN field per
+  spec (never geolocation-gated), but until the param exists it's wired
+  to a client-side placeholder that surfaces a clear "location-based
+  results only for now" note instead of pretending to filter — no fake
+  distance math.
+- **Triage is turn-based JSON, not SSE.** `POST /triage/session` and
+  `POST /triage/{id}/message` (`backend/app/api/v1/triage.py`) both return a
+  complete `TriageTurnOut` per call; there is no streaming endpoint. the project spec
+  B1.4 specifies `lib/sse.ts` + token-by-token streaming. Implemented
+  `useTriageSession` as request/response turns instead (assistant bubble
+  appended whole once the mutation resolves); `lib/sse.ts` is not created in
+  CP1 since nothing here needs it yet — added if/when CP3's `/chat/patient`
+  turns out to stream.
+- **Layer-boundary ESLint rule (§4.1) refined for `react-router-dom`.** The
+  spec's literal snippet bans `react-router-dom` outright from
+  `src/pages/**`/`src/components/**`, but Abhishek's `LoginPage`,
+  `RegisterPage`, `ForgotPasswordPage` and `ResetPasswordPage` already render
+  `<Link>` for in-page navigation (e.g. "Create an account" -> `/register`)
+  -- a pure prop (`to="..."`), not a data fetch or an imperative navigation.
+  Banning the whole module would fail lint on already-shipped, genuinely
+  pure pages. Changed the rule to restrict `react-router-dom` by
+  `importNames` instead (`useNavigate`, `useLocation`, `useParams`,
+  `useSearchParams`, `Outlet`, `BrowserRouter`, `Routes`, `Route`,
+  `Navigate`, etc.) so routing state/effects still can't leak into a
+  page/component, while `<Link>`/`<NavLink>` remain allowed. `@/lib/api/*`,
+  `@/store/*`, `@tanstack/*`, `@/lib/ws/*` are still fully banned as
+  written. See `eslint.config.js`.
+- **Manual smoke-test findings (`npm run dev`, Playwright, no live backend):**
+  login/register render correctly at 360×640 and the language toggle flips
+  `<html lang>` and my app-shell chrome (nav, errors) to Hindi; the only
+  console noise is the expected `ERR_CONNECTION_REFUSED` from
+  `AuthProvider`'s silent refresh and the captcha challenge fetch with no
+  backend running. Two non-blocking notes: (1) `AuthLayout`'s left brand
+  panel is `md:`-hidden, but `RootLayout`'s header still renders above it at
+  mobile widths, so the "Doctor's Copilot" wordmark shows twice on desktop
+  layouts wider than `md` -- cosmetic, not filing as UI-BUGS since fixing it
+  means touching either layout; (2) `LoginPage`/`RegisterPage`/etc. render
+  hardcoded English copy (no `t()` calls), so the हिंदी toggle only
+  translates the chrome I own, not page copy -- pending whoever wires
+  `react-i18next` into those pages.
+- **`POST /appointments/simulate` returns `501 NOT_IMPLEMENTED`** by design
+  (`not_implemented("appointment simulation lands in CP3 (N3.3)")`) — handled
+  as the typed "not ready" state per rule 4, not called from booking in CP1.
+  `SlotPicker` shows the doctor's `next_slot` from the ranked-doctor payload
+  only.
+
 ## 2026-08-26 — D1.1-D1.5: design system, auth, onboarding, chat shell
 
 Palette shifted from the spec's cool teal-on-grey clinical look to a warmer,
