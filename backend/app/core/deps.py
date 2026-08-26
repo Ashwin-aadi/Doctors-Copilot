@@ -1,35 +1,34 @@
-"""Auth dependency.
+"""Auth dependencies: `get_current_user`, `require_role`, `require_self_or_role`
+and `require_captcha` -- the frozen interface the whole team imports.
 
-TEMP-ADAPTER: real JWT issuance lands with Pratyaksh's `app/core/security.py`
-and `/auth/login` (see backend/tests/conftest.py's `auth_headers` fixture,
-which already emits the `Bearer test-{role}-token` placeholder this resolves
-against a seeded user of that role). Until then, `get_current_user` accepts
-only that placeholder so routes can require auth today without blocking on
-login being merged. Remove this file's placeholder branch -- and switch to
-decoding a real access token -- once `/auth/login` exists.
+Real JWT verification lands here (CP1 P1.1), replacing the `test-{role}-token`
+placeholder the rest of the team was building against; `CurrentUser`'s shape
+(`id`, `role`) is unchanged so callers like `app/api/v1/documents.py` and
+`backend/tests/conftest.py`'s `auth_headers` fixture keep working once that
+fixture is switched to mint real tokens (see docs/DECISIONS.md).
 """
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from dataclasses import dataclass
 from uuid import UUID
 
-from fastapi import Depends, Header
+from fastapi import Depends, Header, Request
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core import security
 from app.core.errors import ApiError
 from app.db.models.user import User
 from app.db.session import get_db
-
-_TOKEN_PREFIX = "test-"
-_TOKEN_SUFFIX = "-token"
 
 
 @dataclass
 class CurrentUser:
     id: UUID
     role: str
+    email: str | None = None
 
 
 async def get_current_user(
@@ -40,14 +39,77 @@ async def get_current_user(
         raise ApiError("AUTH_INVALID_CREDENTIALS", "missing bearer token", status_code=401)
 
     token = authorization.removeprefix("Bearer ").strip()
-    if not (token.startswith(_TOKEN_PREFIX) and token.endswith(_TOKEN_SUFFIX)):
-        raise ApiError("AUTH_INVALID_CREDENTIALS", "unrecognized token", status_code=401)
+    claims = security.decode_token(token)
 
-    role = token[len(_TOKEN_PREFIX) : -len(_TOKEN_SUFFIX)] or "doctor"
-    result = await db.execute(select(User).where(User.role == role).limit(1))
-    user = result.scalar_one_or_none()
-    if user is None:
-        raise ApiError(
-            "AUTH_FORBIDDEN", f"no seeded user with role={role!r} (run make seed)", status_code=403
-        )
-    return CurrentUser(id=user.id, role=user.role)
+    if claims.get("typ") != "access":
+        raise ApiError("AUTH_INVALID_CREDENTIALS", "not an access token", status_code=401)
+
+    if await security.is_denylisted(claims["jti"]):
+        raise ApiError("AUTH_TOKEN_EXPIRED", "token has been revoked", status_code=401)
+
+    user = await db.get(User, UUID(claims["sub"]))
+    if user is None or not user.is_active:
+        raise ApiError("AUTH_INVALID_CREDENTIALS", "user not found or inactive", status_code=401)
+
+    return CurrentUser(id=user.id, role=user.role, email=user.email)
+
+
+def require_role(*roles: str) -> Callable:
+    async def _dep(user: CurrentUser = Depends(get_current_user)) -> CurrentUser:
+        if user.role not in roles:
+            raise ApiError("AUTH_FORBIDDEN", "insufficient role for this action", status_code=403)
+        return user
+
+    return _dep
+
+
+def require_self_or_role(param: str, *roles: str) -> Callable:
+    """Allow `roles` unconditionally, or a caller whose own Patient/Doctor
+    profile matches the `param` path value (patient reading/writing their own
+    record). Never distinguishes "not yours" from "doesn't exist" in the
+    response -- both are a bare 403.
+    """
+
+    async def _dep(
+        request: Request,
+        user: CurrentUser = Depends(get_current_user),
+        db: AsyncSession = Depends(get_db),
+    ) -> CurrentUser:
+        if user.role in roles:
+            return user
+
+        raw_value = request.path_params.get(param)
+        if raw_value is not None:
+            try:
+                target_id = UUID(str(raw_value))
+            except ValueError:
+                target_id = None
+
+            if target_id is not None:
+                from app.db.models.patient import Patient
+                from app.db.models.scheduling import Doctor
+
+                patient_result = await db.execute(
+                    select(Patient.user_id).where(Patient.id == target_id)
+                )
+                owner_id = patient_result.scalar_one_or_none()
+                if owner_id is None:
+                    doctor_result = await db.execute(
+                        select(Doctor.user_id).where(Doctor.id == target_id)
+                    )
+                    owner_id = doctor_result.scalar_one_or_none()
+
+                if owner_id is not None and owner_id == user.id:
+                    return user
+
+        raise ApiError("AUTH_FORBIDDEN", "not permitted", status_code=403)
+
+    return _dep
+
+
+async def require_captcha(x_captcha_token: str | None = Header(default=None)) -> None:
+    from app.core.captcha import verify_captcha_token
+
+    if not x_captcha_token:
+        raise ApiError("CAPTCHA_REQUIRED", "X-Captcha-Token header is required", status_code=400)
+    await verify_captcha_token(x_captcha_token)

@@ -1,5 +1,48 @@
 # Decisions Log
 
+## 2026-08-26 — P1.1 security core
+
+- `passlib[bcrypt]==1.7.4` + `bcrypt==4.2.1` (both already pinned in
+  `backend/requirements.txt` before this checkpoint) are incompatible:
+  passlib's bcrypt backend self-test (`detect_wrap_bug`) hashes a >72-byte
+  probe string, which bcrypt>=4.1 rejects with `ValueError` instead of the
+  silent truncation older bcrypt did, so every `CryptContext(schemes=
+  ["bcrypt"]).hash(...)` call raises. `app/core/security.py` hashes via the
+  `bcrypt` module directly (`bcrypt.hashpw`/`bcrypt.checkpw`, rounds=12,
+  password bytes truncated to 72 ourselves) instead of routing through
+  passlib, sidestepping the incompatibility entirely. **Note for Ashwin**:
+  `scripts/seed.py` still uses `passlib.context.CryptContext(schemes=
+  ["bcrypt"])` and will hit the same `ValueError` when run against this
+  environment's `bcrypt==4.2.1` — not touched here since `scripts/seed.py`
+  isn't an owned path, flagging as a DRIFT for whoever runs it next.
+- `backend/tests/conftest.py`'s `auth_headers` fixture (shared, not in my
+  owned paths, but its own comment said to "swap the header construction for
+  a real login call once `/api/v1/auth/login` is implemented") now signs a
+  real access token via `app.core.security.create_access_token` instead of
+  returning the `test-{role}-token` placeholder `get_current_user` used to
+  special-case. Kept synchronous with the same `auth_headers("doctor") ->
+  dict` signature (existing tests like `tests/ml/test_documents_api.py` call
+  it unawaited inline as a `headers=` kwarg) by signing for one of
+  `scripts/seed_users.py`'s fixed per-role UUIDs rather than doing an awaited
+  DB lookup. `get_current_user` still loads that id from the DB and 401s if
+  it isn't seeded, so behaviour for an unseeded DB is unchanged.
+- `app/core/deps.py`'s `get_current_user` now decodes and verifies a real
+  JWT (`typ=="access"`, not on the Redis denylist, backing `User` active) in
+  place of the `test-{role}-token` placeholder branch the TEMP-ADAPTER
+  comment marked for removal; `CurrentUser`'s shape (`id`, `role`) is
+  unchanged so `app/api/v1/documents.py` needed no changes.
+- **Infra caveat**: this sandbox has no Docker/Postgres/Redis, and the
+  project pins Python >=3.12 while the only Python here is 3.14. Verified
+  what's actually checkable: a throwaway venv with just this checkpoint's
+  direct dependencies (not the full `requirements.txt`, which pulls in
+  torch/paddleocr/chromadb that don't have 3.14 wheels) installs and imports
+  cleanly; `pytest --noconftest tests/security/test_tokens.py` (bypassing the
+  shared conftest, which imports the full ML-heavy router tree) passes 10/10
+  logic tests, with the 2 Redis-dependent tests additionally verified end to
+  end against `fakeredis` (rotation, reuse-revokes-family, and denylist all
+  behave correctly). Needs a real `make up && make migrate` environment on
+  Python 3.12 to run the full suite through `conftest.py`.
+
 ## 2026-08-26 — V1.5 API, worker, push
 
 - `app/core/deps.py` (`get_current_user`) didn't exist anywhere on `main` —
