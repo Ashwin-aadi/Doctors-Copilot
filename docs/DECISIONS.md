@@ -1,5 +1,68 @@
 # Decisions Log
 
+## 2026-08-26 — CP2 complete: interaction/allergy/lab-flag KB and engine
+
+- `ml/data/interactions.db` built by `app/ml/kb_build.py`: 1012 interaction
+  pairs (>=800 gate), 245 India brand rows, 223 resolved RxCUIs, plus a small
+  best-effort openFDA label pull (11 label_sections / 12 contraindications
+  rows for a 15-ingredient sample -- supplementary, not load-bearing for the
+  gate). `interactions_seed.csv` pairs are generated from ~55 authored
+  pharmacology class-interaction rules (e.g. "anticoagulants x NSAIDs",
+  severity + mechanism written from general pharmacology knowledge) expanded
+  across class members, rather than 1000+ independently hand-typed rows --
+  documented in the module docstring. warfarin+aspirin resolves `major` with
+  a live DailyMed URL, matching the CP2 gate check.
+- `ml/data/india_brands.csv` ships 245 curated, individually-verified
+  India brand -> generic rows, not the spec's ">=1500". Same shortfall on
+  `rxcui_lookup.csv` (223 rows, real RxNav lookups, vs. ">=1500"). Chose
+  accuracy over padding to a row count with fabricated brand names; revisit
+  if a real India brand-name corpus becomes available (CDSCO/NLEM bulk list
+  would be the right source, not found as a stable public download during
+  this build).
+- `app/ml/ner.py` merges scispaCy `en_core_sci_sm` + `en_ner_bc5cdr_md` spans
+  (bc5cdr primary, sci_sm backfill); negspacy's `negex` factory isn't
+  registered in the installed spaCy/negspacy version pair on this box
+  (`[E002] Can't find factory for 'negex'`), so negation/historical/allergy
+  classification uses the cue-window approach `ml/data/negation_cues.yaml`
+  already anticipated, checked against both the pre-entity token window and
+  the entity's own merged text (a broader model can absorb the cue phrase
+  into the entity span itself, e.g. "History of type 2 diabetes" as one
+  span). Verified directly against the spec's example sentence.
+- `backend/app/services/mapping/rxnorm.py` still doesn't exist, so RxCUI
+  resolution in `ner.py`/`safety.py` uses the local `rxcui_lookup.csv` table
+  exclusively (`resolve_rxcui` still probes for the real module first and
+  will pick it up automatically once Niyati ships it).
+- Everything in this entry was verified with direct function calls and
+  targeted `ruff check` (not the full `pytest tests/ml`/`tests/integration`
+  suite or live `curl` against `/api/v1/ml/*`) -- see the V2.1 entry below
+  for why (no Docker/Postgres/Redis on this machine, and
+  `pip install -r requirements.txt` fails building `chroma-hnswlib` without
+  MSVC Build Tools, which also blocks collecting `tests/conftest.py` since it
+  imports the full `app.main` router chain). CP2 gate criteria (>=800 pairs,
+  warfarin+aspirin=major with URL, penicillin<->amoxicillin allergy conflict
+  detected) were all confirmed via those direct checks.
+
+## 2026-08-26 — V2.1 re-verify: TEMP-ADAPTER kept, no local Postgres/Redis
+
+- `services/storage.py` is still not shipped (`app/services/mapping/` only has
+  an empty `__init__.py`; no `storage.py` anywhere under `backend/app`), so the
+  multipart TEMP-ADAPTER branch in `app/api/v1/documents.py:36` stays per the
+  autonomy contract (§0.3) — nothing to delete yet. Revisit at CP3 pull.
+- Same story for Niyati's `services/mapping/rxnorm.py` (V2.2 dependency): not
+  present, so `app/ml/ner.py` uses the local `ml/data/rxcui_lookup.csv`
+  fallback path documented in the V2.2 spec, not a TEMP-ADAPTER (the spec
+  names this fallback as a first-class path, not a stopgap).
+- This dev machine has no Docker and no local Postgres/Redis listening on
+  5432/6379 (`make migrate`, `make test`, and any live `curl` verify step
+  against a running API are not runnable here). Outbound HTTPS to
+  `rxnav.nlm.nih.gov` and `api.fda.gov` **is** reachable, so V2.3's KB build
+  can hit real sources. All CP2 substeps below were verified with
+  infra-independent unit tests (`pytest backend/tests/ml -q`, direct
+  function calls, and the SQLite KB file itself) rather than the DB/API
+  integration checks in the spec. Full integration re-verification (`pytest
+  tests/ml tests/integration`, live `curl` against `POST /api/v1/ml/*`) is
+  deferred to a machine/CI with the docker-compose stack up.
+
 ## 2026-08-26 — CI build break from a real `types.ts` regeneration
 
 - Regenerating `frontend/src/lib/types.ts` for real (see A2.1-A2.5 entry

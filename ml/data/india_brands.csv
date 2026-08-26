@@ -1,0 +1,246 @@
+brand,ingredient,nlem,source
+Crocin,paracetamol,1,curated
+Dolo 650,paracetamol,1,curated
+Calpol,paracetamol,1,curated
+Metacin,paracetamol,1,curated
+Pyrigesic,paracetamol,1,curated
+Glycomet,metformin,1,curated
+Gluformin,metformin,1,curated
+Glyciphage,metformin,1,curated
+Obimet,metformin,1,curated
+Augmentin,amoxicillin+clavulanate,1,curated
+Moxikind-CV,amoxicillin+clavulanate,1,curated
+Clavam,amoxicillin+clavulanate,1,curated
+Novamox,amoxicillin,1,curated
+Mox,amoxicillin,1,curated
+Amoxil,amoxicillin,1,curated
+Disprin,aspirin,1,curated
+Ecosprin,aspirin,1,curated
+Loprin,aspirin,1,curated
+Warf,warfarin,1,curated
+Sofarin,warfarin,1,curated
+Uniwarfin,warfarin,1,curated
+Humalog,insulin lispro,1,curated
+Huminsulin,insulin,1,curated
+Lantus,insulin glargine,1,curated
+Atorva,atorvastatin,1,curated
+Storvas,atorvastatin,1,curated
+Atorlip,atorvastatin,1,curated
+Amlong,amlodipine,1,curated
+Amlopres,amlodipine,1,curated
+Amlodac,amlodipine,1,curated
+Omez,omeprazole,1,curated
+Ocid,omeprazole,1,curated
+Omecip,omeprazole,1,curated
+Azithral,azithromycin,1,curated
+Azee,azithromycin,1,curated
+Zithromax,azithromycin,1,curated
+Brufen,ibuprofen,1,curated
+Combiflam,ibuprofen+paracetamol,1,curated
+Ibugesic,ibuprofen,1,curated
+Cetzine,cetirizine,1,curated
+Alerid,cetirizine,1,curated
+Okacet,cetirizine,1,curated
+Asthalin,salbutamol,1,curated
+Levolin,levosalbutamol,1,curated
+Salbair,salbutamol,1,curated
+Flagyl,metronidazole,1,curated
+Metrogyl,metronidazole,1,curated
+Aristogyl,metronidazole,1,curated
+Ciplox,ciprofloxacin,1,curated
+Cifran,ciprofloxacin,1,curated
+Ciprobid,ciprofloxacin,1,curated
+Losar,losartan,1,curated
+Repace,losartan,1,curated
+Covance,losartan,1,curated
+Eltroxin,levothyroxine,1,curated
+Thyronorm,levothyroxine,1,curated
+Thyrox,levothyroxine,1,curated
+Voveran,diclofenac,1,curated
+Diclomol,diclofenac,1,curated
+Movfree,diclofenac,0,curated
+Pantocid,pantoprazole,1,curated
+Pan,pantoprazole,1,curated
+Pantop,pantoprazole,1,curated
+Rantac,ranitidine,1,curated
+Zinetac,ranitidine,1,curated
+Aciloc,ranitidine,1,curated
+Betnesol,betamethasone,1,curated
+Wysolone,prednisolone,1,curated
+Omnacortil,prednisolone,1,curated
+Deltacortril,prednisolone,0,curated
+Amaryl,glimepiride,1,curated
+Glimestar,glimepiride,1,curated
+Glimy,glimepiride,1,curated
+Telma,telmisartan,1,curated
+Telsar,telmisartan,1,curated
+Cresar,telmisartan,1,curated
+Concor,bisoprolol,1,curated
+Bisoheart,bisoprolol,1,curated
+Betaloc,metoprolol,1,curated
+Metolar,metoprolol,1,curated
+Clopilet,clopidogrel,1,curated
+Deplatt,clopidogrel,1,curated
+Ecosprin AV,aspirin+atorvastatin,0,curated
+Norvasc,amlodipine,0,curated
+Ativan,lorazepam,1,curated
+Alprax,alprazolam,1,curated
+Restyl,alprazolam,1,curated
+Calmpose,diazepam,1,curated
+Valium,diazepam,0,curated
+Zoloft,sertraline,0,curated
+Nexito,escitalopram,1,curated
+Feliz,escitalopram,1,curated
+Prothiaden,dothiepin,0,curated
+Fludac,fluoxetine,1,curated
+Depsonil,imipramine,0,curated
+Nervijen,pregabalin,0,curated
+Pregeb,pregabalin,1,curated
+Gabapin,gabapentin,1,curated
+Dilantin,phenytoin,1,curated
+Eptoin,phenytoin,1,curated
+Encorate,sodium valproate,1,curated
+Valparin,sodium valproate,1,curated
+Zeptol,carbamazepine,1,curated
+Tegrital,carbamazepine,1,curated
+Levipil,levetiracetam,1,curated
+Torrent Levipil,levetiracetam,0,curated
+Sporidex,cephalexin,1,curated
+Cepodem,cefpodoxime,1,curated
+Taxim-O,cefixime,1,curated
+Zifi,cefixime,1,curated
+Monocef,ceftriaxone,1,curated
+Cefaxone,ceftriaxone,1,curated
+Roscilox,amoxicillin,0,curated
+Doxy 1,doxycycline,1,curated
+Doxt,doxycycline,1,curated
+Cifran OZ,ciprofloxacin+ornidazole,0,curated
+Norflox,norfloxacin,1,curated
+Ofloxin,ofloxacin,1,curated
+Zanocin,ofloxacin,1,curated
+Levoflox,levofloxacin,1,curated
+Glevo,levofloxacin,1,curated
+Erythrocin,erythromycin,1,curated
+Cravit,levofloxacin,0,curated
+Klacid,clarithromycin,0,curated
+Claribid,clarithromycin,1,curated
+Rifampin,rifampicin,1,curated
+Rifadin,rifampicin,0,curated
+Isoniazid INH,isoniazid,1,curated
+R-Cinex,rifampicin+isoniazid,0,curated
+Akt-4,rifampicin+isoniazid+pyrazinamide+ethambutol,1,curated
+Combutol,ethambutol,1,curated
+Ethambutol Micro,ethambutol,0,curated
+Pyzina,pyrazinamide,1,curated
+Chloroquine Resochin,chloroquine,1,curated
+Lariago,chloroquine,1,curated
+Falcigo,artesunate,1,curated
+Larither,artemether+lumefantrine,1,curated
+Coartem,artemether+lumefantrine,0,curated
+Quinine Quinlon,quinine,0,curated
+Primaquine,primaquine,1,curated
+Doxycycline Malaria,doxycycline,0,curated
+Ivermectol,ivermectin,1,curated
+Ivecop,ivermectin,0,curated
+Albendazole Zentel,albendazole,1,curated
+Bandy,albendazole,0,curated
+Wormin,albendazole,0,curated
+Mebex,mebendazole,0,curated
+Pantogar,pantoprazole,0,curated
+Ranidom,ranitidine,0,curated
+Ondem,ondansetron,1,curated
+Emeset,ondansetron,1,curated
+Vomikind,domperidone,1,curated
+Domstal,domperidone,1,curated
+Perinorm,metoclopramide,1,curated
+Digene,antacid (magnesium+aluminium hydroxide),0,curated
+Gelusil,antacid (magnesium+aluminium hydroxide),0,curated
+Eno,sodium bicarbonate,0,curated
+Cyclopam,dicyclomine,0,curated
+Meftal Spas,dicyclomine+mefenamic acid,0,curated
+Meftal,mefenamic acid,1,curated
+Sumo,nimesulide+paracetamol,0,curated
+Nise,nimesulide,0,curated
+Volini,diclofenac,0,curated
+Zerodol,aceclofenac,0,curated
+Hifenac,aceclofenac,0,curated
+Enzoflam,aceclofenac+paracetamol+serratiopeptidase,0,curated
+Neurobion,vitamin B complex,0,curated
+Becosules,vitamin B complex,1,curated
+Zincovit,multivitamin+zinc,0,curated
+Shelcal,calcium carbonate+vitamin D3,1,curated
+Calcirol,cholecalciferol,1,curated
+Uprise-D3,cholecalciferol,0,curated
+Folvite,folic acid,1,curated
+Autrin,iron polymaltose,0,curated
+Feronia XT,ferrous ascorbate+folic acid,0,curated
+Fefol,ferrous fumarate+folic acid,1,curated
+Orofer XT,ferric ammonium citrate+folic acid,0,curated
+Livogen,ferrous fumarate+folic acid,0,curated
+Evion,vitamin E,0,curated
+Susten,progesterone,0,curated
+Duphaston,dydrogesterone,0,curated
+Krimson 35,ethinylestradiol+cyproterone,0,curated
+Mala D,ethinylestradiol+levonorgestrel,1,curated
+I-Pill,levonorgestrel,1,curated
+Unwanted 72,levonorgestrel,0,curated
+Susten Vaginal,progesterone,0,curated
+Metpure XL,metoprolol succinate,0,curated
+Nebicard,nebivolol,0,curated
+Cardace,ramipril,0,curated
+Ramistar,ramipril,0,curated
+Envas,enalapril,1,curated
+Enam,enalapril,0,curated
+Prinivil,lisinopril,0,curated
+Lisoril,lisinopril,0,curated
+Lasix,furosemide,1,curated
+Frusenex,furosemide,0,curated
+Diamox,acetazolamide,0,curated
+Aldactone,spironolactone,1,curated
+Digoxin Lanoxin,digoxin,1,curated
+Cardarone,amiodarone,0,curated
+Amikind,amiodarone,0,curated
+Ecospirin,aspirin,0,curated
+Clexane,enoxaparin,1,curated
+Heparin,heparin,1,curated
+Fragmin,dalteparin,0,curated
+Vitcofol,methylcobalamin,0,curated
+Neurokind,methylcobalamin,0,curated
+Methycobal,methylcobalamin,0,curated
+Salazopyrin,sulfasalazine,0,curated
+Hydroxychloroquine HCQS,hydroxychloroquine,1,curated
+Ledercort,triamcinolone,0,curated
+Kenacort,triamcinolone,0,curated
+Betnovate,betamethasone,0,curated
+Candid,clotrimazole,1,curated
+Canesten,clotrimazole,0,curated
+Fluka,fluconazole,1,curated
+Forcan,fluconazole,1,curated
+Zocon,fluconazole,0,curated
+Sporanox,itraconazole,0,curated
+Candiforce,itraconazole,0,curated
+Terbicip,terbinafine,0,curated
+Ketoconazole Nizral,ketoconazole,0,curated
+Acyclovir Zovirax,acyclovir,1,curated
+Herpex,acyclovir,0,curated
+Valtrex,valacyclovir,0,curated
+Oseltamivir Fluvir,oseltamivir,1,curated
+Tamiflu,oseltamivir,0,curated
+Cough syrup Ascoril,bromhexine+terbutaline+guaifenesin,0,curated
+Benadryl,diphenhydramine,0,curated
+Corex,chlorpheniramine+codeine,0,curated
+Grilinctus,dextromethorphan,0,curated
+Alex,dextromethorphan,0,curated
+Vicks Action 500,paracetamol+phenylephrine+caffeine,0,curated
+D Cold Total,paracetamol+phenylephrine+chlorpheniramine,0,curated
+Sinarest,paracetamol+phenylephrine+chlorpheniramine,0,curated
+Otrivin,xylometazoline,0,curated
+Nasivion,oxymetazoline,0,curated
+Budecort,budesonide,1,curated
+Foracort,formoterol+budesonide,0,curated
+Duolin,ipratropium+salbutamol,0,curated
+Deriphyllin,etophylline+theophylline,0,curated
+Theo-Asthalin,theophylline+salbutamol,0,curated
+Montair,montelukast,0,curated
+Montek,montelukast,0,curated
+Ventorlin,salbutamol,0,curated
