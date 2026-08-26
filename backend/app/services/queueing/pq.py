@@ -105,18 +105,24 @@ async def _facility_type(session: AsyncSession, clinic_id: UUID) -> str:
     return facility_type
 
 
-def _effective_severity(entry: QueueEntry, waited_minutes: float, priority_group: str | None) -> int:
+def _effective_severity(entry: QueueEntry, waited_minutes: float) -> int:
+    """Aging-only severity adjustment. The statutory priority-group bonus is
+    *not* folded in here -- at tier 3 (one step above RED) any numeric bonus
+    would either be a no-op after the RED-floor clamp below or, without the
+    clamp, illegally promote a non-emergency patient into RED. It is instead
+    a same-tier tie-break in `_sort_key`, which is what "a bounded bonus,
+    never above RED" actually cashes out to for a tier this close to the
+    boundary.
+    """
     pack = _queue_pack()
     aging_minutes = pack.get("aging_minutes", 45)
     aging_max_bonus = pack.get("aging_max_bonus", 2)
     emergency_max = pack.get("emergency_severity_max", 2)
 
     aging_bonus = min(aging_max_bonus, int(waited_minutes // aging_minutes)) if waited_minutes > 0 else 0
-    statutory_bonus = 1 if priority_group in _PRIORITY_GROUP_IDS else 0
-
-    effective = entry.severity_esi - aging_bonus - statutory_bonus
+    effective = entry.severity_esi - aging_bonus
     if not entry.emergency:
-        # statutory/aging bonuses may never push a non-emergency patient into RED
+        # aging may never push a non-emergency patient into RED
         effective = max(effective, emergency_max + 1)
     return max(1, effective)
 
@@ -151,10 +157,17 @@ def _reasons(
     return reasons_en, reasons_hi
 
 
-def _sort_key(entry: QueueEntry, waited_minutes: float, effective_severity: int, scheduled_time: dt.datetime | None):
+def _sort_key(
+    entry: QueueEntry,
+    waited_minutes: float,
+    effective_severity: int,
+    priority_group: str | None,
+    scheduled_time: dt.datetime | None,
+):
     return (
         0 if entry.emergency else 1,
         effective_severity,
+        0 if priority_group in _PRIORITY_GROUP_IDS else 1,
         -waited_minutes,
         scheduled_time or dt.datetime.max.replace(tzinfo=dt.UTC),
         entry.enqueued_at,
@@ -218,9 +231,9 @@ async def snapshot(clinic_id: UUID, *, now: dt.datetime) -> list[QueueEntryOut]:
     for entry in entries:
         waited_minutes = max(0.0, (now - entry.enqueued_at).total_seconds() / 60)
         _token, priority_group = await _read_meta(entry.id)
-        effective_severity = _effective_severity(entry, waited_minutes, priority_group)
+        effective_severity = _effective_severity(entry, waited_minutes)
         scheduled_time = scheduled_by_appt.get(entry.appointment_id) if entry.appointment_id else None
-        key = _sort_key(entry, waited_minutes, effective_severity, scheduled_time)
+        key = _sort_key(entry, waited_minutes, effective_severity, priority_group, scheduled_time)
         scored.append((key, entry, waited_minutes, effective_severity, priority_group, scheduled_time))
 
     scored.sort(key=lambda t: t[0])
@@ -268,7 +281,7 @@ async def _entry_out(entry_id: UUID, *, now: dt.datetime) -> QueueEntryOut:
 
     waited_minutes = max(0.0, (now - entry.enqueued_at).total_seconds() / 60)
     token, priority_group = await _read_meta(entry_id)
-    effective_severity = _effective_severity(entry, waited_minutes, priority_group)
+    effective_severity = _effective_severity(entry, waited_minutes)
     reasons_en, reasons_hi = _reasons(entry, waited_minutes, effective_severity, priority_group)
 
     position = 1

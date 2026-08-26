@@ -40,13 +40,17 @@ to N3.3. Implemented that simple formula for `distance_score`, and used
 hard outer cutoff for now; N3.3 replaces both with the urban/rural band
 tables.
 
-**`POST /queue/{clinic_id}/next?doctor_id=...`.** The frozen `pq.pop_next`
-signature is `pop_next(clinic_id, doctor_id, *, now)`, but the original API
-stub was `POST /queue/{queue_entry_id}/next` (only one path segment). Since
-route shapes in `app/api/v1/queue.py` are an owned path (only the `pq.py`
-function signatures are frozen), renamed the path param to `clinic_id` and
-added `doctor_id` as a required query param so the route can actually supply
-both frozen-interface arguments.
+**`POST /queue/{queue_entry_id}/next` derives `clinic_id`/`doctor_id` from
+the entry, it doesn't take them as params.** `docs/API_CONTRACT.md` and
+`tests/integration/test_contract.py::EXPECTED_PATHS` freeze the literal path
+`/api/v1/queue/{queue_entry_id}/next` (single segment, that exact param
+name) -- an initial attempt to rename it to `{clinic_id}/next` + a
+`doctor_id` query param broke that contract test. The frozen `pq.pop_next`
+signature still needs `(clinic_id, doctor_id, *, now)`, so the route instead
+looks up `queue_entry_id`'s own `clinic_id`/`doctor_id` (the entry a doctor
+is finishing consult on, marking it `done` if it was `in_consult`) and calls
+`pop_next` with those -- "next" means "next patient for whoever is closing
+out this entry."
 
 **Appointment + QueueEntry creation is not a single DB transaction.** The
 frozen `enqueue(entry, *, now)` opens its own session/advisory-lock
@@ -56,6 +60,55 @@ atomically" (N1.5) is not literally one transaction yet -- a crash between
 the two calls could leave a booked appointment with no queue entry. Flagging
 this rather than claiming atomicity; true atomicity needs either merging the
 two sessions or a saga/outbox pattern, deferred to CP4 hardening.
+
+## 2026-08-26 — CI pytest fixes: statutory tie-break, stale contract stub, queue-table test isolation
+
+CI's first `pytest -q` run against real Postgres/Redis surfaced four
+failures the local sandbox (no DB/Redis) couldn't catch:
+
+**Statutory bonus was folded into `effective_severity` and got cancelled by
+the RED-floor clamp.** `_effective_severity` computed
+`severity_esi - aging_bonus - statutory_bonus` then clamped non-emergency
+entries to `>= emergency_severity_max + 1` (3) so a bonus could never read
+as RED. At tier 3 that clamp doesn't just cap the bonus, it erases it
+outright: `3 - 1 statutory = 2`, clamped straight back to `3` -- identical
+to a plain tier-3 patient with no bonus at all, so
+`test_statutory_priority_outranks_plain_same_tier_but_never_beats_red` tied
+and fell through to comparing random UUIDs. Fixed by dropping the statutory
+bonus out of `effective_severity` entirely (aging-only there, same clamp)
+and giving it its own tuple slot in `_sort_key` (`0 if priority_group else
+1`, ahead of `-waited_minutes`) -- a same-tier tie-break that moves a
+qualifying patient ahead of a plain one without ever changing the reported
+`severity_esi`/colour. This is what "a bounded bonus, never above RED"
+has to mean for a tier sitting exactly one step above the RED boundary,
+where there's no numeric room for a real severity reduction.
+
+**`POST /queue/{queue_entry_id}/next` route shape** -- see the entry above,
+corrected in the same pass; the original `{clinic_id}/next` + query-param
+design broke `tests/integration/test_contract.py`.
+
+**Stale NOT_IMPLEMENTED contract test.** `tests/integration/test_contract.py`
+(not an owned path -- it's the shared API-contract regression test, not any
+one teammate's business logic) had `test_unimplemented_stub_returns_error_envelope`
+hard-coded against `GET /api/v1/doctors`, asserting a 501 envelope. That
+was correct scaffolding-phase behaviour before N1.5 implemented the route;
+now it legitimately 401s (no auth header) rather than 501. Implementing an
+owned route can't be reverted just because a shared placeholder test still
+expects it to be a stub, so retargeted that one assertion at
+`/api/v1/appointments/simulate` -- the one remaining niyati-owned route
+that's still genuinely `NOT_IMPLEMENTED` (deferred to N3.3) -- rather than
+leaving my own implemented endpoint broken or rolling it back. The contract
+being tested (unimplemented routes return a 501 envelope) is unchanged;
+only the example route pointing at it moved.
+
+**`queue_entries` rows leaking across test modules.** `test_pq.py` and
+`test_scheduling_api.py` each wipe `queue_entries` *before* every test but
+not after, so whichever ran last left committed rows behind (every route/
+`pq.py` call opens and commits its own `SessionLocal()`, there's no
+per-test rollback). Alphabetically `test_pq.py` runs before `test_repo.py`,
+so its last test's leftover `waiting` entry at `CLINIC_PHC` made
+`test_queue_load_zero_when_no_queue_entries` see `1` instead of `0`. Both
+fixtures now wipe `queue_entries` before *and* after every test.
 
 ## 2026-08-26 — N1.2 slot engine: sync DB access inside a frozen sync signature
 

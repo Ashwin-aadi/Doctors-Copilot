@@ -1,8 +1,11 @@
 """Priority-queue tests. Needs a reachable Postgres + Redis (`make up`) --
-this module's own `_clean_queue` fixture wipes `queue_entries` before every
-test since, unlike `test_repo.py`/`test_optimizer.py`, these tests write
-rows that would otherwise leak across tests sharing the same fixed `NOW`
-and pollute each other's same-day snapshots.
+this module's own `_clean_queue` fixture wipes `queue_entries` before *and*
+after every test since, unlike `test_repo.py`/`test_optimizer.py`, these
+tests write rows. Before-only wiping isn't enough: every `pq.py` call opens
+and commits its own session (no per-test rollback), so whichever test in
+this module runs last would otherwise leave committed rows behind for
+`test_repo.py`'s `queue_load` assertions (alphabetically after this file)
+to trip over.
 """
 
 from __future__ import annotations
@@ -23,10 +26,15 @@ NOW = dt.datetime(2026, 1, 12, 10, tzinfo=dt.UTC)  # 15:30 IST, Monday
 
 
 @pytest_asyncio.fixture(autouse=True)
-async def _clean_queue() -> None:
-    async with SessionLocal() as session:
-        await session.execute(delete(QueueEntry))
-        await session.commit()
+async def _clean_queue():
+    async def _wipe() -> None:
+        async with SessionLocal() as session:
+            await session.execute(delete(QueueEntry))
+            await session.commit()
+
+    await _wipe()
+    yield
+    await _wipe()
 
 
 def _entry(

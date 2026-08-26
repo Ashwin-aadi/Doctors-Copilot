@@ -21,10 +21,15 @@ _TOKEN_RE = re.compile(r"^[A-Z]-\d{3}$")
 
 
 @pytest_asyncio.fixture(autouse=True)
-async def _clean_queue() -> None:
-    async with SessionLocal() as session:
-        await session.execute(delete(QueueEntry))
-        await session.commit()
+async def _clean_queue():
+    async def _wipe() -> None:
+        async with SessionLocal() as session:
+            await session.execute(delete(QueueEntry))
+            await session.commit()
+
+    await _wipe()
+    yield
+    await _wipe()
 
 
 @pytest.mark.asyncio

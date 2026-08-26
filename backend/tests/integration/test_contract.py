@@ -76,7 +76,7 @@ async def test_health_endpoint_all_ok(client):
 
 
 async def test_unimplemented_stub_returns_error_envelope(client):
-    resp = await client.get("/api/v1/doctors")
+    resp = await client.post("/api/v1/appointments/simulate")
     assert resp.status_code == 501
     body = resp.json()
     assert body["error"]["code"] == "NOT_IMPLEMENTED"

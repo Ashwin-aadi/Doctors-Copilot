@@ -72,11 +72,26 @@ async def walk_in(
     return await enqueue(entry, now=now)
 
 
-@router.post("/{clinic_id}/next", response_model=QueueEntryOut | None)
+@router.post("/{queue_entry_id}/next", response_model=QueueEntryOut | None)
 async def next_in_queue(
-    clinic_id: UUID, doctor_id: UUID, user: CurrentUser = Depends(require_role("doctor", "staff"))
+    queue_entry_id: UUID, user: CurrentUser = Depends(require_role("doctor", "staff"))
 ) -> QueueEntryOut | None:
+    """Doctor/staff finishing the consult for `queue_entry_id` pulls the next
+    waiting patient for the same doctor at the same clinic. The frozen
+    `pq.pop_next(clinic_id, doctor_id, *, now)` signature needs both of
+    those; deriving them from the entry being closed out (rather than
+    accepting them as separate path/query params) is what lets this route
+    match the contracted `/api/v1/queue/{queue_entry_id}/next` path.
+    """
     now = datetime.now(UTC)
+    async with SessionLocal() as session:
+        entry = await session.get(QueueEntry, queue_entry_id)
+        if entry is None:
+            raise ApiError("NOT_FOUND", "queue entry not found", status_code=404)
+        clinic_id, doctor_id = entry.clinic_id, entry.doctor_id
+        if entry.status == "in_consult":
+            entry.status = "done"
+            await session.commit()
     return await pop_next(clinic_id, doctor_id, now=now)
 
 
