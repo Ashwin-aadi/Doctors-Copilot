@@ -1,4 +1,4 @@
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from uuid import UUID, uuid4
 
 from fastapi import APIRouter, Depends
@@ -48,7 +48,7 @@ async def _least_loaded_doctor(clinic_id: UUID) -> UUID:
 
 @router.get("/{clinic_id}", response_model=list[QueueEntryOut])
 async def get_queue(clinic_id: UUID, user: CurrentUser = Depends(get_current_user)) -> list[QueueEntryOut]:
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     return await snapshot(clinic_id, now=now)
 
 
@@ -56,7 +56,7 @@ async def get_queue(clinic_id: UUID, user: CurrentUser = Depends(get_current_use
 async def walk_in(
     body: WalkInCreate, user: CurrentUser = Depends(require_role("staff", "doctor"))
 ) -> QueueEntryOut:
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     doctor_id = body.doctor_id or await _least_loaded_doctor(body.clinic_id)
     entry = QueueEntry(
         id=uuid4(),
@@ -76,7 +76,7 @@ async def walk_in(
 async def next_in_queue(
     clinic_id: UUID, doctor_id: UUID, user: CurrentUser = Depends(require_role("doctor", "staff"))
 ) -> QueueEntryOut | None:
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     return await pop_next(clinic_id, doctor_id, now=now)
 
 
@@ -84,8 +84,8 @@ async def next_in_queue(
 async def escalate_queue(
     queue_entry_id: UUID, body: EscalateBody, user: CurrentUser = Depends(require_role("doctor", "staff"))
 ) -> QueueEntryOut:
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     try:
         return await escalate(queue_entry_id, body.reason, now=now)
     except LookupError as exc:
-        raise ApiError("NOT_FOUND", str(exc), status_code=404)
+        raise ApiError("NOT_FOUND", str(exc), status_code=404) from exc

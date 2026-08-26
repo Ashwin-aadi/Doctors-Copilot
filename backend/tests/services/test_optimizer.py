@@ -5,7 +5,7 @@ import pytest
 from app.services.scheduling.optimizer import rank_doctors
 from tests.services.conftest import CLINIC_DH
 
-NOW = dt.datetime(2026, 1, 12, 9, tzinfo=dt.timezone.utc)  # 14:30 IST, Monday
+NOW = dt.datetime(2026, 1, 12, 9, tzinfo=dt.UTC)  # 14:30 IST, Monday
 
 
 @pytest.mark.asyncio

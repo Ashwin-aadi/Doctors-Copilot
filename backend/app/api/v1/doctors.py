@@ -1,4 +1,4 @@
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from fastapi import APIRouter, Depends
 
@@ -20,10 +20,10 @@ async def list_doctors(
     scheme: str | None = None,
     user: CurrentUser = Depends(get_current_user),
 ) -> list[DoctorRankedOut]:
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     date_from = date or now
     if date_from.tzinfo is None:
-        date_from = date_from.replace(tzinfo=timezone.utc)
+        date_from = date_from.replace(tzinfo=UTC)
     return await rank_doctors(
         specialty=specialty,
         lat=lat,

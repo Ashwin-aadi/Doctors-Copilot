@@ -19,7 +19,7 @@ from app.db.session import SessionLocal
 from app.services.queueing.pq import enqueue, escalate, pop_next, snapshot
 from tests.services.conftest import CLINIC_PHC, doctor_id, patient_id
 
-NOW = dt.datetime(2026, 1, 12, 10, tzinfo=dt.timezone.utc)  # 15:30 IST, Monday
+NOW = dt.datetime(2026, 1, 12, 10, tzinfo=dt.UTC)  # 15:30 IST, Monday
 
 
 @pytest_asyncio.fixture(autouse=True)

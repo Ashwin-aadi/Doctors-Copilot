@@ -25,7 +25,7 @@ from app.db.models.scheduling import Availability, Clinic, Doctor
 from app.db.models.user import User
 from app.db.session import SessionLocal
 
-NOW = dt.datetime(2026, 1, 12, 9, 0, tzinfo=dt.timezone.utc)  # 14:30 IST, Monday
+NOW = dt.datetime(2026, 1, 12, 9, 0, tzinfo=dt.UTC)  # 14:30 IST, Monday
 OPD_WEEKDAY = 0  # Monday, per date.weekday()
 
 CLINIC_PHC = UUID("00000000-0000-0000-0000-000000000001")

@@ -27,10 +27,11 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.redis_client import redis_client
 from app.db.models.patient import Patient
-from app.db.models.scheduling import Appointment, QueueEntry
+from app.db.models.scheduling import Appointment, Clinic, QueueEntry
 from app.db.session import SessionLocal
 from app.schemas.triage import colour_for_esi
 from app.services.queueing.schemas import QueueEntryOut
+from app.services.scheduling.repo import _CLINIC_LOCALE_OVERRIDES, _clinic_locale_default
 
 IST = dt.timezone(dt.timedelta(hours=5, minutes=30))
 
@@ -95,9 +96,6 @@ def _facility_prefix(facility_type: str) -> str:
 
 
 async def _facility_type(session: AsyncSession, clinic_id: UUID) -> str:
-    from app.services.scheduling.repo import _CLINIC_LOCALE_OVERRIDES, _clinic_locale_default
-    from app.db.models.scheduling import Clinic
-
     clinic = await session.get(Clinic, clinic_id)
     if clinic is None:
         return "phc"
@@ -158,7 +156,7 @@ def _sort_key(entry: QueueEntry, waited_minutes: float, effective_severity: int,
         0 if entry.emergency else 1,
         effective_severity,
         -waited_minutes,
-        scheduled_time or dt.datetime.max.replace(tzinfo=dt.timezone.utc),
+        scheduled_time or dt.datetime.max.replace(tzinfo=dt.UTC),
         entry.enqueued_at,
         str(entry.id),
     )
@@ -185,7 +183,7 @@ async def enqueue(entry: QueueEntry, *, now: dt.datetime) -> QueueEntryOut:
 
 async def snapshot(clinic_id: UUID, *, now: dt.datetime) -> list[QueueEntryOut]:
     service_date = _service_date(now)
-    day_start = dt.datetime.combine(service_date, dt.time.min, tzinfo=IST).astimezone(dt.timezone.utc)
+    day_start = dt.datetime.combine(service_date, dt.time.min, tzinfo=IST).astimezone(dt.UTC)
     day_end = day_start + dt.timedelta(days=1)
 
     async with SessionLocal() as session:
@@ -265,10 +263,6 @@ async def _entry_out(entry_id: UUID, *, now: dt.datetime) -> QueueEntryOut:
         entry = await session.get(QueueEntry, entry_id)
         if entry is None:
             raise LookupError(f"queue entry {entry_id} not found")
-        scheduled_time = None
-        if entry.appointment_id is not None:
-            appt = await session.get(Appointment, entry.appointment_id)
-            scheduled_time = appt.slot_start if appt else None
         patient = await session.get(Patient, entry.patient_id)
         patient_name = patient.name if patient else ""
 

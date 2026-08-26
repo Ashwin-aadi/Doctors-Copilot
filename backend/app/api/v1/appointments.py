@@ -1,10 +1,10 @@
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from uuid import UUID, uuid4
 
 from fastapi import APIRouter, Depends
 from pydantic import BaseModel
-from sqlalchemy.exc import IntegrityError
 from sqlalchemy import select
+from sqlalchemy.exc import IntegrityError
 
 from app.core.deps import CurrentUser, get_current_user, require_captcha
 from app.core.errors import ApiError, not_implemented
@@ -68,10 +68,10 @@ async def create_appointment(
     user: CurrentUser = Depends(get_current_user),
     _captcha: None = Depends(require_captcha),
 ) -> dict:
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     date_from = body.preferred_from or now
     if date_from.tzinfo is None:
-        date_from = date_from.replace(tzinfo=timezone.utc)
+        date_from = date_from.replace(tzinfo=UTC)
 
     ranked = await rank_doctors(
         specialty=body.specialty,
@@ -116,9 +116,9 @@ async def create_appointment(
         session.add(appt)
         try:
             await session.commit()
-        except IntegrityError:
+        except IntegrityError as exc:
             await session.rollback()
-            raise ApiError("CONFLICT", "slot already booked", status_code=409)
+            raise ApiError("CONFLICT", "slot already booked", status_code=409) from exc
 
     queue_entry = QueueEntry(
         id=uuid4(),

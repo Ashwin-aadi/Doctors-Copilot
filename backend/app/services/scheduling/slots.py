@@ -138,7 +138,7 @@ def free_slots(
             for s_ist, e_ist in _generate_day_slots(own_today, d):
                 if any(_overlaps(s_ist, e_ist, bs, be) for bs, be in busy):
                     continue
-                s_utc, e_utc = s_ist.astimezone(dt.timezone.utc), e_ist.astimezone(dt.timezone.utc)
+                s_utc, e_utc = s_ist.astimezone(dt.UTC), e_ist.astimezone(dt.UTC)
                 if any(_overlaps(s_utc, e_utc, bs, be) for bs, be in booked):
                     continue
                 result.append((s_utc, e_utc))
