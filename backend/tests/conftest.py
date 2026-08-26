@@ -20,6 +20,7 @@ import pytest_asyncio
 from httpx import ASGITransport, AsyncClient
 
 import app.core.redis_client as _redis_module
+import app.kg.client as _kg_client_module
 from app.core.security import create_access_token
 from app.db.session import SessionLocal, engine
 from app.main import app
@@ -47,6 +48,13 @@ async def _dispose_engine_after_test() -> AsyncIterator[None]:
     if _redis_module._client is not None:
         await _redis_module._client.aclose()
         _redis_module._client = None
+    # Same event-loop-per-test hazard as engine/redis above: neo4j.AsyncDriver
+    # is cached via @lru_cache in app.kg.client, so a driver opened by one
+    # test's event loop breaks every later test unless it's closed and
+    # dropped here before that loop closes.
+    if _kg_client_module._driver.cache_info().currsize:
+        await _kg_client_module.close_driver()
+    _kg_client_module._driver.cache_clear()
 
 
 @pytest_asyncio.fixture

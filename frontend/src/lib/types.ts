@@ -64,8 +64,8 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Refresh */
-        post: operations["refresh_api_v1_auth_refresh_post"];
+        /** Refresh Endpoint */
+        post: operations["refresh_endpoint_api_v1_auth_refresh_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -176,6 +176,23 @@ export interface paths {
         patch: operations["update_patient_api_v1_patients__patient_id__patch"];
         trace?: never;
     };
+    "/api/v1/patients/{patient_id}/consent/notice": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Consent Notice */
+        get: operations["get_consent_notice_api_v1_patients__patient_id__consent_notice_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/patients/{patient_id}/consent": {
         parameters: {
             query?: never;
@@ -186,8 +203,14 @@ export interface paths {
         /** Get Consent */
         get: operations["get_consent_api_v1_patients__patient_id__consent_get"];
         put?: never;
-        post?: never;
-        delete?: never;
+        /** Post Consent */
+        post: operations["post_consent_api_v1_patients__patient_id__consent_post"];
+        /**
+         * Delete Consent
+         * @description Records withdrawal. Never a hard delete -- DPDP requires both the
+         *     grant and the withdrawal to remain auditable.
+         */
+        delete: operations["delete_consent_api_v1_patients__patient_id__consent_delete"];
         options?: never;
         head?: never;
         patch?: never;
@@ -442,8 +465,8 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Build Brief */
-        post: operations["build_brief_api_v1_copilot_brief_post"];
+        /** Build Brief Route */
+        post: operations["build_brief_route_api_v1_copilot_brief_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -672,23 +695,6 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/v1/appointments/{appointment_id}": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        /** Update Appointment */
-        patch: operations["update_appointment_api_v1_appointments__appointment_id__patch"];
-        trace?: never;
-    };
     "/api/v1/appointments/simulate": {
         parameters: {
             query?: never;
@@ -704,6 +710,23 @@ export interface paths {
         options?: never;
         head?: never;
         patch?: never;
+        trace?: never;
+    };
+    "/api/v1/appointments/{appointment_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** Update Appointment */
+        patch: operations["update_appointment_api_v1_appointments__appointment_id__patch"];
         trace?: never;
     };
     "/api/v1/queue/{clinic_id}": {
@@ -723,6 +746,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/queue/walk-in": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Walk In */
+        post: operations["walk_in_api_v1_queue_walk_in_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/queue/{queue_entry_id}/next": {
         parameters: {
             query?: never;
@@ -732,7 +772,15 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Next In Queue */
+        /**
+         * Next In Queue
+         * @description Doctor/staff finishing the consult for `queue_entry_id` pulls the next
+         *     waiting patient for the same doctor at the same clinic. The frozen
+         *     `pq.pop_next(clinic_id, doctor_id, *, now)` signature needs both of
+         *     those; deriving them from the entry being closed out (rather than
+         *     accepting them as separate path/query params) is what lets this route
+         *     match the contracted `/api/v1/queue/{queue_entry_id}/next` path.
+         */
         post: operations["next_in_queue_api_v1_queue__queue_entry_id__next_post"];
         delete?: never;
         options?: never;
@@ -825,6 +873,42 @@ export interface components {
             /** Source */
             source: string;
         };
+        /** AppointmentCreate */
+        AppointmentCreate: {
+            /**
+             * Patient Id
+             * Format: uuid
+             */
+            patient_id: string;
+            /** Specialty */
+            specialty: string;
+            /** Lat */
+            lat?: number | null;
+            /** Lng */
+            lng?: number | null;
+            /** Preferred From */
+            preferred_from?: string | null;
+            /** Doctor Id */
+            doctor_id?: string | null;
+            /** Language */
+            language?: string | null;
+            /** Scheme */
+            scheme?: string | null;
+            /**
+             * Severity Esi
+             * @default 4
+             */
+            severity_esi: number;
+        };
+        /** AppointmentPatch */
+        AppointmentPatch: {
+            /** Status */
+            status?: string | null;
+            /** Slot Start */
+            slot_start?: string | null;
+            /** Slot End */
+            slot_end?: string | null;
+        };
         /** BriefIn */
         BriefIn: {
             /**
@@ -847,6 +931,87 @@ export interface components {
             snippet: string;
             /** Published */
             published?: string | null;
+        };
+        /** ConsentOut */
+        ConsentOut: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /**
+             * Patient Id
+             * Format: uuid
+             */
+            patient_id: string;
+            /** Version */
+            version: string;
+            /**
+             * Accepted At
+             * Format: date-time
+             */
+            accepted_at: string;
+            /** Ip */
+            ip?: string | null;
+            /** Purpose */
+            purpose: string[];
+            /** Data Categories */
+            data_categories: string[];
+            /** Language */
+            language?: string | null;
+            /** Expiry */
+            expiry?: string | null;
+            /** Granular Scopes */
+            granular_scopes: {
+                [key: string]: boolean;
+            };
+            /** Withdrawn At */
+            withdrawn_at?: string | null;
+        };
+        /** ConsentRequest */
+        ConsentRequest: {
+            /**
+             * Version
+             * @default 1.0
+             */
+            version: string;
+            /**
+             * Purpose
+             * @default [
+             *       "triage",
+             *       "care_coordination"
+             *     ]
+             */
+            purpose: string[];
+            /**
+             * Data Categories
+             * @default [
+             *       "demographics",
+             *       "symptoms",
+             *       "lab_reports",
+             *       "prescriptions"
+             *     ]
+             */
+            data_categories: string[];
+            /**
+             * Language
+             * @default en
+             */
+            language: string;
+            /** Expiry */
+            expiry?: string | null;
+            /**
+             * Granular Scopes
+             * @default {
+             *       "triage": false,
+             *       "copilot": false,
+             *       "share_with_doctor": false,
+             *       "research": false
+             *     }
+             */
+            granular_scopes: {
+                [key: string]: boolean;
+            };
         };
         /** Contraindication */
         Contraindication: {
@@ -879,8 +1044,8 @@ export interface components {
             /** Confidence */
             confidence: number;
         };
-        /** DoctorRanked */
-        DoctorRanked: {
+        /** DoctorRankedOut */
+        DoctorRankedOut: {
             /**
              * Doctor Id
              * Format: uuid
@@ -922,6 +1087,11 @@ export interface components {
             score: number;
             /** Reasons */
             reasons: string[];
+            /**
+             * Reasons Hi
+             * @default []
+             */
+            reasons_hi: string[];
         };
         /** DocumentOut */
         DocumentOut: {
@@ -958,6 +1128,11 @@ export interface components {
             labs: components["schemas"]["LabResultOut"][];
             /** Error */
             error?: string | null;
+        };
+        /** EscalateBody */
+        EscalateBody: {
+            /** Reason */
+            reason: string;
         };
         /** HTTPValidationError */
         HTTPValidationError: {
@@ -1030,14 +1205,15 @@ export interface components {
             /** Bbox */
             bbox?: number[] | null;
         };
-        /** LoginIn */
-        LoginIn: {
-            /** Email */
+        /** LoginRequest */
+        LoginRequest: {
+            /**
+             * Email
+             * Format: email
+             */
             email: string;
             /** Password */
             password: string;
-            /** Captcha Token */
-            captcha_token: string;
         };
         /** MedCandidate */
         MedCandidate: {
@@ -1160,64 +1336,28 @@ export interface components {
             /** Consent At */
             consent_at?: string | null;
         };
-        /** QueueEntryOut */
-        QueueEntryOut: {
+        /** RegisterRequest */
+        RegisterRequest: {
             /**
-             * Id
-             * Format: uuid
+             * Email
+             * Format: email
              */
-            id: string;
-            /**
-             * Patient Id
-             * Format: uuid
-             */
-            patient_id: string;
-            /** Patient Name */
-            patient_name: string;
-            /**
-             * Doctor Id
-             * Format: uuid
-             */
-            doctor_id: string;
-            /**
-             * Clinic Id
-             * Format: uuid
-             */
-            clinic_id: string;
-            /** Severity Esi */
-            severity_esi: number;
-            /**
-             * Triage Colour
-             * @description MoHFW casualty colour code derived from severity_esi
-             * @enum {string}
-             */
-            triage_colour: "red" | "yellow" | "green";
-            /** Emergency */
-            emergency: boolean;
-            /** Position */
-            position: number;
-            /** Waited Minutes */
-            waited_minutes: number;
-            /** Estimated Wait Minutes */
-            estimated_wait_minutes: number;
-            /**
-             * Status
-             * @enum {string}
-             */
-            status: "waiting" | "in_consult" | "done" | "cancelled";
-            /** Reasons */
-            reasons: string[];
-        };
-        /** RegisterIn */
-        RegisterIn: {
-            /** Email */
             email: string;
+            /** Phone */
+            phone: string;
             /** Password */
             password: string;
-            /** Role */
+            /** Name */
+            name: string;
+            /**
+             * Role
+             * @default patient
+             */
             role: string;
-            /** Captcha Token */
-            captcha_token: string;
+            /** Abha Number */
+            abha_number?: string | null;
+            /** Abha Address */
+            abha_address?: string | null;
         };
         /** SoapSummary */
         SoapSummary: {
@@ -1249,8 +1389,8 @@ export interface components {
              */
             source: "rule" | "rag" | "both";
         };
-        /** TokenOut */
-        TokenOut: {
+        /** TokenResponse */
+        TokenResponse: {
             /** Access Token */
             access_token: string;
             /** Refresh Token */
@@ -1260,6 +1400,9 @@ export interface components {
              * @default bearer
              */
             token_type: string;
+            /** Expires In */
+            expires_in: number;
+            user: components["schemas"]["UserProfile"];
         };
         /** TriageMessageIn */
         TriageMessageIn: {
@@ -1319,8 +1462,8 @@ export interface components {
             /** Questions Asked */
             questions_asked: number;
         };
-        /** UserOut */
-        UserOut: {
+        /** UserProfile */
+        UserProfile: {
             /**
              * Id
              * Format: uuid
@@ -1330,6 +1473,8 @@ export interface components {
             email: string;
             /** Role */
             role: string;
+            /** Name */
+            name?: string | null;
             /** Is Active */
             is_active: boolean;
         };
@@ -1367,7 +1512,7 @@ export interface components {
             documents: components["schemas"]["DocumentOut"][];
             brief: components["schemas"]["CopilotBrief"] | null;
             safety: components["schemas"]["InteractionReport"] | null;
-            queue: components["schemas"]["QueueEntryOut"] | null;
+            queue: components["schemas"]["app__schemas__scheduling__QueueEntryOut"] | null;
             /**
              * Updated At
              * Format: date-time
@@ -1379,6 +1524,129 @@ export interface components {
          * @enum {string}
          */
         VisitState: "TRIAGED" | "LABS_SUGGESTED" | "LABS_APPROVED" | "RESULTS_UPLOADED" | "BRIEF_READY" | "CONSULTED" | "PRESCRIBED";
+        /** WalkInCreate */
+        WalkInCreate: {
+            /**
+             * Clinic Id
+             * Format: uuid
+             */
+            clinic_id: string;
+            /**
+             * Patient Id
+             * Format: uuid
+             */
+            patient_id: string;
+            /** Doctor Id */
+            doctor_id?: string | null;
+            /**
+             * Severity Esi
+             * @default 4
+             */
+            severity_esi: number;
+        };
+        /** QueueEntryOut */
+        app__schemas__scheduling__QueueEntryOut: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /**
+             * Patient Id
+             * Format: uuid
+             */
+            patient_id: string;
+            /** Patient Name */
+            patient_name: string;
+            /**
+             * Doctor Id
+             * Format: uuid
+             */
+            doctor_id: string;
+            /**
+             * Clinic Id
+             * Format: uuid
+             */
+            clinic_id: string;
+            /** Severity Esi */
+            severity_esi: number;
+            /**
+             * Triage Colour
+             * @description MoHFW casualty colour code derived from severity_esi
+             * @enum {string}
+             */
+            triage_colour: "red" | "yellow" | "green";
+            /** Emergency */
+            emergency: boolean;
+            /** Position */
+            position: number;
+            /** Waited Minutes */
+            waited_minutes: number;
+            /** Estimated Wait Minutes */
+            estimated_wait_minutes: number;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "waiting" | "in_consult" | "done" | "cancelled";
+            /** Reasons */
+            reasons: string[];
+        };
+        /** QueueEntryOut */
+        app__services__queueing__schemas__QueueEntryOut: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /**
+             * Patient Id
+             * Format: uuid
+             */
+            patient_id: string;
+            /** Patient Name */
+            patient_name: string;
+            /**
+             * Doctor Id
+             * Format: uuid
+             */
+            doctor_id: string;
+            /**
+             * Clinic Id
+             * Format: uuid
+             */
+            clinic_id: string;
+            /** Severity Esi */
+            severity_esi: number;
+            /**
+             * Triage Colour
+             * @description MoHFW casualty colour code derived from severity_esi
+             * @enum {string}
+             */
+            triage_colour: "red" | "yellow" | "green";
+            /** Emergency */
+            emergency: boolean;
+            /** Position */
+            position: number;
+            /** Waited Minutes */
+            waited_minutes: number;
+            /** Estimated Wait Minutes */
+            estimated_wait_minutes: number;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "waiting" | "in_consult" | "done" | "cancelled";
+            /** Reasons */
+            reasons: string[];
+            /** Token */
+            token: string;
+            /**
+             * Reasons Hi
+             * @default []
+             */
+            reasons_hi: string[];
+        };
     };
     responses: never;
     parameters: never;
@@ -1411,13 +1679,16 @@ export interface operations {
     register_api_v1_auth_register_post: {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                authorization?: string | null;
+                "x-captcha-token"?: string | null;
+            };
             path?: never;
             cookie?: never;
         };
         requestBody: {
             content: {
-                "application/json": components["schemas"]["RegisterIn"];
+                "application/json": components["schemas"]["RegisterRequest"];
             };
         };
         responses: {
@@ -1427,7 +1698,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["TokenOut"];
+                    "application/json": components["schemas"]["TokenResponse"];
                 };
             };
             /** @description Validation Error */
@@ -1444,13 +1715,15 @@ export interface operations {
     login_api_v1_auth_login_post: {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                "x-captcha-token"?: string | null;
+            };
             path?: never;
             cookie?: never;
         };
         requestBody: {
             content: {
-                "application/json": components["schemas"]["LoginIn"];
+                "application/json": components["schemas"]["LoginRequest"];
             };
         };
         responses: {
@@ -1460,7 +1733,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["TokenOut"];
+                    "application/json": components["schemas"]["TokenResponse"];
                 };
             };
             /** @description Validation Error */
@@ -1474,7 +1747,7 @@ export interface operations {
             };
         };
     };
-    refresh_api_v1_auth_refresh_post: {
+    refresh_endpoint_api_v1_auth_refresh_post: {
         parameters: {
             query?: never;
             header?: never;
@@ -1489,7 +1762,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["TokenOut"];
+                    "application/json": components["schemas"]["TokenResponse"];
                 };
             };
         };
@@ -1497,7 +1770,9 @@ export interface operations {
     logout_api_v1_auth_logout_post: {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                authorization?: string | null;
+            };
             path?: never;
             cookie?: never;
         };
@@ -1512,12 +1787,23 @@ export interface operations {
                     "application/json": Record<string, never>;
                 };
             };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
         };
     };
     me_api_v1_auth_me_get: {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                authorization?: string | null;
+            };
             path?: never;
             cookie?: never;
         };
@@ -1529,7 +1815,16 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["UserOut"];
+                    "application/json": Record<string, never>;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };
@@ -1557,7 +1852,9 @@ export interface operations {
     captcha_verify_api_v1_captcha_verify_post: {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                "x-captcha-token"?: string | null;
+            };
             path?: never;
             cookie?: never;
         };
@@ -1572,12 +1869,23 @@ export interface operations {
                     "application/json": Record<string, never>;
                 };
             };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
         };
     };
     list_patients_api_v1_patients_get: {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                authorization?: string | null;
+            };
             path?: never;
             cookie?: never;
         };
@@ -1592,12 +1900,23 @@ export interface operations {
                     "application/json": components["schemas"]["PatientOut"][];
                 };
             };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
         };
     };
     create_patient_api_v1_patients_post: {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                authorization?: string | null;
+            };
             path?: never;
             cookie?: never;
         };
@@ -1630,7 +1949,9 @@ export interface operations {
     get_patient_api_v1_patients__patient_id__get: {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                authorization?: string | null;
+            };
             path: {
                 patient_id: string;
             };
@@ -1661,7 +1982,9 @@ export interface operations {
     update_patient_api_v1_patients__patient_id__patch: {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                authorization?: string | null;
+            };
             path: {
                 patient_id: string;
             };
@@ -1693,9 +2016,11 @@ export interface operations {
             };
         };
     };
-    get_consent_api_v1_patients__patient_id__consent_get: {
+    get_consent_notice_api_v1_patients__patient_id__consent_notice_get: {
         parameters: {
-            query?: never;
+            query?: {
+                version?: string;
+            };
             header?: never;
             path: {
                 patient_id: string;
@@ -1711,6 +2036,109 @@ export interface operations {
                 };
                 content: {
                     "application/json": Record<string, never>;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_consent_api_v1_patients__patient_id__consent_get: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+            };
+            path: {
+                patient_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ConsentOut"] | null;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    post_consent_api_v1_patients__patient_id__consent_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+            };
+            path: {
+                patient_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ConsentRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ConsentOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    delete_consent_api_v1_patients__patient_id__consent_delete: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+            };
+            path: {
+                patient_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ConsentOut"] | null;
                 };
             };
             /** @description Validation Error */
@@ -2148,10 +2576,12 @@ export interface operations {
             };
         };
     };
-    build_brief_api_v1_copilot_brief_post: {
+    build_brief_route_api_v1_copilot_brief_post: {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                authorization?: string | null;
+            };
             path?: never;
             cookie?: never;
         };
@@ -2184,7 +2614,9 @@ export interface operations {
     patient_timeline_api_v1_kg_patient__patient_id__timeline_get: {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                authorization?: string | null;
+            };
             path: {
                 patient_id: string;
             };
@@ -2198,7 +2630,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": unknown[];
+                    "application/json": Record<string, never>[];
                 };
             };
             /** @description Validation Error */
@@ -2215,7 +2647,9 @@ export interface operations {
     patient_context_api_v1_kg_patient__patient_id__context_get: {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                authorization?: string | null;
+            };
             path: {
                 patient_id: string;
             };
@@ -2308,7 +2742,9 @@ export interface operations {
     upload_document_api_v1_documents_upload_post: {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                authorization?: string | null;
+            };
             path?: never;
             cookie?: never;
         };
@@ -2323,12 +2759,23 @@ export interface operations {
                     "application/json": components["schemas"]["DocumentOut"];
                 };
             };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
         };
     };
     get_document_api_v1_documents__document_id__get: {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                authorization?: string | null;
+            };
             path: {
                 document_id: string;
             };
@@ -2458,8 +2905,18 @@ export interface operations {
     };
     list_doctors_api_v1_doctors_get: {
         parameters: {
-            query?: never;
-            header?: never;
+            query: {
+                specialty: string;
+                lat?: number | null;
+                lng?: number | null;
+                date?: string | null;
+                max_fee?: number | null;
+                language?: string | null;
+                scheme?: string | null;
+            };
+            header?: {
+                authorization?: string | null;
+            };
             path?: never;
             cookie?: never;
         };
@@ -2471,15 +2928,28 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["DoctorRanked"][];
+                    "application/json": components["schemas"]["DoctorRankedOut"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };
     };
     list_appointments_api_v1_appointments_get: {
         parameters: {
-            query?: never;
-            header?: never;
+            query?: {
+                patient_id?: string | null;
+            };
+            header?: {
+                authorization?: string | null;
+            };
             path?: never;
             cookie?: never;
         };
@@ -2491,7 +2961,16 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": unknown[];
+                    "application/json": Record<string, never>[];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };
@@ -2499,36 +2978,21 @@ export interface operations {
     create_appointment_api_v1_appointments_post: {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                authorization?: string | null;
+                "x-captcha-token"?: string | null;
+            };
             path?: never;
             cookie?: never;
         };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": Record<string, never>;
-                };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AppointmentCreate"];
             };
         };
-    };
-    update_appointment_api_v1_appointments__appointment_id__patch: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                appointment_id: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
         responses: {
             /** @description Successful Response */
-            200: {
+            201: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -2567,10 +3031,49 @@ export interface operations {
             };
         };
     };
+    update_appointment_api_v1_appointments__appointment_id__patch: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+            };
+            path: {
+                appointment_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AppointmentPatch"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": Record<string, never>;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     get_queue_api_v1_queue__clinic_id__get: {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                authorization?: string | null;
+            };
             path: {
                 clinic_id: string;
             };
@@ -2584,7 +3087,42 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["QueueEntryOut"][];
+                    "application/json": components["schemas"]["app__services__queueing__schemas__QueueEntryOut"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    walk_in_api_v1_queue_walk_in_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["WalkInCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["app__services__queueing__schemas__QueueEntryOut"];
                 };
             };
             /** @description Validation Error */
@@ -2601,7 +3139,9 @@ export interface operations {
     next_in_queue_api_v1_queue__queue_entry_id__next_post: {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                authorization?: string | null;
+            };
             path: {
                 queue_entry_id: string;
             };
@@ -2615,7 +3155,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": Record<string, never>;
+                    "application/json": components["schemas"]["app__services__queueing__schemas__QueueEntryOut"] | null;
                 };
             };
             /** @description Validation Error */
@@ -2632,13 +3172,19 @@ export interface operations {
     escalate_queue_api_v1_queue__queue_entry_id__escalate_post: {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                authorization?: string | null;
+            };
             path: {
                 queue_entry_id: string;
             };
             cookie?: never;
         };
-        requestBody?: never;
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["EscalateBody"];
+            };
+        };
         responses: {
             /** @description Successful Response */
             200: {
@@ -2646,7 +3192,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": Record<string, never>;
+                    "application/json": components["schemas"]["app__services__queueing__schemas__QueueEntryOut"];
                 };
             };
             /** @description Validation Error */

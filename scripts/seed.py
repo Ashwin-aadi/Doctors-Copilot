@@ -26,7 +26,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "backend"))
 from passlib.context import CryptContext  # noqa: E402
 from sqlalchemy import select  # noqa: E402
 
-from app.db.models.clinical import Visit  # noqa: E402
+from app.db.models.clinical import LabResult, Visit  # noqa: E402
 from app.db.models.patient import Patient  # noqa: E402
 from app.db.models.scheduling import Availability, Clinic, Doctor  # noqa: E402
 from app.db.models.user import User  # noqa: E402
@@ -159,6 +159,13 @@ async def seed() -> None:
                 )
         await session.flush()
 
+        # Patient 1 (the seeded visit's patient) carries realistic clinical history
+        # so knowledge-graph sync and the clinical copilot brief have real content
+        # to work with, rather than an empty demo record.
+        PATIENT_1_CONDITIONS = [{"name": "type 2 diabetes mellitus", "since": "2021-03-01"}]
+        PATIENT_1_ALLERGIES = [{"name": "penicillin", "severity": "moderate"}]
+        PATIENT_1_MEDICATIONS = [{"name": "metformin", "rxcui": "6809", "dose": "500mg BD"}]
+
         for i in range(1, 13):
             u_id = patient_user_id(i)
             state, pin, base_lat, base_lng = PATIENT_LOCALES[(i - 1) % 3]
@@ -177,7 +184,10 @@ async def seed() -> None:
                 state=state, pin_code=pin,
                 # Placeholder ABHA IDs in the real 14-digit format, for demo only.
                 abha_id=f"91{i:04d}0000{i:04d}"[:14],
-                conditions=[], allergies=[], medications=[], consent_at=None,
+                conditions=PATIENT_1_CONDITIONS if i == 1 else [],
+                allergies=PATIENT_1_ALLERGIES if i == 1 else [],
+                medications=PATIENT_1_MEDICATIONS if i == 1 else [],
+                consent_at=None,
             )
         await session.flush()
 
@@ -195,6 +205,27 @@ async def seed() -> None:
                     lab_order_id=None,
                     created_at=datetime.now(UTC),
                     updated_at=datetime.now(UTC),
+                )
+            )
+
+        lab_id = UUID("00000000-0000-0000-0000-000000000901")
+        result = await session.execute(select(LabResult).where(LabResult.id == lab_id))
+        if result.scalar_one_or_none() is None:
+            session.add(
+                LabResult(
+                    id=lab_id,
+                    document_id=None,
+                    patient_id=patient_id(1),
+                    test_name="HbA1c",
+                    normalized_name="hemoglobin_a1c",
+                    value_num=9.2,
+                    value_text=None,
+                    unit="%",
+                    ref_low=4.0,
+                    ref_high=5.6,
+                    flag="high",
+                    confidence=0.95,
+                    observed_at=None,
                 )
             )
 

@@ -1,0 +1,147 @@
+# Public reference pages ingested into the "clinical" collection, used to
+# ground the doctor-facing clinical copilot brief.
+#
+# India-first, per the same priority order as guideline_sources.yaml:
+#   1. ICMR Standard Treatment Guidelines / AMR guidance, MoHFW/NHM programme
+#      material, NCVBDC vector-borne protocols, NTEP TB guidance, NLEM 2022,
+#      CDSCO public drug information                                -> region: IN
+#   2. WHO India-relevant clinical material, international drug labels and
+#      pharmacology references (openFDA/RxNorm are fetched separately, not
+#      listed here) as supporting pharmacology, never as the primary voice
+#      of a treatment recommendation                                -> region: INTL
+#
+# ingest_clinical.py skips any URL that fails at fetch time and tops up from
+# the bundled clinical_seed.jsonl, so a dead link never empties the corpus.
+sources:
+  # --- ICMR standard treatment guidelines and AMR guidance -------------------
+  - url: https://www.icmr.gov.in/icmr-guidelines
+    title: ICMR — Guidelines Index
+    section: icmr_guidelines
+    region: IN
+  - url: https://www.icmr.gov.in/icmr-treatment-guidelines
+    title: ICMR Standard Treatment Guidelines
+    section: standard_treatment
+    region: IN
+  - url: https://www.icmr.gov.in/icmr-amr-guidelines
+    title: ICMR Antimicrobial Resistance Treatment Guidelines
+    section: amr
+    region: IN
+  - url: https://www.icmr.gov.in/icmr-dengue-guidelines
+    title: ICMR Dengue Case Management Guidelines
+    section: dengue
+    region: IN
+  - url: https://www.icmr.gov.in/icmr-malaria-guidelines
+    title: ICMR Malaria Diagnosis and Treatment Guidelines
+    section: malaria
+    region: IN
+  # --- MoHFW / NHM / NCDC / NCVBDC / NTEP programme material -----------------
+  - url: https://www.mohfw.gov.in/?q=en/diseasealerts/national-guidelines-clinical-management-dengue-fever
+    title: National Guidelines for Clinical Management of Dengue Fever (MoHFW)
+    section: dengue
+    region: IN
+  - url: https://www.mohfw.gov.in/?q=en/diseasealerts/national-guidelines-typhoid
+    title: National Treatment Guidelines for Enteric Fever (MoHFW)
+    section: typhoid
+    region: IN
+  - url: https://www.nhm.gov.in/index1.php?lang=1&level=2&sublinkid=1118&lid=222
+    title: National Health Mission — Diabetes and Hypertension (NPCDCS)
+    section: ncd
+    region: IN
+  - url: https://ncdc.mohfw.gov.in/
+    title: National Centre for Disease Control — Programme Guidance
+    section: communicable_disease
+    region: IN
+  - url: https://ncvbdc.mohfw.gov.in/index1.php?lang=1&level=1&sublinkid=5776&lid=3689
+    title: NCVBDC — Malaria Treatment Protocol
+    section: malaria
+    region: IN
+  - url: https://ncvbdc.mohfw.gov.in/index4.php?lang=1&level=0&linkid=431&lid=3715
+    title: NCVBDC — Dengue Clinical Management
+    section: dengue
+    region: IN
+  - url: https://ncvbdc.mohfw.gov.in/index1.php?lang=1&level=1&sublinkid=5784&lid=3689
+    title: NCVBDC — Chikungunya Case Management
+    section: chikungunya
+    region: IN
+  - url: https://ncvbdc.mohfw.gov.in/index4.php?lang=1&level=0&linkid=427&lid=3701
+    title: NCVBDC — Lymphatic Filariasis and Kala-azar Programme
+    section: vector_borne
+    region: IN
+  - url: https://tbcindia.mohfw.gov.in/
+    title: National Tuberculosis Elimination Programme (NTEP)
+    section: tuberculosis
+    region: IN
+  # --- NLEM / CDSCO / Jan Aushadhi essential medicines ------------------------
+  - url: https://cdsco.gov.in/opencms/opencms/en/Home/
+    title: Central Drugs Standard Control Organisation — Public Drug Information
+    section: drug_regulation
+    region: IN
+  - url: https://janaushadhi.gov.in/
+    title: Pradhan Mantri Bhartiya Janaushadhi Pariyojana — Generic Medicine List
+    section: jan_aushadhi
+    region: IN
+  # --- WHO India-relevant clinical material -----------------------------------
+  - url: https://www.who.int/india/health-topics/tuberculosis
+    title: WHO India — Tuberculosis
+    section: tuberculosis
+    region: IN
+  - url: https://www.who.int/india/health-topics/dengue-and-severe-dengue
+    title: WHO India — Dengue and Severe Dengue
+    section: dengue
+    region: IN
+  - url: https://www.who.int/news-room/fact-sheets/detail/malaria
+    title: WHO Fact Sheet — Malaria
+    section: malaria
+    region: INTL
+  - url: https://www.who.int/news-room/fact-sheets/detail/typhoid
+    title: WHO Fact Sheet — Typhoid
+    section: typhoid
+    region: INTL
+  - url: https://www.who.int/news-room/fact-sheets/detail/leptospirosis
+    title: WHO Fact Sheet — Leptospirosis
+    section: leptospirosis
+    region: INTL
+  - url: https://www.who.int/news-room/fact-sheets/detail/snakebite-envenoming
+    title: WHO Fact Sheet — Snakebite Envenoming
+    section: snakebite
+    region: INTL
+  - url: https://www.who.int/news-room/fact-sheets/detail/hepatitis-a
+    title: WHO Fact Sheet — Hepatitis A
+    section: hepatitis
+    region: INTL
+  - url: https://www.who.int/news-room/fact-sheets/detail/hepatitis-e
+    title: WHO Fact Sheet — Hepatitis E
+    section: hepatitis
+    region: INTL
+  - url: https://www.who.int/news-room/fact-sheets/detail/rheumatic-heart-disease
+    title: WHO Fact Sheet — Rheumatic Heart Disease
+    section: cardiology
+    region: INTL
+  - url: https://www.who.int/news-room/fact-sheets/detail/diabetes
+    title: WHO Fact Sheet — Diabetes
+    section: endocrinology
+    region: INTL
+  - url: https://www.who.int/news-room/fact-sheets/detail/hypertension
+    title: WHO Fact Sheet — Hypertension
+    section: cardiology
+    region: INTL
+  - url: https://www.who.int/news-room/fact-sheets/detail/chronic-obstructive-pulmonary-disease-(copd)
+    title: WHO Fact Sheet — COPD
+    section: pulmonology
+    region: INTL
+  - url: https://www.who.int/news-room/fact-sheets/detail/anaemia
+    title: WHO Fact Sheet — Anaemia
+    section: hematology
+    region: INTL
+  - url: https://www.who.int/news-room/fact-sheets/detail/cholera
+    title: WHO Fact Sheet — Cholera
+    section: gastroenterology
+    region: INTL
+  - url: https://www.who.int/news-room/fact-sheets/detail/antimicrobial-resistance
+    title: WHO Fact Sheet — Antimicrobial Resistance
+    section: amr
+    region: INTL
+  - url: https://medlineplus.gov/druginformation.html
+    title: MedlinePlus — Drug Information
+    section: pharmacology
+    region: INTL
