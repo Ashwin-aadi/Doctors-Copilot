@@ -1,5 +1,57 @@
 # Decisions Log
 
+## 2026-08-26 — P1.5 seed users, RBAC matrix, CP1 wrap
+
+- `Demo@1234` (the literal password text in the spec) is 9 characters --
+  one short of this checkpoint's own `>=10` password-policy minimum in
+  `app/core/security.py`. Used `Demo@12345` (10 characters) for every seeded
+  account instead, so they can all actually authenticate against the policy
+  this same checkpoint enforces. Logged rather than weakening the policy to
+  fit the shorter string, per the standing rule to never weaken security to
+  make something pass.
+- `scripts/seed_users.py` reuses `scripts/seed.py`'s exact fixed UUIDs for
+  clinics/doctors/patients (get-or-create, so both scripts are safe to run
+  in either order) but writes `@demo.local` emails and the
+  `Demo@12345` password, while `scripts/seed.py` writes `@doctorcopilot.dev`
+  / `demo-password-123` to the *same* rows. This is a genuine overlap, not
+  resolved here: `app/db/models/` and `scripts/seed.py` aren't owned paths,
+  and the CP1 spec gives this checkpoint its own literal demo-account values
+  independent of what `scripts/seed.py` already shipped. Whichever script
+  runs last wins on the overlapping fields; `docs/DEMO_ACCOUNTS.md` flags
+  this explicitly. Flagging as a DRIFT for Ashwin/the team to consolidate
+  into one seed script.
+- `scripts/seed_users.py` additionally seeds 2 admin + 2 staff `User` rows
+  (fixed ids `...000601/602` admin, `...000603/604` staff) that
+  `scripts/seed.py` doesn't create at all -- there's no admin/staff profile
+  table, just the `User` row with `role="admin"`/`"staff"`.
+- `test_rbac_matrix.py`'s table only asserts precise expected statuses for
+  routes this checkpoint owns (auth, captcha, patients); most other
+  teammates' routes are still `not_implemented` 501 stubs as of this
+  checkpoint, so a generic scan (`test_no_implemented_route_anonymously_leaks`,
+  built from the live OpenAPI schema so it can't silently drift) instead
+  asserts the weaker but still meaningful property that nothing outside the
+  auth/captcha/health/docs allowlist is anonymously readable, without
+  claiming to know every other checkpoint's eventual expected status.
+- Register/login rows in the RBAC table send a well-formed JSON body so
+  captcha-gating (`400 CAPTCHA_REQUIRED`) is the only thing determining the
+  outcome, avoiding ambiguity with FastAPI's dependency-vs-body-validation
+  ordering for a deliberately empty/invalid request.
+- **Infra caveat, CP1-wide**: this sandbox has no Docker/Postgres/Redis, and
+  the project targets Python 3.12 while only 3.14 is available here. Every
+  DB/Redis-backed test in `tests/security/` is written and reviewed but
+  could not be executed end to end in this sandbox. What *was* verified
+  throughout CP1: all new modules import and byte-compile cleanly; every
+  pure-logic unit (password hashing/policy, JWT issuance/rotation/reuse-
+  revocation, captcha challenge/solve/verify/replay, phone/ABHA/Aadhaar
+  validation, ownership/leak-proofing helpers) passes directly, with the
+  Redis-dependent paths additionally verified end-to-end against
+  `fakeredis`; `scripts/seed_users.py`'s UUID scheme and password now match
+  what `tests/conftest.py`'s `auth_headers` fixture signs tokens for; the
+  `patients` router builds a valid OpenAPI schema. Needs a real
+  `make up && make migrate && python scripts/seed_users.py` on Python 3.12
+  to run `pytest tests/security -q` and `scripts/guard.sh`'s open-route curl
+  script for real.
+
 ## 2026-08-26 — P1.4 patient identity, ownership, consent
 
 - The DPDP-style consent artefact (`purpose`, `data_categories`,
