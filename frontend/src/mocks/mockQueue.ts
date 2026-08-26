@@ -19,4 +19,8 @@ export const mockQueue: QueueEntryOut[] = names.map((patient_name, i) => ({
   estimated_wait_minutes: Math.max(0, 30 - i * 4),
   status: i === 1 ? "in_consult" : "waiting",
   reasons: i === 0 ? ["Chest pain with breathlessness", "Escalated by triage RAG"] : ["Routine OPD queue position"],
+  reasons_hi: i === 0
+    ? ["सांस फूलने के साथ सीने में दर्द", "ट्रायज आरएजी द्वारा एस्केलेट किया गया"]
+    : ["नियमित ओपीडी कतार स्थिति"],
+  token: `D-${String(i + 1).padStart(3, "0")}`,
 }));

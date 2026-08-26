@@ -9,8 +9,16 @@ export type DocumentOut = components["schemas"]["DocumentOut"];
 export type InteractionReport = components["schemas"]["InteractionReport"];
 export type InteractionPair = components["schemas"]["InteractionPair"];
 export type AllergyConflict = components["schemas"]["AllergyConflict"];
-export type QueueEntryOut = components["schemas"]["QueueEntryOut"];
-export type DoctorRanked = components["schemas"]["DoctorRanked"];
+// Two backend classes are both named `QueueEntryOut`/`DoctorRanked` (the
+// frozen contract shape in app/schemas/scheduling.py, and Niyati's richer
+// subclasses in app/services/{queueing,scheduling}/schemas.py that add
+// `token`/`reasons_hi` and are what the live /queue and /doctors routes
+// actually return) -- see docs/DECISIONS.md. openapi-typescript disambiguates
+// same-name schemas by module path, so the generated component keys are
+// `app__schemas__scheduling__QueueEntryOut` / `app__services__queueing__schemas__QueueEntryOut`
+// and `DoctorRankedOut`. Alias to the ones the live endpoints return.
+export type QueueEntryOut = components["schemas"]["app__services__queueing__schemas__QueueEntryOut"];
+export type DoctorRanked = components["schemas"]["DoctorRankedOut"];
 export type VisitOut = components["schemas"]["VisitOut"];
 export type VisitState = components["schemas"]["VisitState"];
 export type PatientOut = components["schemas"]["PatientOut"];

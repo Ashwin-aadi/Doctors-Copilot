@@ -1,5 +1,38 @@
 # Decisions Log
 
+## 2026-08-26 — CI build break from a real `types.ts` regeneration
+
+- Regenerating `frontend/src/lib/types.ts` for real (see A2.1-A2.5 entry
+  below) surfaced a latent bug: `app/schemas/scheduling.py::QueueEntryOut`
+  (mine, frozen contract) and `app/services/queueing/schemas.py::QueueEntryOut`
+  (Niyati's, additive subclass adding `token`/`reasons_hi`, per her own
+  comment there referencing an existing DRIFT note asking me to fold those
+  fields into the canonical schema) are two distinct Python classes with the
+  same bare name, both live in different routes' `response_model`s.
+  `openapi-typescript` disambiguates same-name schemas by full module path,
+  so the generated component keys became
+  `app__services__queueing__schemas__QueueEntryOut` /
+  `app__schemas__scheduling__QueueEntryOut` instead of a single bare
+  `QueueEntryOut` — same story for `DoctorRanked`, which only ever emits as
+  `DoctorRankedOut` since no route actually returns the bare canonical type.
+  `frontend/src/components/types.ts` (the bare-name bridge every container
+  imports from) broke because it assumed a single unambiguous
+  `components["schemas"]["QueueEntryOut"]`/`["DoctorRanked"]`.
+- **Fix, entirely within my/shared frontend paths, no teammate route/schema
+  file touched:** aliased `QueueEntryOut`/`DoctorRanked` in
+  `frontend/src/components/types.ts` to the module-qualified names the live
+  endpoints actually return (`app__services__queueing__schemas__QueueEntryOut`,
+  `DoctorRankedOut`) with a comment explaining why, and added the now-required
+  `reasons_hi`/`token` fields to `frontend/src/mocks/mockDoctorsRanked.ts` and
+  `mockQueue.ts` (Divyanshi's fixture data) so they still satisfy the richer
+  type. `npm run build` and `npm run lint` are both clean.
+- **Root cause is still open** and belongs to me per the existing DRIFT note:
+  fold `token`/`reasons_hi` into the canonical
+  `app/schemas/scheduling.py::QueueEntryOut`/`DoctorRanked` so Niyati's
+  subclasses (and this whole disambiguation) can go away. Not done in this
+  pass — deferred so this fix stays minimal and doesn't touch the frozen
+  contract mid-checkpoint; picking it up next session.
+
 ## 2026-08-26 — A2.1-A2.5: knowledge graph + clinical RAG
 
 - **Regenerated `frontend/src/lib/types.ts` for real**, resolving the B1.1
