@@ -35,6 +35,12 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
+      # The ML stack (paddlepaddle, transformers, spacy, scispacy) is large
+      # enough that the runner's default free space isn't reliable headroom.
+      - name: Free disk space
+        run: |
+          sudo rm -rf /usr/share/dotnet /opt/ghc /usr/local/lib/android /opt/hostedtoolcache/CodeQL
+          docker image prune -af || true
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
