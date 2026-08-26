@@ -1,5 +1,36 @@
 # Decisions Log
 
+## 2026-08-26 — B2.1: pull integrated main, regenerate, regress
+
+- `git pull --ff-only origin main` brought in `pratyaksh cp2` (rate limiting,
+  audit middleware) and `ashwin`'s kg/RAG work, plus a regenerated
+  `frontend/src/lib/types.ts` (commit `b8babdd`) — a teammate has a working
+  live-backend environment and committed a fresh `gen:api` output, so the
+  stale/hand-typed-interim situation logged in the CP1 B1.2 entry below is
+  resolved without me running `gen:api` myself.
+- **Environment blocker persists unchanged from CP1** (see "A1.1 dev
+  environment note" is a different issue; the actual blocker is the CP1
+  "B1.1-B1.5 kickoff" entry below): this machine still has Python 3.14 only
+  (no 3.12), no Rust/Cargo, no Docker, so the FastAPI app cannot be run
+  locally, `gen:api` cannot hit a live server here, and CP1's e2e specs
+  (`booking.spec.ts`, `triage.spec.ts`) fail at the captcha step
+  (`GET /captcha/challenge` unreachable → "Verification complete." never
+  renders → login never completes) — a `TimeoutError` in
+  `waitForCaptchaSolved`, not a regression in the containers themselves.
+- `npx tsc --noEmit` against the regenerated types: **zero errors** — no
+  contract-drift type breaks to fix this round, so nothing to send to
+  Abhishek as `UI-BUGS:` from this step.
+- `npm run test -- --run`: **26/26 passing** across 8 files (store, api
+  client, forms, chat, onboarding, a11y, router) — CP1 unit-test surface is
+  green on merged main.
+- `npx playwright test --project=chromium`: 1/3 passing (the one spec/branch
+  not gated behind login+captcha); the other 2 fail only at the captcha wait,
+  per the environment blocker above — not re-verifiable as green until run
+  against a live backend (CI or another dev's machine). Logging as
+  `BLOCKER:` per rule 6 rather than pushing past it: **CP2 work proceeds**
+  (per explicit instruction to continue through B2.1 on a new branch), but
+  the CP1 e2e gate cannot be re-confirmed green from this box.
+
 ## 2026-08-26 — CP2 P2.5 rate limiting & progressive lockout
 
 - `app/core/ratelimit.py`'s `limiter` (`slowapi.Limiter`, Redis-backed via
