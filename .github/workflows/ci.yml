@@ -65,6 +65,11 @@ jobs:
       # security RBAC tests authenticate as fixed admin/staff seed users that
       # only scripts/seed_users.py creates.
       - run: python ../scripts/seed_users.py
+      # ml/data/interactions.db is a generated artifact (gitignored, see
+      # app/ml/kb_build.py docstring); tests/ml/test_safety.py needs it.
+      # rxcui_lookup.csv/india_brands.csv are committed as an RxNav-lookup
+      # cache, so this rebuild only hits the network for anything new.
+      - run: python -m app.ml.kb_build
       - run: pytest -q
 
   frontend:

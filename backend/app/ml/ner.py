@@ -110,13 +110,11 @@ def resolve_rxcui(generic_name: str) -> str | None:
 
 
 class _Span:
-    __slots__ = ("start_char", "end_char", "start_tok", "end_tok", "text", "label", "confidence")
+    __slots__ = ("start_char", "end_char", "text", "label", "confidence")
 
-    def __init__(self, start_char, end_char, start_tok, end_tok, text, label, confidence):
+    def __init__(self, start_char, end_char, text, label, confidence):
         self.start_char = start_char
         self.end_char = end_char
-        self.start_tok = start_tok
-        self.end_tok = end_tok
         self.text = text
         self.label = label
         self.confidence = confidence
@@ -135,9 +133,7 @@ def _spans_from_doc(doc: Any, label_map: dict[str, str], confidence: float) -> l
         label = label_map.get(ent.label_)
         if label is None or _looks_like_dose_or_noise(ent.text):
             continue
-        spans.append(
-            _Span(ent.start_char, ent.end_char, ent.start, ent.end, ent.text, label, confidence)
-        )
+        spans.append(_Span(ent.start_char, ent.end_char, ent.text, label, confidence))
     return spans
 
 
@@ -152,28 +148,48 @@ def _merge_spans(spans: list[_Span]) -> list[_Span]:
     return sorted(kept, key=lambda s: s.start_char)
 
 
-def _window_text(doc: Any, start_tok: int, tokens_before: int = NEGATION_WINDOW) -> str:
-    lo = max(0, start_tok - tokens_before)
-    return doc[lo:start_tok].text.lower()
+_WORD_RE = re.compile(r"\S+")
+
+
+_SENTENCE_BOUNDARY_RE = re.compile(r"[.!?]")
+
+
+def _text_window_before(text: str, start_char: int, words_before: int) -> str:
+    """Plain word-split window, independent of any NER model/doc.
+
+    Character-offset based rather than spaCy-token based so cue detection
+    works identically whether spans came from bc5cdr, sci_nlp, or the
+    always-available gazetteer fallback -- negation/historical/allergy
+    classification must never silently no-op just because the top NER tiers
+    aren't installed (autonomy contract: no feature skipped for a missing
+    model). Clipped to the current sentence so a cue from an earlier,
+    unrelated sentence can't bleed into this entity's classification.
+    """
+    prefix = text[:start_char]
+    boundaries = list(_SENTENCE_BOUNDARY_RE.finditer(prefix))
+    if boundaries:
+        prefix = prefix[boundaries[-1].end() :]
+    words = _WORD_RE.findall(prefix)
+    return " ".join(words[-words_before:]).lower() if words_before > 0 else ""
 
 
 def _has_cue(window: str, cues: list[str]) -> bool:
     return any(cue in window for cue in cues)
 
 
-def _cue_window(doc: Any, span: _Span, tokens_before: int = NEGATION_WINDOW) -> str:
-    """Pre-entity token window plus the entity's own text.
+def _cue_window(text: str, span: _Span, words_before: int = NEGATION_WINDOW) -> str:
+    """Pre-entity word window plus the entity's own text.
 
     A merged span can absorb the cue phrase itself (e.g. a broader NER model
     tags "History of type 2 diabetes" as one entity), so cue lookup has to
     cover the entity text too, not just what precedes it.
     """
-    pre = _window_text(doc, span.start_tok, tokens_before)
+    pre = _text_window_before(text, span.start_char, words_before)
     return f"{pre} {span.text.lower()}"
 
 
-def _classify_negation(doc: Any, span: _Span, negation_cues: dict[str, list[str]]) -> bool:
-    window = _cue_window(doc, span)
+def _classify_negation(text: str, span: _Span, negation_cues: dict[str, list[str]]) -> bool:
+    window = _cue_window(text, span)
     pre_cues = negation_cues.get("pre_cues", [])
     if not _has_cue(window, pre_cues):
         return False
@@ -184,12 +200,12 @@ def _classify_negation(doc: Any, span: _Span, negation_cues: dict[str, list[str]
     return not _has_cue(tail, termination_cues)
 
 
-def _classify_historical(doc: Any, span: _Span) -> bool:
-    return _has_cue(_cue_window(doc, span), HISTORICAL_CUES)
+def _classify_historical(text: str, span: _Span) -> bool:
+    return _has_cue(_cue_window(text, span), HISTORICAL_CUES)
 
 
-def _classify_allergy_context(doc: Any, span: _Span) -> bool:
-    pre = _window_text(doc, span.start_tok, tokens_before=5)
+def _classify_allergy_context(text: str, span: _Span) -> bool:
+    pre = _text_window_before(text, span.start_char, words_before=5)
     return _has_cue(pre, ALLERGY_CUES)
 
 
@@ -220,15 +236,11 @@ async def extract(text: str) -> EntityBundle:
         tier = "bc5cdr"
 
     sci_nlp = registry.sci_nlp()
-    doc_for_windows = None
     if sci_nlp is not None:
-        doc_for_windows = sci_nlp(text)
-        spans.extend(_spans_from_doc(doc_for_windows, {"ENTITY": "condition"}, SCI_NLP_CONFIDENCE))
+        sci_doc = sci_nlp(text)
+        spans.extend(_spans_from_doc(sci_doc, {"ENTITY": "condition"}, SCI_NLP_CONFIDENCE))
         if tier == "unavailable":
             tier = "sci_nlp"
-    if doc_for_windows is None:
-        # Reuse bc5cdr's doc for token windows if scispaCy small model unavailable.
-        doc_for_windows = bc5cdr(text) if bc5cdr is not None else None
 
     if not spans:
         gazetteer = registry.gazetteer_ner()
@@ -245,7 +257,7 @@ async def extract(text: str) -> EntityBundle:
                     if idx == -1:
                         continue
                     spans.append(
-                        _Span(idx, idx + len(term), 0, 0, text[idx : idx + len(term)], label, GAZETTEER_CONFIDENCE)
+                        _Span(idx, idx + len(term), text[idx : idx + len(term)], label, GAZETTEER_CONFIDENCE)
                     )
 
     merged = _merge_spans(spans)
@@ -256,14 +268,9 @@ async def extract(text: str) -> EntityBundle:
 
     for i, span in enumerate(merged):
         next_start = merged[i + 1].start_char if i + 1 < len(merged) else None
-        if doc_for_windows is not None:
-            negated = _classify_negation(doc_for_windows, span, negation_cues)
-            historical = _classify_historical(doc_for_windows, span)
-            in_allergy_context = _classify_allergy_context(doc_for_windows, span)
-        else:
-            negated = False
-            historical = False
-            in_allergy_context = False
+        negated = _classify_negation(text, span, negation_cues)
+        historical = _classify_historical(text, span)
+        in_allergy_context = _classify_allergy_context(text, span)
 
         if span.label == "condition":
             lowered = span.text.strip().lower()
