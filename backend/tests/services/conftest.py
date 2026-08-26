@@ -20,6 +20,7 @@ from uuid import UUID
 
 import pytest_asyncio
 
+from app.db.models.patient import Patient
 from app.db.models.scheduling import Availability, Clinic, Doctor
 from app.db.models.user import User
 from app.db.session import SessionLocal
@@ -95,6 +96,29 @@ def availability_id(doctor_i: int, session_i: int) -> UUID:
     return UUID(f"00000000-0000-0000-0001-{doctor_i:04d}{session_i:08d}")
 
 
+_PATIENT_USER_BASE = 500
+
+
+def patient_id(i: int) -> UUID:
+    return UUID(f"00000000-0000-0000-0000-{500 + i:012d}")
+
+
+def patient_user_id(i: int) -> UUID:
+    return UUID(f"00000000-0000-0000-0000-{_PATIENT_USER_BASE + i:012d}")
+
+
+_PATIENTS = [
+    {"i": 1, "name": "Priya Venkatesan"},
+    {"i": 2, "name": "Ganesh Murthy"},
+    {"i": 3, "name": "Fathima Beevi"},
+    {"i": 4, "name": "Rahul Nair"},
+    {"i": 5, "name": "Kamala Devi"},
+    {"i": 6, "name": "Vignesh Kumar"},
+    {"i": 7, "name": "Anjali Menon"},
+    {"i": 8, "name": "Suresh Babu"},
+]
+
+
 async def _get_or_create(session, model, id_, **fields):
     existing = await session.get(model, id_)
     if existing is not None:
@@ -142,6 +166,21 @@ async def _seed_chennai_fixture() -> None:
                     start_time=start, end_time=end, slot_minutes=15,
                     valid_from=dt.date(2026, 1, 1), valid_to=dt.date(2026, 12, 31),
                 )
+
+        for p in _PATIENTS:
+            pu_id = patient_user_id(p["i"])
+            await _get_or_create(
+                session, User, pu_id,
+                email=f"chennai.patient{p['i']}@demo.example",
+                phone=f"+9199{p['i']:04d}50000"[:15],
+                password_hash="not-a-real-hash",
+                role="patient", is_active=True,
+            )
+            await _get_or_create(
+                session, Patient, patient_id(p["i"]),
+                user_id=pu_id, name=p["name"], dob=None, sex=None,
+                lat=None, lng=None, address=None, state="Tamil Nadu", pin_code="600008",
+            )
 
         await session.commit()
 

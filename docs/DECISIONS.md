@@ -1,5 +1,62 @@
 # Decisions Log
 
+## 2026-08-26 — N1.3-N1.5: reasons_hi/token via owned-path subclassing, Redis side-channel, route shape calls
+
+Section 7 mandates `reasons_hi: list[str]` alongside `DoctorRanked.reasons`
+and `QueueEntryOut.reasons`, and N1.4 mandates a printable `token` on every
+queue entry. Both schemas live in `app/schemas/scheduling.py`, which is not
+an owned path ("Never modify app/db/models/ or app/schemas/"). Rather than
+edit Ashwin's file, added `app/services/scheduling/schemas.py::DoctorRankedOut`
+and `app/services/queueing/schemas.py::QueueEntryOut`, both additive
+subclasses of the frozen base schemas, used as the actual return/response
+types from `rank_doctors`/`pq.py`/the API routes. A `DoctorRankedOut` still
+satisfies "`rank_doctors(...) -> list[DoctorRanked]`" (it's-a `DoctorRanked`
+with one extra optional-defaulted field). DRIFT: ask Ashwin to fold
+`reasons_hi` into `DoctorRanked`/`QueueEntryOut` and add `token` +
+`priority_group` columns to `QueueEntry` directly, so these two local
+subclasses can be deleted.
+
+**Token/priority_group side-channel.** `QueueEntry` (Ashwin's model) has no
+`token` or statutory-`priority_group` column and I can't add one without
+editing `app/db/models/scheduling.py`. `pq.py` stores both in Redis
+(`queue:meta:{entry_id}`, 3-day TTL) instead, keyed by entry id, following
+the same TEMP-ADAPTER precedent as N1.1's locale overrides. Known limitation:
+a Redis flush loses the token/priority_group for any entry still physically
+in the queue at that moment (their DB row survives; only the display token
+and statutory bonus are lost, entries fall back to a `?-NNN` placeholder
+token). Acceptable for a hackathon/offline-first demo scope; a real
+deployment needs the columns.
+
+**Neutral scoring when a preference isn't stated.** The optimizer spec gives
+`language_score`/`scheme_score` formulas assuming the patient always states a
+preference. When `language`/`scheme` is `None` (patient didn't specify),
+scored both as `1.0` (neutral -- don't penalize free/other-language clinics
+just because nothing was requested) rather than `0.0`.
+
+**CP1 distance cutoff is a single bound, not urban/rural travel bands.**
+N1.3's own text says "CP1 may use `1/(1+km/5)`" and defers real travel bands
+to N3.3. Implemented that simple formula for `distance_score`, and used
+`max_distance_km_rural` (60 km, the more permissive of the two) as the single
+hard outer cutoff for now; N3.3 replaces both with the urban/rural band
+tables.
+
+**`POST /queue/{clinic_id}/next?doctor_id=...`.** The frozen `pq.pop_next`
+signature is `pop_next(clinic_id, doctor_id, *, now)`, but the original API
+stub was `POST /queue/{queue_entry_id}/next` (only one path segment). Since
+route shapes in `app/api/v1/queue.py` are an owned path (only the `pq.py`
+function signatures are frozen), renamed the path param to `clinic_id` and
+added `doctor_id` as a required query param so the route can actually supply
+both frozen-interface arguments.
+
+**Appointment + QueueEntry creation is not a single DB transaction.** The
+frozen `enqueue(entry, *, now)` opens its own session/advisory-lock
+transaction internally, separate from `create_appointment`'s own session
+that inserts the `Appointment` row. So "create Appointment + QueueEntry
+atomically" (N1.5) is not literally one transaction yet -- a crash between
+the two calls could leave a booked appointment with no queue entry. Flagging
+this rather than claiming atomicity; true atomicity needs either merging the
+two sessions or a saga/outbox pattern, deferred to CP4 hardening.
+
 ## 2026-08-26 — N1.2 slot engine: sync DB access inside a frozen sync signature
 
 `free_slots` (`app/services/scheduling/slots.py`) is frozen by the CP1
