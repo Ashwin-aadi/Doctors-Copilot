@@ -1,0 +1,333 @@
+brand,ingredient,generic_name,nlem,schedule_h,jan_aushadhi_code,form,strength,mrp_inr,rxcui
+Crocin,paracetamol,Paracetamol,true,false,PMBJP-CROCIN,tablet,500mg,20.00,161
+Dolo,paracetamol,Paracetamol,true,false,PMBJP-DOLO,tablet,650mg,21.60,161
+Calpol,paracetamol,Paracetamol,true,false,PMBJP-CALPOL,tablet,500mg,23.20,161
+Pacimol,paracetamol,Paracetamol,true,false,PMBJP-PACIMOL,tablet,650mg,24.80,161
+Fepanil,paracetamol,Paracetamol,true,false,PMBJP-FEPANIL,tablet,500mg,26.40,161
+Combiflam,ibuprofen+paracetamol,Ibuprofen + Paracetamol,true,false,PMBJP-COMBIFLAM,tablet,400mg/325mg,30.00,
+Ibugesic Plus,ibuprofen+paracetamol,Ibuprofen + Paracetamol,true,false,PMBJP-IBUGESICPL,tablet,400mg/325mg,32.40,
+Flexon,ibuprofen+paracetamol,Ibuprofen + Paracetamol,true,false,PMBJP-FLEXON,tablet,400mg/325mg,34.80,
+Augmentin,amoxicillin+clavulanate,Amoxicillin + Clavulanic acid,true,true,PMBJP-AUGMENTIN,tablet,625mg,145.00,
+Clavam,amoxicillin+clavulanate,Amoxicillin + Clavulanic acid,true,true,PMBJP-CLAVAM,tablet,1g,156.60,
+Moxikind-CV,amoxicillin+clavulanate,Amoxicillin + Clavulanic acid,true,true,PMBJP-MOXIKINDCV,tablet,625mg,168.20,
+Fightox,amoxicillin+clavulanate,Amoxicillin + Clavulanic acid,true,true,PMBJP-FIGHTOX,tablet,1g,179.80,
+Azee,azithromycin,Azithromycin,true,true,PMBJP-AZEE,tablet,250mg,90.00,18631
+Azithral,azithromycin,Azithromycin,true,true,PMBJP-AZITHRAL,tablet,500mg,97.20,18631
+Zithrocin,azithromycin,Azithromycin,true,true,PMBJP-ZITHROCIN,tablet,250mg,104.40,18631
+Aziwok,azithromycin,Azithromycin,true,true,PMBJP-AZIWOK,tablet,500mg,111.60,18631
+Pan,pantoprazole,Pantoprazole,true,true,PMBJP-PAN,tablet,20mg,45.00,40790
+Pantocid,pantoprazole,Pantoprazole,true,true,PMBJP-PANTOCID,tablet,40mg,48.60,40790
+Pantop,pantoprazole,Pantoprazole,true,true,PMBJP-PANTOP,tablet,20mg,52.20,40790
+Pantodac,pantoprazole,Pantoprazole,true,true,PMBJP-PANTODAC,tablet,40mg,55.80,40790
+Omez,omeprazole,Omeprazole,true,true,PMBJP-OMEZ,capsule,20mg,35.00,7646
+Ocid,omeprazole,Omeprazole,true,true,PMBJP-OCID,capsule,20mg,37.80,7646
+Omecip,omeprazole,Omeprazole,true,true,PMBJP-OMECIP,capsule,20mg,40.60,7646
+Glycomet,metformin,Metformin,true,false,PMBJP-GLYCOMET,tablet,500mg,25.00,6809
+Glyciphage,metformin,Metformin,true,false,PMBJP-GLYCIPHAGE,tablet,850mg,27.00,6809
+Obimet,metformin,Metformin,true,false,PMBJP-OBIMET,tablet,1000mg,29.00,6809
+Amlokind,amlodipine,Amlodipine,true,true,PMBJP-AMLOKIND,tablet,2.5mg,20.00,17767
+Amlopres,amlodipine,Amlodipine,true,true,PMBJP-AMLOPRES,tablet,5mg,21.60,17767
+Amlovas,amlodipine,Amlodipine,true,true,PMBJP-AMLOVAS,tablet,10mg,23.20,17767
+Amlogard,amlodipine,Amlodipine,true,true,PMBJP-AMLOGARD,tablet,2.5mg,24.80,17767
+Telma,telmisartan,Telmisartan,true,true,PMBJP-TELMA,tablet,20mg,60.00,73494
+Telsar,telmisartan,Telmisartan,true,true,PMBJP-TELSAR,tablet,40mg,64.80,73494
+Cresar,telmisartan,Telmisartan,true,true,PMBJP-CRESAR,tablet,80mg,69.60,73494
+Ecosprin,aspirin,Aspirin,true,false,PMBJP-ECOSPRIN,tablet,75mg,10.00,1191
+Delisprin,aspirin,Aspirin,true,false,PMBJP-DELISPRIN,tablet,150mg,10.80,1191
+Loprin,aspirin,Aspirin,true,false,PMBJP-LOPRIN,tablet,75mg,11.60,1191
+Atorva,atorvastatin,Atorvastatin,true,true,PMBJP-ATORVA,tablet,10mg,55.00,83367
+Storvas,atorvastatin,Atorvastatin,true,true,PMBJP-STORVAS,tablet,20mg,59.40,83367
+Tonact,atorvastatin,Atorvastatin,true,true,PMBJP-TONACT,tablet,40mg,63.80,83367
+Thyronorm,levothyroxine,Levothyroxine sodium,true,true,PMBJP-THYRONORM,tablet,25mcg,90.00,10582
+Eltroxin,levothyroxine,Levothyroxine sodium,true,true,PMBJP-ELTROXIN,tablet,50mcg,97.20,10582
+Thyrox,levothyroxine,Levothyroxine sodium,true,true,PMBJP-THYROX,tablet,100mcg,104.40,10582
+Zifi,cefixime,Cefixime,true,true,PMBJP-ZIFI,tablet,200mg,100.00,2180
+Taxim-O,cefixime,Cefixime,true,true,PMBJP-TAXIMO,tablet,200mg,108.00,2180
+Cefspan,cefixime,Cefixime,true,true,PMBJP-CEFSPAN,tablet,200mg,116.00,2180
+Allegra,fexofenadine,Fexofenadine,true,false,,tablet,120mg,130.00,4487
+Fexova,fexofenadine,Fexofenadine,true,false,,tablet,180mg,140.40,4487
+Montair-LC,montelukast+levocetirizine,Montelukast + Levocetirizine,true,false,,tablet,10mg/5mg,110.00,
+Montek-LC,montelukast+levocetirizine,Montelukast + Levocetirizine,true,false,,tablet,10mg/5mg,118.80,
+Lecope-M,montelukast+levocetirizine,Montelukast + Levocetirizine,true,false,,tablet,10mg/5mg,127.60,
+Asthalin,salbutamol,Salbutamol,true,true,PMBJP-ASTHALIN,inhaler,100mcg/dose,110.00,36117
+Ventorlin,salbutamol,Salbutamol,true,true,PMBJP-VENTORLIN,inhaler,100mcg/dose,118.80,36117
+Salbair,salbutamol,Salbutamol,true,true,PMBJP-SALBAIR,inhaler,100mcg/dose,127.60,36117
+Shelcal,calcium+vitamin-d3,Calcium carbonate + Vitamin D3,true,false,PMBJP-SHELCAL,tablet,500mg/250IU,130.00,
+Calcirol,calcium+vitamin-d3,Calcium carbonate + Vitamin D3,true,false,PMBJP-CALCIROL,tablet,500mg/250IU,140.40,
+Calpol-D,calcium+vitamin-d3,Calcium carbonate + Vitamin D3,true,false,PMBJP-CALPOLD,tablet,500mg/250IU,150.80,
+Zincovit,multivitamin-minerals,Multivitamin + Minerals,false,false,,tablet,standard,100.00,
+Supradyn,multivitamin-minerals,Multivitamin + Minerals,false,false,,tablet,standard,108.00,
+Revital,multivitamin-minerals,Multivitamin + Minerals,false,false,,tablet,standard,116.00,
+Neurobion,vitamin-b-complex,Vitamin B-complex,true,false,PMBJP-NEUROBION,tablet,standard,50.00,
+Cobadex,vitamin-b-complex,Vitamin B-complex,true,false,PMBJP-COBADEX,tablet,standard,54.00,
+Becosules,vitamin-b-complex,Vitamin B-complex,true,false,PMBJP-BECOSULES,tablet,standard,58.00,
+Liv-52,liv-52-herbal,Liver support herbal formulation,false,false,,tablet,standard,100.00,
+Cetzine,cetirizine,Cetirizine,true,false,PMBJP-CETZINE,tablet,10mg,15.00,20610
+Alerid,cetirizine,Cetirizine,true,false,PMBJP-ALERID,tablet,10mg,16.20,20610
+Okacet,cetirizine,Cetirizine,true,false,PMBJP-OKACET,tablet,10mg,17.40,20610
+Sinarest,chlorpheniramine+phenylephrine+paracetamol,Chlorpheniramine + Phenylephrine + Paracetamol,false,false,,tablet,standard,30.00,
+D-Cold Total,chlorpheniramine+phenylephrine+paracetamol,Chlorpheniramine + Phenylephrine + Paracetamol,false,false,,tablet,standard,32.40,
+Cold-Aid,chlorpheniramine+phenylephrine+paracetamol,Chlorpheniramine + Phenylephrine + Paracetamol,false,false,,tablet,standard,34.80,
+Meftal-Spas,dicyclomine+paracetamol,Dicyclomine + Paracetamol,true,false,,tablet,standard,30.00,
+Cyclopam,dicyclomine+paracetamol,Dicyclomine + Paracetamol,true,false,,tablet,standard,32.40,
+Rantac,ranitidine,Ranitidine,true,true,PMBJP-RANTAC,tablet,150mg,25.00,9143
+Aciloc,ranitidine,Ranitidine,true,true,PMBJP-ACILOC,tablet,300mg,27.00,9143
+Zinetac,ranitidine,Ranitidine,true,true,PMBJP-ZINETAC,tablet,150mg,29.00,9143
+Deriphyllin,etophylline+theophylline,Etophylline + Theophylline,false,false,,tablet,standard,30.00,
+Wysolone,prednisolone,Prednisolone,true,true,PMBJP-WYSOLONE,tablet,5mg,20.00,8638
+Omnacortil,prednisolone,Prednisolone,true,true,PMBJP-OMNACORTIL,tablet,10mg,21.60,8638
+Betnesol,betamethasone,Betamethasone,true,true,PMBJP-BETNESOL,tablet,0.5mg,25.00,1514
+Betnovate,betamethasone,Betamethasone,true,true,PMBJP-BETNOVATE,tablet,0.5mg,27.00,1514
+Ciplox,ciprofloxacin,Ciprofloxacin,true,true,PMBJP-CIPLOX,tablet,250mg,55.00,2551
+Cifran,ciprofloxacin,Ciprofloxacin,true,true,PMBJP-CIFRAN,tablet,500mg,59.40,2551
+Norflox,norfloxacin,Norfloxacin,true,true,PMBJP-NORFLOX,tablet,400mg,40.00,7605
+Uroflox,norfloxacin,Norfloxacin,true,true,PMBJP-UROFLOX,tablet,400mg,43.20,7605
+Metrogyl,metronidazole,Metronidazole,true,true,PMBJP-METROGYL,tablet,400mg,25.00,6922
+Flagyl,metronidazole,Metronidazole,true,true,PMBJP-FLAGYL,tablet,400mg,27.00,6922
+O2,ofloxacin+ornidazole,Ofloxacin + Ornidazole,true,true,PMBJP-O2,tablet,200mg/500mg,65.00,
+Oflox-OZ,ofloxacin+ornidazole,Ofloxacin + Ornidazole,true,true,PMBJP-OFLOXOZ,tablet,200mg/500mg,70.20,
+Zanocin-OZ,ofloxacin+ornidazole,Ofloxacin + Ornidazole,true,true,PMBJP-ZANOCINOZ,tablet,200mg/500mg,75.40,
+Akurit-4,isoniazid+rifampicin+pyrazinamide+ethambutol,Isoniazid + Rifampicin + Pyrazinamide + Ethambutol (FDC),true,true,PMBJP-AKURIT4,tablet,NTEP-IP,0.00,
+Forecox,isoniazid+rifampicin+pyrazinamide+ethambutol,Isoniazid + Rifampicin + Pyrazinamide + Ethambutol (FDC),true,true,PMBJP-FORECOX,tablet,NTEP-IP,0.00,
+Fourecox,isoniazid+rifampicin+pyrazinamide+ethambutol,Isoniazid + Rifampicin + Pyrazinamide + Ethambutol (FDC),true,true,PMBJP-FOURECOX,tablet,NTEP-IP,0.00,
+Akurit,rifampicin+isoniazid,Rifampicin + Isoniazid (FDC),true,true,PMBJP-AKURIT,tablet,NTEP-CP,0.00,
+Rifinah,rifampicin+isoniazid,Rifampicin + Isoniazid (FDC),true,true,PMBJP-RIFINAH,tablet,NTEP-CP,0.00,
+TLE,tenofovir+lamivudine+efavirenz,Tenofovir + Lamivudine + Efavirenz (ART FDC),true,true,PMBJP-TLE,tablet,300mg/300mg/600mg,0.00,
+Viraday,tenofovir+lamivudine+efavirenz,Tenofovir + Lamivudine + Efavirenz (ART FDC),true,true,PMBJP-VIRADAY,tablet,300mg/300mg/600mg,0.00,
+TLD,dolutegravir+lamivudine+tenofovir,Dolutegravir + Lamivudine + Tenofovir (ART FDC),true,true,PMBJP-TLD,tablet,50mg/300mg/300mg,0.00,
+Tridonavir,dolutegravir+lamivudine+tenofovir,Dolutegravir + Lamivudine + Tenofovir (ART FDC),true,true,PMBJP-TRIDONAVIR,tablet,50mg/300mg/300mg,0.00,
+Voveran,diclofenac,Diclofenac,true,true,PMBJP-VOVERAN,tablet,50mg,20.00,3355
+Dynapar,diclofenac,Diclofenac,true,true,PMBJP-DYNAPAR,tablet,100mg,21.60,3355
+Nise,nimesulide,Nimesulide,false,true,,tablet,100mg,25.00,
+Nimulid,nimesulide,Nimesulide,false,true,,tablet,100mg,27.00,
+Domstal,domperidone,Domperidone,true,true,PMBJP-DOMSTAL,tablet,10mg,25.00,3505
+Vomistop,domperidone,Domperidone,true,true,PMBJP-VOMISTOP,tablet,10mg,27.00,3505
+Emeset,ondansetron,Ondansetron,true,true,PMBJP-EMESET,tablet,4mg,30.00,7601
+Ondem,ondansetron,Ondansetron,true,true,PMBJP-ONDEM,tablet,8mg,32.40,7601
+Losar,losartan,Losartan,true,true,PMBJP-LOSAR,tablet,25mg,40.00,52175
+Covance,losartan,Losartan,true,true,PMBJP-COVANCE,tablet,50mg,43.20,52175
+Aten,atenolol,Atenolol,true,true,PMBJP-ATEN,tablet,25mg,20.00,1202
+Betacard,atenolol,Atenolol,true,true,PMBJP-BETACARD,tablet,50mg,21.60,1202
+Metolar-XL,metoprolol,Metoprolol succinate,true,true,PMBJP-METOLARXL,tablet,25mg,45.00,6918
+Betaloc,metoprolol,Metoprolol succinate,true,true,PMBJP-BETALOC,tablet,50mg,48.60,6918
+Clopilet,clopidogrel,Clopidogrel,true,true,PMBJP-CLOPILET,tablet,75mg,40.00,32968
+Deplatt,clopidogrel,Clopidogrel,true,true,PMBJP-DEPLATT,tablet,75mg,43.20,32968
+Amaryl,glimepiride,Glimepiride,true,true,PMBJP-AMARYL,tablet,1mg,40.00,25789
+Glimestar,glimepiride,Glimepiride,true,true,PMBJP-GLIMESTAR,tablet,2mg,43.20,25789
+Lantus,insulin-glargine,Insulin glargine,true,true,PMBJP-LANTUS,injection,100IU/ml,600.00,274783
+Basalog,insulin-glargine,Insulin glargine,true,true,PMBJP-BASALOG,injection,100IU/ml,648.00,274783
+Huminsulin R,insulin-human-regular,"Insulin (human, regular)",true,true,PMBJP-HUMINSULIN,injection,40IU/ml,150.00,
+Insugen R,insulin-human-regular,"Insulin (human, regular)",true,true,PMBJP-INSUGENR,injection,40IU/ml,162.00,
+Aquazide,hydrochlorothiazide,Hydrochlorothiazide,true,true,PMBJP-AQUAZIDE,tablet,12.5mg,15.00,5487
+Esidrex,hydrochlorothiazide,Hydrochlorothiazide,true,true,PMBJP-ESIDREX,tablet,25mg,16.20,5487
+Lasix,furosemide,Furosemide,true,true,PMBJP-LASIX,tablet,40mg,15.00,4603
+Frusenex,furosemide,Furosemide,true,true,PMBJP-FRUSENEX,tablet,40mg,16.20,4603
+Aldactone,spironolactone,Spironolactone,true,true,PMBJP-ALDACTONE,tablet,25mg,30.00,9997
+Zentel,albendazole,Albendazole,true,false,PMBJP-ZENTEL,tablet,400mg,15.00,420
+Bandy,albendazole,Albendazole,true,false,PMBJP-BANDY,tablet,400mg,16.20,420
+Wormin,mebendazole,Mebendazole,true,false,,tablet,100mg,15.00,6786
+Ivemek,ivermectin,Ivermectin,true,true,PMBJP-IVEMEK,tablet,6mg,30.00,6035
+Scavista,ivermectin,Ivermectin,true,true,PMBJP-SCAVISTA,tablet,12mg,32.40,6035
+Doxt-SL,doxycycline,Doxycycline,true,true,PMBJP-DOXTSL,capsule,100mg,30.00,3640
+Microdox,doxycycline,Doxycycline,true,true,PMBJP-MICRODOX,capsule,100mg,32.40,3640
+Dalacin-C,clindamycin,Clindamycin,true,true,PMBJP-DALACINC,capsule,150mg,60.00,2582
+Clinsol,clindamycin,Clindamycin,true,true,PMBJP-CLINSOL,capsule,300mg,64.80,2582
+Mikacin,amikacin,Amikacin,true,true,PMBJP-MIKACIN,injection,500mg,40.00,641
+Amistar,amikacin,Amikacin,true,true,PMBJP-AMISTAR,injection,500mg,43.20,641
+Monocef,ceftriaxone,Ceftriaxone,true,true,PMBJP-MONOCEF,injection,1g,80.00,2193
+Intacef,ceftriaxone,Ceftriaxone,true,true,PMBJP-INTACEF,injection,1g,86.40,2193
+Lariago,chloroquine,Chloroquine phosphate,true,true,PMBJP-LARIAGO,tablet,250mg,10.00,2393
+Resochin,chloroquine,Chloroquine phosphate,true,true,PMBJP-RESOCHIN,tablet,250mg,10.80,2393
+ASSP Combikit,artesunate+sulfadoxine-pyrimethamine,Artesunate + Sulfadoxine-Pyrimethamine,true,true,PMBJP-ASSPCOMBIK,tablet,NVBDCP-ACT,0.00,
+Malirid,primaquine,Primaquine,true,true,PMBJP-MALIRID,tablet,2.5mg,10.00,8687
+Electral,oral-rehydration-salts,Oral Rehydration Salts,true,false,PMBJP-ELECTRAL,sachet,21g,20.00,
+ORSL,oral-rehydration-salts,Oral Rehydration Salts,true,false,PMBJP-ORSL,sachet,21g,21.60,
+Zincovit-Kid,zinc-sulphate,Zinc sulphate,true,false,PMBJP-ZINCOVITKI,tablet,20mg,15.00,11150
+Z&D,zinc-sulphate,Zinc sulphate,true,false,PMBJP-ZD,tablet,20mg,16.20,11150
+Fefol,iron+folic-acid,Ferrous salt + Folic acid,true,false,PMBJP-FEFOL,tablet,100mg/0.5mg,25.00,
+Autrin,iron+folic-acid,Ferrous salt + Folic acid,true,false,PMBJP-AUTRIN,tablet,100mg/0.5mg,27.00,
+Livogen,iron+folic-acid,Ferrous salt + Folic acid,true,false,PMBJP-LIVOGEN,tablet,100mg/0.5mg,29.00,
+Folvite,folic-acid,Folic acid,true,false,PMBJP-FOLVITE,tablet,5mg,10.00,4511
+Methergin,methylergometrine,Methylergometrine,true,true,PMBJP-METHERGIN,tablet,0.125mg,15.00,6845
+Syntocinon,oxytocin,Oxytocin,true,true,PMBJP-SYNTOCINON,injection,10IU/ml,10.00,7731
+MgSO4 Inj,magnesium-sulphate,Magnesium sulphate,true,true,PMBJP-MGSO4INJ,injection,50% w/v,20.00,
+Trandate,labetalol,Labetalol,true,true,PMBJP-TRANDATE,tablet,100mg,40.00,6185
+Depin,nifedipine,Nifedipine,true,true,PMBJP-DEPIN,tablet,10mg,15.00,7396
+Nicardia,nifedipine,Nifedipine,true,true,PMBJP-NICARDIA,tablet,20mg,16.20,7396
+Cytolog,misoprostol,Misoprostol,true,true,PMBJP-CYTOLOG,tablet,200mcg,30.00,6845
+Atropine Inj,atropine,Atropine sulphate,true,true,PMBJP-ATROPINEIN,injection,0.6mg/ml,10.00,1223
+PAM Inj,pralidoxime,Pralidoxime chloride (PAM),true,true,PMBJP-PAMINJ,injection,500mg,60.00,
+ASV,polyvalent-anti-snake-venom,Polyvalent Anti-Snake Venom,true,true,PMBJP-ASV,injection,10ml vial,500.00,
+Snake Venom Antiserum,polyvalent-anti-snake-venom,Polyvalent Anti-Snake Venom,true,true,PMBJP-SNAKEVENOM,injection,10ml vial,540.00,
+Rabipur,anti-rabies-vaccine,Anti-rabies vaccine (cell culture),true,true,PMBJP-RABIPUR,injection,0.5ml/1ml,350.00,
+Indirab,anti-rabies-vaccine,Anti-rabies vaccine (cell culture),true,true,PMBJP-INDIRAB,injection,0.5ml/1ml,378.00,
+Kamrab,human-rabies-immunoglobulin,Human rabies immunoglobulin,true,true,PMBJP-KAMRAB,injection,150IU/ml,3000.00,
+Eptoin,phenytoin,Phenytoin sodium,true,true,PMBJP-EPTOIN,tablet,100mg,15.00,8183
+Valparin,sodium-valproate,Sodium valproate,true,true,PMBJP-VALPARIN,tablet,200mg,40.00,9843
+Encorate,sodium-valproate,Sodium valproate,true,true,PMBJP-ENCORATE,tablet,500mg,43.20,9843
+Calmpose,diazepam,Diazepam,true,true,PMBJP-CALMPOSE,injection,5mg/ml,15.00,3322
+Ativan,lorazepam,Lorazepam,true,true,PMBJP-ATIVAN,tablet,1mg,15.00,6470
+Levipil,levetiracetam,Levetiracetam,true,true,PMBJP-LEVIPIL,tablet,250mg,60.00,114477
+Torleva,levetiracetam,Levetiracetam,true,true,PMBJP-TORLEVA,tablet,500mg,64.80,114477
+Seroflo,salmeterol+fluticasone,Salmeterol + Fluticasone,true,true,PMBJP-SEROFLO,inhaler,25mcg/125mcg,350.00,
+Foracort,salmeterol+fluticasone,Salmeterol + Fluticasone,true,true,PMBJP-FORACORT,inhaler,25mcg/125mcg,378.00,
+Symbicort,budesonide+formoterol,Budesonide + Formoterol,true,true,PMBJP-SYMBICORT,inhaler,200mcg/6mcg,400.00,
+Duolin-B,budesonide+formoterol,Budesonide + Formoterol,true,true,PMBJP-DUOLINB,inhaler,200mcg/6mcg,432.00,
+Foracort,budesonide+formoterol,Budesonide + Formoterol,true,true,PMBJP-FORACORT,inhaler,200mcg/6mcg,464.00,
+Duolin,ipratropium+salbutamol,Ipratropium + Salbutamol,true,true,PMBJP-DUOLIN,nebule,500mcg/2.5mg,90.00,
+Ipravent-S,ipratropium+salbutamol,Ipratropium + Salbutamol,true,true,PMBJP-IPRAVENTS,nebule,500mcg/2.5mg,97.20,
+Theo-Asthalin,theophylline,Theophylline,true,true,,tablet,100mg,30.00,10254
+Unicontin,theophylline,Theophylline,true,true,,tablet,200mg,32.40,10254
+Montair,montelukast,Montelukast,true,false,PMBJP-MONTAIR,tablet,10mg,90.00,108981
+Montek,montelukast,Montelukast,true,false,PMBJP-MONTEK,tablet,10mg,97.20,108981
+HCQS,hydroxychloroquine,Hydroxychloroquine,true,true,PMBJP-HCQS,tablet,200mg,40.00,5521
+Zynq,hydroxychloroquine,Hydroxychloroquine,true,true,PMBJP-ZYNQ,tablet,200mg,43.20,5521
+Folitrax,methotrexate,Methotrexate,true,true,PMBJP-FOLITRAX,tablet,7.5mg,40.00,6851
+Zyloric,allopurinol,Allopurinol,true,true,PMBJP-ZYLORIC,tablet,100mg,25.00,519
+Colchicum,colchicine,Colchicine,true,true,,tablet,0.5mg,20.00,2680
+Ultracet,tramadol,Tramadol,true,true,PMBJP-ULTRACET,capsule,50mg,30.00,10689
+Tramazac,tramadol,Tramadol,true,true,PMBJP-TRAMAZAC,capsule,50mg,32.40,10689
+Morcontin,morphine,Morphine sulphate,true,true,PMBJP-MORCONTIN,tablet,10mg,30.00,7052
+Suhagra,sildenafil,Sildenafil,false,true,,tablet,50mg,100.00,136411
+Manforce,sildenafil,Sildenafil,false,true,,tablet,100mg,108.00,136411
+Finpecia,finasteride,Finasteride,false,true,,tablet,1mg,150.00,4126
+Finast,finasteride,Finasteride,false,true,,tablet,5mg,162.00,4126
+Candid,clotrimazole,Clotrimazole,true,false,PMBJP-CANDID,cream,1% w/w,55.00,2582
+Canesten,clotrimazole,Clotrimazole,true,false,PMBJP-CANESTEN,cream,1% w/w,59.40,2582
+Forcan,fluconazole,Fluconazole,true,true,PMBJP-FORCAN,tablet,150mg,30.00,4450
+Zocon,fluconazole,Fluconazole,true,true,PMBJP-ZOCON,tablet,150mg,32.40,4450
+Terbicip,terbinafine,Terbinafine,true,true,PMBJP-TERBICIP,tablet,250mg,90.00,10241
+Onabet,terbinafine,Terbinafine,true,true,PMBJP-ONABET,tablet,250mg,97.20,10241
+T-Bact,mupirocin,Mupirocin,true,true,PMBJP-TBACT,ointment,2% w/w,100.00,7008
+Silverex,silver-sulfadiazine,Silver sulfadiazine,true,true,PMBJP-SILVEREX,cream,1% w/w,90.00,
+Burnol-SSD,silver-sulfadiazine,Silver sulfadiazine,true,true,PMBJP-BURNOLSSD,cream,1% w/w,97.20,
+Betadine,povidone-iodine,Povidone-iodine,true,false,PMBJP-BETADINE,solution,5% w/v,60.00,
+Wokadine,povidone-iodine,Povidone-iodine,true,false,PMBJP-WOKADINE,solution,10% w/v,64.80,
+Savlon,chlorhexidine+cetrimide,Chlorhexidine + Cetrimide,true,false,,solution,standard,60.00,
+Mala-D,oral-contraceptive-combined,Ethinylestradiol + Levonorgestrel,true,true,PMBJP-MALAD,tablet,standard,5.00,
+Ovral-L,oral-contraceptive-combined,Ethinylestradiol + Levonorgestrel,true,true,PMBJP-OVRALL,tablet,standard,5.40,
+I-Pill,emergency-contraceptive,Levonorgestrel (emergency),false,true,,tablet,1.5mg,100.00,6339
+Unwanted-72,emergency-contraceptive,Levonorgestrel (emergency),false,true,,tablet,1.5mg,108.00,6339
+MTP Kit,mifepristone+misoprostol,Mifepristone + Misoprostol,true,true,PMBJP-MTPKIT,tablet,combipack,400.00,
+Mifegest Kit,mifepristone+misoprostol,Mifepristone + Misoprostol,true,true,PMBJP-MIFEGESTKI,tablet,combipack,432.00,
+Susten,progesterone,Progesterone,true,true,PMBJP-SUSTEN,capsule,100mg,130.00,8745
+Duphaston,progesterone,Progesterone,true,true,PMBJP-DUPHASTON,capsule,200mg,140.40,8745
+Neomercazole,carbimazole,Carbimazole,true,true,PMBJP-NEOMERCAZO,tablet,5mg,30.00,1998
+PTU,propylthiouracil,Propylthiouracil,true,true,,tablet,50mg,40.00,8703
+Envas,enalapril,Enalapril,true,true,PMBJP-ENVAS,tablet,5mg,20.00,3827
+Cardace,ramipril,Ramipril,true,true,PMBJP-CARDACE,tablet,2.5mg,40.00,35208
+Ramistar,ramipril,Ramipril,true,true,PMBJP-RAMISTAR,tablet,5mg,43.20,35208
+Rosuvas,rosuvastatin,Rosuvastatin,true,true,PMBJP-ROSUVAS,tablet,10mg,60.00,301542
+Rozavel,rosuvastatin,Rosuvastatin,true,true,PMBJP-ROZAVEL,tablet,20mg,64.80,301542
+Claribid,clarithromycin,Clarithromycin,true,true,PMBJP-CLARIBID,tablet,250mg,90.00,21212
+Clarimac,clarithromycin,Clarithromycin,true,true,PMBJP-CLARIMAC,tablet,500mg,97.20,21212
+Novamox,amoxicillin,Amoxicillin,true,true,PMBJP-NOVAMOX,capsule,250mg,45.00,723
+Mox,amoxicillin,Amoxicillin,true,true,PMBJP-MOX,capsule,500mg,48.60,723
+Ceff,cephalexin,Cephalexin,true,true,PMBJP-CEFF,capsule,250mg,55.00,2231
+Sporidex,cephalexin,Cephalexin,true,true,PMBJP-SPORIDEX,capsule,500mg,59.40,2231
+Septran,cotrimoxazole,Sulfamethoxazole + Trimethoprim,true,true,PMBJP-SEPTRAN,tablet,standard,15.00,
+Bactrim,cotrimoxazole,Sulfamethoxazole + Trimethoprim,true,true,PMBJP-BACTRIM,tablet,standard,16.20,
+Eldoper,loperamide,Loperamide,true,false,PMBJP-ELDOPER,tablet,2mg,15.00,6262
+Lopamide,loperamide,Loperamide,true,false,PMBJP-LOPAMIDE,tablet,2mg,16.20,6262
+Dulcolax,bisacodyl,Bisacodyl,true,false,PMBJP-DULCOLAX,tablet,5mg,15.00,1596
+Duphalac,lactulose,Lactulose,true,false,PMBJP-DUPHALAC,syrup,10g/15ml,90.00,6216
+Looz,lactulose,Lactulose,true,false,PMBJP-LOOZ,syrup,10g/15ml,97.20,6216
+Digene,simethicone,Simethicone,false,false,,tablet,standard,40.00,
+Gasex,simethicone,Simethicone,false,false,,tablet,standard,43.20,
+Ranexa,ranolazine,Ranolazine,false,true,,tablet,500mg,300.00,637395
+Sorbitrate,isosorbide-dinitrate,Isosorbide dinitrate,true,true,PMBJP-SORBITRATE,tablet,5mg,20.00,6035
+Lanoxin,digoxin,Digoxin,true,true,PMBJP-LANOXIN,tablet,0.25mg,15.00,3407
+Heparin Inj,heparin,Heparin sodium,true,true,PMBJP-HEPARININJ,injection,5000IU/ml,60.00,5224
+Warf,warfarin,Warfarin sodium,true,true,PMBJP-WARF,tablet,1mg,20.00,11289
+Uniwarfin,warfarin,Warfarin sodium,true,true,PMBJP-UNIWARFIN,tablet,5mg,21.60,11289
+Streptase,streptokinase,Streptokinase,true,true,PMBJP-STREPTASE,injection,1.5MU,3500.00,
+Benadryl,dextromethorphan+chlorpheniramine,Dextromethorphan + Chlorpheniramine,false,false,,syrup,standard,90.00,
+Corex-DX,dextromethorphan+chlorpheniramine,Dextromethorphan + Chlorpheniramine,false,false,,syrup,standard,97.20,
+Ascoril-D,dextromethorphan+chlorpheniramine,Dextromethorphan + Chlorpheniramine,false,false,,syrup,standard,104.40,
+Ascoril,ambroxol+guaifenesin,Ambroxol + Guaifenesin,false,false,,syrup,standard,85.00,
+Mucolite,ambroxol+guaifenesin,Ambroxol + Guaifenesin,false,false,,syrup,standard,91.80,
+Bromhex,bromhexine,Bromhexine,true,false,PMBJP-BROMHEX,syrup,standard,45.00,1993
+Levocet,levocetirizine,Levocetirizine,true,false,PMBJP-LEVOCET,tablet,5mg,30.00,82122
+Xyzal,levocetirizine,Levocetirizine,true,false,PMBJP-XYZAL,tablet,5mg,32.40,82122
+Crocin Cold & Flu,phenylephrine+chlorpheniramine+paracetamol,Phenylephrine + Chlorpheniramine + Paracetamol (Paediatric),false,false,,syrup,standard,45.00,
+T-98,phenylephrine+chlorpheniramine+paracetamol,Phenylephrine + Chlorpheniramine + Paracetamol (Paediatric),false,false,,syrup,standard,48.60,
+Calpol,paracetamol-syrup,Paracetamol (paediatric syrup),true,false,PMBJP-CALPOL,syrup,125mg/5ml,35.00,161
+Crocin Syrup,paracetamol-syrup,Paracetamol (paediatric syrup),true,false,PMBJP-CROCINSYRU,syrup,250mg/5ml,37.80,161
+Fepanil Syrup,paracetamol-syrup,Paracetamol (paediatric syrup),true,false,PMBJP-FEPANILSYR,syrup,125mg/5ml,40.60,161
+Novamox Syrup,amoxicillin-syrup,Amoxicillin (paediatric syrup),true,true,PMBJP-NOVAMOXSYR,syrup,125mg/5ml,60.00,723
+Mox Syrup,amoxicillin-syrup,Amoxicillin (paediatric syrup),true,true,PMBJP-MOXSYRUP,syrup,125mg/5ml,64.80,723
+Azithral Syrup,azithromycin-syrup,Azithromycin (paediatric syrup),true,true,PMBJP-AZITHRALSY,syrup,100mg/5ml,90.00,18631
+Zady Syrup,azithromycin-syrup,Azithromycin (paediatric syrup),true,true,PMBJP-ZADYSYRUP,syrup,100mg/5ml,97.20,18631
+ORS-Zinc Kit,ors-zinc-combo,ORS + Zinc combipack,true,false,PMBJP-ORSZINCKIT,combipack,standard,40.00,
+Polybion Syrup,multivitamin-syrup,Multivitamin (paediatric syrup),false,false,,syrup,standard,90.00,
+Zincovit Syrup,multivitamin-syrup,Multivitamin (paediatric syrup),false,false,,syrup,standard,97.20,
+Ferium-XT,iron-syrup,Ferrous ascorbate (paediatric syrup),true,false,PMBJP-FERIUMXT,syrup,standard,80.00,
+Fefol Syrup,iron-syrup,Ferrous ascorbate (paediatric syrup),true,false,PMBJP-FEFOLSYRUP,syrup,standard,86.40,
+Chloromycetin,chloramphenicol-eye-drop,Chloramphenicol (eye drop),true,false,PMBJP-CHLOROMYCE,eye drop,0.5% w/v,25.00,2323
+Ciplox Eye Drop,ciprofloxacin-eye-drop,Ciprofloxacin (eye drop),true,false,PMBJP-CIPLOXEYED,eye drop,0.3% w/v,30.00,2551
+Vigamox,moxifloxacin-eye-drop,Moxifloxacin (eye drop),false,true,,eye drop,0.5% w/v,90.00,139462
+Timoptic,timolol-eye-drop,Timolol (eye drop),true,true,PMBJP-TIMOPTIC,eye drop,0.5% w/v,60.00,10600
+Glucomol,timolol-eye-drop,Timolol (eye drop),true,true,PMBJP-GLUCOMOL,eye drop,0.5% w/v,64.80,10600
+Patanol,olopatadine-eye-drop,Olopatadine (eye drop),false,false,,eye drop,0.1% w/v,110.00,72056
+Opatanol,olopatadine-eye-drop,Olopatadine (eye drop),false,false,,eye drop,0.1% w/v,118.80,72056
+Refresh Tears,carboxymethylcellulose-eye-drop,Carboxymethylcellulose (lubricant eye drop),false,false,,eye drop,0.5% w/v,90.00,
+Tears Naturale,carboxymethylcellulose-eye-drop,Carboxymethylcellulose (lubricant eye drop),false,false,,eye drop,0.5% w/v,97.20,
+Candibiotic,clotrimazole-ear-drop,Clotrimazole + Lignocaine (ear drop),false,false,,ear drop,standard,90.00,
+Otrivin,xylometazoline,Xylometazoline (nasal drop),true,false,PMBJP-OTRIVIN,nasal drop,0.05%,45.00,11751
+Nasivion,xylometazoline,Xylometazoline (nasal drop),true,false,PMBJP-NASIVION,nasal drop,0.1%,48.60,11751
+Nasocort,beclomethasone-nasal,Beclomethasone (nasal spray),true,true,PMBJP-NASOCORT,nasal spray,50mcg/dose,130.00,1347
+Beclate Nasal,beclomethasone-nasal,Beclomethasone (nasal spray),true,true,PMBJP-BECLATENAS,nasal spray,50mcg/dose,140.40,1347
+Elocon,mometasone-cream,Mometasone furoate (cream),true,true,PMBJP-ELOCON,cream,0.1% w/w,90.00,31555
+Momate,mometasone-cream,Mometasone furoate (cream),true,true,PMBJP-MOMATE,cream,0.1% w/w,97.20,31555
+Betnovate-N,betamethasone-cream,Betamethasone (cream),true,true,PMBJP-BETNOVATEN,cream,0.1% w/w,60.00,1514
+Permite,permethrin,Permethrin (lotion),true,false,PMBJP-PERMITE,lotion,5% w/v,90.00,8214
+Scabex,permethrin,Permethrin (lotion),true,false,PMBJP-SCABEX,lotion,5% w/v,97.20,8214
+Benzoate Lotion,benzyl-benzoate,Benzyl benzoate (lotion),true,false,PMBJP-BENZOATELO,lotion,25% w/v,60.00,
+Caladryl,calamine-lotion,Calamine (lotion),false,false,,lotion,standard,90.00,
+Lacto Calamine,calamine-lotion,Calamine (lotion),false,false,,lotion,standard,97.20,
+Deriva,adapalene,Adapalene (gel),false,true,,gel,0.1% w/w,190.00,83905
+Adaferin,adapalene,Adapalene (gel),false,true,,gel,0.1% w/w,205.20,83905
+Persol,benzoyl-peroxide,Benzoyl peroxide (gel),false,false,,gel,2.5% w/w,150.00,1721
+Benzac,benzoyl-peroxide,Benzoyl peroxide (gel),false,false,,gel,5% w/w,162.00,1721
+Sotret,isotretinoin,Isotretinoin,false,true,,capsule,10mg,250.00,6118
+Accutane,isotretinoin,Isotretinoin,false,true,,capsule,20mg,270.00,6118
+Nizral,ketoconazole-shampoo,Ketoconazole (shampoo),true,false,PMBJP-NIZRAL,shampoo,2% w/v,150.00,6135
+Ecosprin-AV,clopidogrel+aspirin,Clopidogrel + Aspirin,true,true,PMBJP-ECOSPRINAV,tablet,75mg/75mg,45.00,
+Clopitab-A,clopidogrel+aspirin,Clopidogrel + Aspirin,true,true,PMBJP-CLOPITABA,tablet,75mg/75mg,48.60,
+Polycap,atorvastatin+clopidogrel+aspirin,Atorvastatin + Clopidogrel + Aspirin (polypill),false,true,,tablet,standard,90.00,
+Nebicard,nebivolol,Nebivolol,true,true,PMBJP-NEBICARD,tablet,5mg,60.00,349199
+Nebilong,nebivolol,Nebivolol,true,true,PMBJP-NEBILONG,tablet,5mg,64.80,349199
+Carvidon,carvedilol,Carvedilol,true,true,PMBJP-CARVIDON,tablet,3.125mg,70.00,20352
+Cardivas,carvedilol,Carvedilol,true,true,PMBJP-CARDIVAS,tablet,6.25mg,75.60,20352
+Olmezest,olmesartan,Olmesartan,false,true,,tablet,20mg,90.00,321064
+Olmy,olmesartan,Olmesartan,false,true,,tablet,40mg,97.20,321064
+Januvia,sitagliptin,Sitagliptin,false,true,,tablet,50mg,180.00,593411
+Istavel,sitagliptin,Sitagliptin,false,true,,tablet,100mg,194.40,593411
+Ziten,teneligliptin,Teneligliptin,false,true,,tablet,20mg,90.00,
+Tenepure,teneligliptin,Teneligliptin,false,true,,tablet,20mg,97.20,
+Volix,voglibose,Voglibose,false,true,,tablet,0.2mg,60.00,1656339
+Vocose,voglibose,Voglibose,false,true,,tablet,0.3mg,64.80,1656339
+Pioglar,pioglitazone,Pioglitazone,true,true,PMBJP-PIOGLAR,tablet,15mg,45.00,33738
+Piozone,pioglitazone,Pioglitazone,true,true,PMBJP-PIOZONE,tablet,30mg,48.60,33738
+Forxiga,dapagliflozin,Dapagliflozin,false,true,,tablet,5mg,200.00,1488564
+Oxra,dapagliflozin,Dapagliflozin,false,true,,tablet,10mg,216.00,1488564
+Diamicron,gliclazide,Gliclazide,true,true,PMBJP-DIAMICRON,tablet,40mg,40.00,4832
+Reclide,gliclazide,Gliclazide,true,true,PMBJP-RECLIDE,tablet,80mg,43.20,4832
+Doxinate,pyridoxine,Pyridoxine (Vitamin B6),true,false,PMBJP-DOXINATE,tablet,10mg,20.00,8695
+Pyridoxine Neon,pyridoxine,Pyridoxine (Vitamin B6),true,false,PMBJP-PYRIDOXINE,tablet,40mg,21.60,8695
+Decadron,dexamethasone,Dexamethasone,true,true,PMBJP-DECADRON,injection,4mg/ml,15.00,3264
+Wymesone,dexamethasone,Dexamethasone,true,true,PMBJP-WYMESONE,injection,4mg/ml,16.20,3264
+Efcorlin,hydrocortisone,Hydrocortisone,true,true,PMBJP-EFCORLIN,injection,100mg,25.00,5492
+Adrenaline Inj,adrenaline,Adrenaline (Epinephrine),true,true,PMBJP-ADRENALINE,injection,1mg/ml,10.00,3992
+Phenergan,promethazine,Promethazine,true,true,PMBJP-PHENERGAN,tablet,25mg,15.00,8745
+Buscopan,hyoscine-butylbromide,Hyoscine butylbromide,true,true,PMBJP-BUSCOPAN,tablet,10mg,25.00,5449
+Rablet,rabeprazole,Rabeprazole,true,true,PMBJP-RABLET,tablet,20mg,55.00,83156
+Razo,rabeprazole,Rabeprazole,true,true,PMBJP-RAZO,tablet,20mg,59.40,83156
+Nexpro,esomeprazole,Esomeprazole,true,true,PMBJP-NEXPRO,tablet,20mg,65.00,283742
+Esoz,esomeprazole,Esomeprazole,true,true,PMBJP-ESOZ,tablet,40mg,70.20,283742
+Sucral,sucralfate,Sucralfate,true,false,PMBJP-SUCRAL,suspension,1g/10ml,75.00,10262
+Sucramal,sucralfate,Sucralfate,true,false,PMBJP-SUCRAMAL,suspension,1g/10ml,81.00,10262
+Mesacol,mesalazine,Mesalazine,false,true,,tablet,400mg,150.00,6845
+Colamine,mesalazine,Mesalazine,false,true,,tablet,400mg,162.00,6845
+Udiliv,ursodeoxycholic-acid,Ursodeoxycholic acid,false,true,,tablet,300mg,120.00,10992
+Ursocol,ursodeoxycholic-acid,Ursodeoxycholic acid,false,true,,tablet,300mg,129.60,10992
