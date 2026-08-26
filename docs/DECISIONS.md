@@ -1,5 +1,251 @@
 # Decisions Log
 
+## 2026-08-26 — CP2 P2.5 rate limiting & progressive lockout
+
+- `app/core/ratelimit.py`'s `limiter` (`slowapi.Limiter`, Redis-backed via
+  `settings.redis_url`) uses one key function, `_user_or_ip_key`, for both
+  the "N/min/user" and "N/min/IP" flavours the checkpoint's limit table asks
+  for: it resolves to `user:{sub}` for a valid, non-expired **access**
+  token (explicitly checking `typ == "access"` so a refresh token
+  presented as a bearer doesn't count as an authenticated identity), and
+  falls back to the client IP otherwise -- so an anonymous route (register,
+  login, before any token exists) is naturally "/IP" and an authenticated
+  one is naturally "/user" with the same function. `default_limits=
+  ["120/minute"]` gives the global cap; per-route `@limiter.limit(...)`
+  stacks a stricter limit on top where the spec specifies one.
+- Wired directly (owned files): `POST /auth/register` -> `3/minute`,
+  `POST /auth/login` -> `5/minute`, `POST /files` -> `10/minute`.
+- **Not wired directly (not this checkpoint's files)**: `POST
+  /documents/upload` and `/chat/patient` both need `10/minute` and
+  `30/minute` respectively per spec, but live in files this checkpoint
+  doesn't own. `limiter` is exported from `app/core/ratelimit.py`
+  specifically so those files' owners can add
+  `@limiter.limit("10/minute")` / `@limiter.limit("30/minute")` themselves
+  --  **note to Virat/Ashwin**: please wire these two when convenient;
+  until then those two routes only carry the `120/minute` global default.
+- Progressive lockout is tracked separately from the slowapi IP limit,
+  keyed by **email** (`record_login_failure`/`is_login_locked`/
+  `clear_login_failures` in `ratelimit.py`): 5 consecutive failures locks
+  the account for 15 minutes even if the attacker rotates source IPs
+  (which the 5/min/IP slowapi limit alone wouldn't catch). `login()` in
+  `app/api/v1/auth.py` checks the lock before touching the DB, records a
+  failure on any bad attempt (unknown email, wrong password, or inactive
+  account, indistinguishable per the uniform-timing rule from CP1), and
+  clears the counter on success.
+- **Simplification, noted as instructed**: checkpoint P2.5 also asks to
+  "invalidate outstanding captcha challenges tied to recent attempts for
+  that account" on lockout. Captcha challenges in `app/core/captcha.py`
+  are keyed by the random `challenge` hash itself, with no stored
+  association back to an email/account, so there's no index to invalidate
+  by account without adding new state to the captcha module (out of this
+  sub-checkpoint's scope, and captcha is already single-use/short-TTL
+  regardless). Not implemented; tracked here as a known gap rather than
+  silently skipped.
+- The `RateLimitExceeded` handler in `app/main.py` returns a static
+  `Retry-After: 60` rather than a value computed from the exact limit
+  window's reset time -- `slowapi==0.1.9`'s `RateLimitExceeded` exception
+  doesn't expose a ready reset timestamp on `exc` itself (only the `Limit`
+  object's string form), and computing it precisely would mean reaching
+  into the limiter's storage backend from the handler. `60` safely
+  over-approximates every configured window (the shortest is `3/minute`,
+  i.e. a same-or-shorter reset in the worst case), so a well-behaved client
+  backing off by the header value never retries too early; a follow-up
+  precise value is a nice-to-have, not a correctness issue.
+- `app/main.py` additionally gained `app.state.limiter`, the
+  `RateLimitExceeded` exception handler, and `SlowAPIMiddleware`
+  registration -- same "small, deliberate, documented addition" reasoning
+  as P2.4's `AuditMiddleware` line above, not a `DRIFT:`.
+- None of `slowapi`, `starlette`, `sqlalchemy`, `jose`/`python-jose`, or
+  `structlog` are importable in this sandbox's bare Python 3.14 interpreter
+  (`pip install -r requirements.txt` has never been run here, per prior
+  CP1 entries), so nothing that touches FastAPI routing, JWT decoding, or
+  Postgres could be executed locally for P2.2-P2.5. All four sub-checkpoints'
+  code was written directly against the documented/inspected APIs (slowapi's
+  `extension.py`/`errors.py`/`middleware.py` were read from the locally
+  `pip install`-able `slowapi` package itself to confirm constructor
+  signatures and exception shape) and reviewed carefully; `ruff check`
+  passed clean on every file touched. Full execution is deferred to CI, per
+  this sandbox's standing infra-gap note.
+
+## 2026-08-26 — CP2 P2.4 audit middleware, append-only log, query endpoint
+
+- `app/core/middleware_audit.py`'s `AuditMiddleware` logs every
+  `POST`/`PATCH`/`PUT`/`DELETE` request as an `AuditLog` row: actor/role
+  decoded best-effort from the bearer token (never blocks the request on a
+  decode failure -- an anonymous mutation like `/auth/register` is still
+  logged with a null actor), `action` = `"<METHOD> <route template>"` (the
+  template, e.g. `/patients/{patient_id}`, not the literal path, so entries
+  group by endpoint), `entity`/`entity_id` best-effort from the first
+  non-`api/v1` path segment and the first path param, IP, user agent, and
+  `diff_hash = sha256(raw request body)` -- **never the body itself**, so
+  no personal + health data (DPDP/SPDI) sits in the audit trail. A failure
+  to write the audit row is logged via `structlog` and swallowed rather
+  than turned into a 500 for an otherwise-successful request -- audit
+  logging is a compliance control here, not a request-blocking gate.
+- **Small, deliberate addition to `app/main.py`** (not in this
+  checkpoint's owned-paths list, but every checkpoint needs to eventually
+  register its own middleware there): added a single
+  `app.add_middleware(AuditMiddleware)` line plus its import, immediately
+  after the existing `RequestContextMiddleware` registration. This is
+  routine middleware wiring, not a conflict with anyone else's code --
+  logged here per the Autonomy Contract rather than treated as a `DRIFT:`
+  (DRIFT is for actual conflicts; this is a one-line, additive, minimal-
+  diff registration of a file this checkpoint is explicitly required to
+  ship).
+- `alembic/versions/c7e2a9f01b3d_audit_log_append_only.py` (additive,
+  `down_revision=a3f9c1d84b77`) revokes `UPDATE, DELETE` on `audit_logs`
+  from the `copilot` role. **Known limitation, documented in the
+  migration's own docstring and here**: `settings.database_url` connects
+  as `copilot`, which is also the role that *owns* the table (it ran the
+  `CREATE TABLE` via this same migration chain) -- PostgreSQL table owners
+  always retain full DML rights regardless of REVOKE, so as configured
+  today this does **not** actually stop the running app from updating or
+  deleting audit rows via its own DB credential. The REVOKE is still
+  applied for defense-in-depth against a future split (a lower-privileged
+  runtime role distinct from the migration-runner role) and is flagged as
+  a CP4 hardening item in `docs/SECURITY.md`'s OWASP table rather than
+  silently claimed as enforced -- shipping something that "does not
+  actually enforce append-only" without saying so would be exactly the
+  overclaim the compliance section warns against.
+- `GET /audit` restricted to `doctor|admin` via `require_role`, paginated
+  (`limit` default 50 max 200, `offset`), newest-first, filterable by
+  `entity`, `entity_id`, `actor_id`, `from`, `to`. No mutation endpoint
+  exists on this router at all.
+- `test_audit.py` follows the same split as prior CP2 test files:
+  route-template/entity-parsing/actor-decoding logic is pure and covered
+  directly with a hand-built ASGI `scope` dict (no live server needed); the
+  full "mutating request produces a queryable AuditLog row, restricted to
+  doctor/admin" round trip and a live demonstration of the ownership-bypass
+  limitation above are documented as written and reviewed but not locally
+  executed (needs Postgres) per the standing infra-gap note.
+
+## 2026-08-26 — CP2 P2.3 doctor approval + immutable lock
+
+- **Note to Ashwin**: `Prescription` (app/db/models/clinical.py) has no
+  `status` column, unlike `LabOrder` which does. `approve_prescription`
+  therefore sets `approved_by`/`approved_at`/`content_hash`/`locked` but
+  cannot set a `status="approved"` the way `approve_lab_order` does.
+  Requesting an additive migration + model column
+  (`status: Mapped[str] = mapped_column(String(32), default="draft")`) on
+  `Prescription` for parity with `LabOrder` -- not added here since
+  `app/db/models/` is off limits for this checkpoint.
+- Immutability enforced twice, per spec: (1) service layer in
+  `app/api/v1/approvals.py` checks `.locked` and raises `409 LOCKED` (with
+  an audit entry of the rejected attempt) before touching the row at all;
+  (2) `alembic/versions/a3f9c1d84b77_lock_triggers.py` (additive, head is
+  now `a3f9c1d84b77`, `down_revision=fecbbce145ed`) adds a
+  `block_locked_update()` trigger function plus `BEFORE UPDATE` triggers on
+  both `lab_orders` and `prescriptions` that raise `record_locked` whenever
+  `OLD.locked` is true -- catching a raw SQL `UPDATE` or any future code
+  path that bypasses the router entirely.
+- `content_hash = sha256(canonical_json(items))` where canonical JSON is
+  `json.dumps(items, sort_keys=True, separators=(",", ":"))` -- so the hash
+  is stable under key-order differences but changes with any actual content
+  change (both covered by pure unit tests in `test_locks.py`).
+- A doctor's assignment to the visit is checked via `Visit.doctor_id ==
+  Doctor.id` (resolved from the caller's `user_id`) *after* the locked
+  check, matching the spec's "re-approval of an already-locked record ->
+  409 before doing anything else" ordering.
+- `app/api/v1/lab_orders.py` (Niyati's) still has no mutation route as of
+  this checkpoint (see the P2.1 entry above) -- there is currently nothing
+  else in the codebase that writes to `LabOrder`/`Prescription` besides
+  this approvals router, so the "service guard on every mutation path"
+  requirement has no second call site to add yet. Standing DRIFT note from
+  P2.1 covers it for when one is added.
+- Publishes `approval.locked` to Redis (`{entity, id, content_hash}` JSON)
+  on successful approval, per spec, for Abhishek's WS layer to pick up --
+  same channel-naming convention as P3.2's planned `notify.{user_id}`.
+- Wrote an explicit `AuditLog` row inline in the approval transaction (as
+  P2.3 requires) even though P2.4's generic mutation-logging middleware
+  will *also* fire for the same `POST` request once it lands later this
+  checkpoint -- both entries are true statements about the same event so
+  the duplication is harmless, just slightly redundant; not reworking this
+  now since P2.3 was written and merged before P2.4 existed.
+- `test_locks.py` follows the same split as `test_files.py`: pure-function
+  coverage for the hash and the doctor-resolution-failure path runs with no
+  infra; the full approve/re-lock/DB-trigger flow is documented as written
+  and reviewed but not locally executed (needs Postgres) per the standing
+  infra-gap note.
+
+## 2026-08-26 — CP2 P2.1 pull + confirm auth deps wired
+
+- Branched `feat/pratyaksh/cp2` off latest `main` (already carrying Ashwin's
+  and Virat's CP2 merges). This sandbox still has no Docker/Postgres/Redis
+  (unchanged from CP1's noted condition) so `make migrate && make test`
+  cannot run here; ran `ruff check` on the owned stub files as the
+  infra-independent baseline check instead.
+- Grepped `app/api/v1/*.py` for routes not depending on `get_current_user`/
+  `require_role`. `app/api/v1/documents.py`'s `POST /documents/upload` and
+  `GET /documents/{id}` (Virat's/Ashwin's) already depend on
+  `get_current_user` -- no drift there. Its multipart branch is a
+  documented TEMP-ADAPTER ("remove when pratyaksh ships services/storage.py
+  + /files") that duplicates a small piece of what `app/services/storage.py`
+  now does properly (MIME sniffing, malicious-PDF rejection, EXIF
+  stripping, dedupe) -- not touching that file per the ownership rule; the
+  TEMP-ADAPTER comment already tells Virat/Ashwin when to remove it.
+- `app/api/v1/lab_orders.py` (Niyati's) currently only has `POST /recommend`
+  and `GET /{id}`, both still `not_implemented` -- no mutation route exists
+  yet for the P2.3 locked-check service guard to apply to. Noting this so
+  it isn't missed: **DRIFT (forward-looking, not yet a live gap)** — when
+  Niyati ships a `PATCH`/update route on `lab_orders.py` or `prescriptions`,
+  it must check `.locked` and raise `LOCKED` (409) before allowing writes,
+  same as the DB trigger added in P2.3 enforces at the database level.
+- No changes needed to `backend/tests/security/test_rbac_matrix.py` for
+  P2.1 -- no anonymous-reachable-but-shouldn't-be route was found.
+
+## 2026-08-26 — CP2 P2.2 secure upload pipeline
+
+- `app/services/storage.py`'s `save_file`/`open_file`/`signed_url` extend
+  the frozen §4.2 signatures with an optional trailing `db: AsyncSession`
+  parameter (each opens its own `SessionLocal()` session when omitted, so
+  the frozen call shape `save_file(patient_id, upload, uploaded_by)` still
+  works) -- none of the three can do a per-patient dedupe lookup, an
+  ownership check, or a `FileObject` read without a session, and
+  SQLAlchemy's async session has no ambient/global form to substitute.
+  `signed_url` also gains a required keyword `user_id`, since P2.2 requires
+  the token be bound to *both* `file_id` and `user_id` (the two-positional-
+  arg frozen form can't express that). `app/api/v1/files.py` is the only
+  caller so far and always uses the extended form.
+- MIME allowlist enforced via `python-magic` sniffing the first 2048 bytes
+  (`application/pdf, image/png, image/jpeg, image/webp, image/tiff`); a PDF
+  additionally gets scanned for `/JavaScript`, `/Launch`, `/EmbeddedFile`
+  byte tokens before acceptance. Images are re-encoded through Pillow
+  (`Image.new` + copy pixel data + re-save) to drop EXIF; a decode failure
+  degrades to storing the original bytes rather than failing the upload,
+  since a genuinely malformed image would already have failed MIME
+  sniffing. Dedupe is per-(patient_id, sha256): a repeat upload of the same
+  bytes for the same patient returns the existing `FileObject` row instead
+  of writing a second file.
+- Storage path is `STORAGE_ROOT/{patient_id}/{sha256[:2]}/{sha256}.{ext}`;
+  the original client filename is never written to disk or used as a path
+  component, only kept implicitly via the sniffed MIME's canonical
+  extension.
+- Added `python-magic==0.4.27` and `itsdangerous==2.2.0` to
+  `backend/requirements.txt` (both were missing; already flagged as pinned
+  additions in the spec). **Note to Ashwin**: `python-magic` needs
+  `libmagic1` on the image (`apt-get install -y libmagic1`), per the
+  spec -- please add it to `Dockerfile.backend` alongside the
+  pango/weasyprint system packages already noted there. On this Windows
+  dev box, `python-magic-bin` (a bundled-libmagic Windows wheel) was
+  installed locally only for import-smoke-testing `magic.from_buffer` --
+  it is NOT added to `requirements.txt`, since CI/prod run Linux and use
+  the real `python-magic` + `libmagic1` pairing.
+- `backend/tests/security/test_files.py` follows the established pattern
+  (`test_captcha.py`/`test_ownership.py`/`test_auth_api.py`): pure-function
+  coverage for MIME sniffing, size cap, malicious-PDF rejection, EXIF
+  stripping and signed-URL binding runs with no infra; the dedupe,
+  extension-spoof-rejection and cross-patient-403 cases are full API round
+  trips needing Postgres + Redis, written and reviewed but not locally
+  executed in this sandbox (see the standing infra-gap note above) --
+  execution deferred to CI.
+- `itsdangerous`/`python-magic` import and run correctly under this
+  sandbox's Python 3.14 interpreter once installed (`python-magic-bin` for
+  the Windows smoke test); `slowapi` (P2.5, already pinned in
+  requirements.txt) could not be smoke-tested the same way since this bare
+  interpreter has no `starlette`/`fastapi` installed -- not a real blocker,
+  just this sandbox's known bare-interpreter limitation (see prior CP1
+  entries on `pip install -r requirements.txt` not having been run here).
+
 ## 2026-08-26 — CP2 re-verify: MSVC installed, full `tests/ml`/`tests/integration` now green
 
 - MSVC Build Tools got installed on this machine after the CP2 entry below,
