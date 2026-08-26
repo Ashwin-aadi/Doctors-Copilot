@@ -1,5 +1,60 @@
 # Decisions Log
 
+## 2026-08-26 — P1.3 captcha service
+
+- `docs/CAPTCHA.md` written same-day per the hard requirement ("Divyanshi and
+  Abhishek build against it"), documenting the exact algorithm, both payload
+  shapes, error codes and the 15-line JS solver.
+- Single-use is enforced via Redis `GETDEL` (atomic get-and-delete) rather
+  than a separate `used: bool` flag read-then-written -- that would be a
+  read-modify-write race under concurrent replay of the same token; `GETDEL`
+  has no such window. A wrong solve attempt against a valid challenge also
+  consumes it (the key is gone either way) -- stricter than "N attempts per
+  challenge", but simpler and closes a brute-force-retry avenue, which is
+  the point of a captcha in the first place.
+- Verified end to end (challenge shape, solve, verify, single-use replay
+  rejection, wrong-number rejection, malformed-token rejection) against
+  `fakeredis` in this sandbox's no-live-Redis environment -- same infra
+  caveat as P1.1.
+
+## 2026-08-26 — P1.2 auth endpoints
+
+- `app/schemas/auth.py`'s existing `RegisterIn`/`LoginIn`/`TokenOut`/`UserOut`
+  don't cover what the spec requires (`phone`, `name`, ABHA fields on
+  register; `expires_in` and a nested `user:{...}` on the token response) and
+  `app/schemas/` is off limits (Ashwin's). `app/api/v1/auth.py` defines its
+  own local `RegisterRequest`/`LoginRequest`/`TokenResponse`/`UserProfile`
+  instead, dropping the import from `app.schemas.auth` entirely -- the same
+  pattern `app/api/v1/documents.py` already uses for its own local
+  `DocumentUploadIn`.
+- `User` has no `name` column (only `Patient.name` / `Doctor.name` do), so
+  `TokenResponse.user.name` and `/auth/me`'s `name` field are resolved by
+  looking up the caller's `Patient`/`Doctor` row by `user_id`
+  (`_resolve_display_name`); `None` for staff/admin, which have no profile
+  table at all yet.
+- "role other than patient rejected unless caller is admin" needs to know
+  whether an authenticated admin is calling `/auth/register` -- an otherwise
+  public, unauthenticated endpoint. Reads an optional `Authorization` header
+  and treats it as an admin override only if it decodes to a real access
+  token for a user with `role=="admin"`; any decode failure is swallowed
+  (treated as anonymous, not a 401), since a bad/expired header on this one
+  endpoint should just fall back to "not an admin", not block registration.
+- Login's timing-uniformity guard hashes a fixed dummy password with the same
+  bcrypt cost factor for an unknown email, so an unknown-email 401 and a
+  wrong-password 401 always pay the same bcrypt-verify cost; both return the
+  identical `AUTH_INVALID_CREDENTIALS` message.
+- Progressive lockout (5 failed logins -> 15 min) is explicitly P2.5's scope
+  (rate limiting), not implemented here.
+- **Infra caveat**: the full `/auth/*` API round-trip tests in
+  `test_auth_api.py` need a reachable Postgres (the models use
+  `postgresql`-dialect `UUID`/`JSONB` columns, so SQLite can't substitute)
+  and could not run in this sandbox -- same caveat as P1.1. What *was*
+  verified: every pure-validation helper (`_normalize_phone`,
+  `_reject_full_aadhaar`, `_validate_abha_number/_address`) passes 16/16
+  tests directly, and the captcha challenge/solve/verify flow those API
+  tests build on is independently verified end to end against `fakeredis`
+  (see the P1.3 entry below).
+
 ## 2026-08-26 — P1.1 security core
 
 - `passlib[bcrypt]==1.7.4` + `bcrypt==4.2.1` (both already pinned in
