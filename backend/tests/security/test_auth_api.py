@@ -13,7 +13,6 @@ import pytest
 from app.api.v1 import auth as auth_module
 from app.core.errors import ApiError
 
-
 # ---- pure-function coverage (no DB/Redis needed) --------------------------
 
 
