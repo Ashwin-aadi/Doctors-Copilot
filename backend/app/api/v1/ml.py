@@ -1,24 +1,45 @@
-from fastapi import APIRouter
+from fastapi import APIRouter, Depends
+from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.deps import CurrentUser, get_current_user
 from app.core.errors import not_implemented
+from app.db.session import get_db
+from app.ml.lab_flags import flag_labs as _flag_labs
+from app.ml.ner import extract as _extract_entities
+from app.ml.safety import check_interactions as _check_interactions
+from app.ml.schemas_ml import (
+    EntityBundle,
+    EntityRequest,
+    InteractionRequest,
+    LabFlagRequest,
+    LabResultExtended,
+)
 from app.schemas.ml import InteractionReport, MedCandidate, SoapSummary
 
 router = APIRouter(prefix="/ml", tags=["ml"])
 
 
-@router.post("/entities")
-async def extract_entities() -> dict:
-    raise not_implemented("entity extraction owned by virat")
+@router.post("/entities", response_model=EntityBundle)
+async def extract_entities(
+    req: EntityRequest, current_user: CurrentUser = Depends(get_current_user)
+) -> EntityBundle:
+    return await _extract_entities(req.text)
 
 
 @router.post("/interactions", response_model=InteractionReport)
-async def check_interactions() -> InteractionReport:
-    raise not_implemented("interaction checking owned by virat")
+async def check_interactions(
+    req: InteractionRequest, current_user: CurrentUser = Depends(get_current_user)
+) -> InteractionReport:
+    return await _check_interactions(req)
 
 
-@router.post("/labs/flag")
-async def flag_labs() -> list:
-    raise not_implemented("lab flagging owned by virat")
+@router.post("/labs/flag", response_model=list[LabResultExtended])
+async def flag_labs(
+    req: LabFlagRequest,
+    db: AsyncSession = Depends(get_db),
+    current_user: CurrentUser = Depends(get_current_user),
+) -> list[LabResultExtended]:
+    return await _flag_labs(db, req.patient_id, req.results)
 
 
 @router.post("/summary", response_model=SoapSummary)

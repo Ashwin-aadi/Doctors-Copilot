@@ -1,0 +1,60 @@
+# Cross-class allergy rules: an allergy to the class key also (partially)
+# conflicts with each listed cross-reacting ingredient. Used by
+# app/ml/safety.py in addition to direct name/ingredient matching.
+penicillin:
+  cross_reacts:
+    - amoxicillin
+    - ampicillin
+    - amoxicillin+clavulanate
+    - piperacillin
+    - cephalexin
+    - cefixime
+    - cefpodoxime
+    - ceftriaxone
+    - cefuroxime
+  rationale: >-
+    Beta-lactam ring cross-reactivity: penicillin allergy confers a
+    partial (roughly 1-10%) cross-reaction risk with cephalosporins and a
+    higher risk with other penicillin-class drugs (amoxicillin, ampicillin).
+sulfa:
+  cross_reacts:
+    - sulfamethoxazole
+    - co-trimoxazole
+    - sulfasalazine
+    - sulfadiazine
+  rationale: >-
+    Sulfonamide antibacterials share an arylamine group implicated in
+    hypersensitivity reactions; cross-reactivity within this group is
+    well documented.
+nsaids:
+  cross_reacts:
+    - aspirin
+    - ibuprofen
+    - diclofenac
+    - naproxen
+    - mefenamic acid
+    - nimesulide
+    - indomethacin
+    - piroxicam
+    - aceclofenac
+  rationale: >-
+    NSAID hypersensitivity is frequently a class effect (COX-1 inhibition
+    driven), so reaction to one NSAID predicts risk with others in the class.
+aspirin:
+  cross_reacts:
+    - ibuprofen
+    - diclofenac
+    - naproxen
+    - mefenamic acid
+    - nimesulide
+    - indomethacin
+    - piroxicam
+  rationale: >-
+    Aspirin-exacerbated respiratory disease and urticarial reactions
+    frequently cross-react with other non-selective NSAIDs via COX-1 inhibition.
+macrolide:
+  cross_reacts:
+    - erythromycin
+    - clarithromycin
+    - azithromycin
+  rationale: Macrolide antibiotics share a common ring structure implicated in cross-reactive hypersensitivity.
