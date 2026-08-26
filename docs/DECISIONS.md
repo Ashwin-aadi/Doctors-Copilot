@@ -1,5 +1,72 @@
 # Decisions Log
 
+## 2026-08-26 — CP2 P2.5 rate limiting & progressive lockout
+
+- `app/core/ratelimit.py`'s `limiter` (`slowapi.Limiter`, Redis-backed via
+  `settings.redis_url`) uses one key function, `_user_or_ip_key`, for both
+  the "N/min/user" and "N/min/IP" flavours CLAUDE.md's limit table asks
+  for: it resolves to `user:{sub}` for a valid, non-expired **access**
+  token (explicitly checking `typ == "access"` so a refresh token
+  presented as a bearer doesn't count as an authenticated identity), and
+  falls back to the client IP otherwise -- so an anonymous route (register,
+  login, before any token exists) is naturally "/IP" and an authenticated
+  one is naturally "/user" with the same function. `default_limits=
+  ["120/minute"]` gives the global cap; per-route `@limiter.limit(...)`
+  stacks a stricter limit on top where CLAUDE.md specifies one.
+- Wired directly (owned files): `POST /auth/register` -> `3/minute`,
+  `POST /auth/login` -> `5/minute`, `POST /files` -> `10/minute`.
+- **Not wired directly (not this checkpoint's files)**: `POST
+  /documents/upload` and `/chat/patient` both need `10/minute` and
+  `30/minute` respectively per CLAUDE.md, but live in files this checkpoint
+  doesn't own. `limiter` is exported from `app/core/ratelimit.py`
+  specifically so those files' owners can add
+  `@limiter.limit("10/minute")` / `@limiter.limit("30/minute")` themselves
+  --  **note to Virat/Ashwin**: please wire these two when convenient;
+  until then those two routes only carry the `120/minute` global default.
+- Progressive lockout is tracked separately from the slowapi IP limit,
+  keyed by **email** (`record_login_failure`/`is_login_locked`/
+  `clear_login_failures` in `ratelimit.py`): 5 consecutive failures locks
+  the account for 15 minutes even if the attacker rotates source IPs
+  (which the 5/min/IP slowapi limit alone wouldn't catch). `login()` in
+  `app/api/v1/auth.py` checks the lock before touching the DB, records a
+  failure on any bad attempt (unknown email, wrong password, or inactive
+  account, indistinguishable per the uniform-timing rule from CP1), and
+  clears the counter on success.
+- **Simplification, noted as instructed**: CLAUDE.md P2.5 also asks to
+  "invalidate outstanding captcha challenges tied to recent attempts for
+  that account" on lockout. Captcha challenges in `app/core/captcha.py`
+  are keyed by the random `challenge` hash itself, with no stored
+  association back to an email/account, so there's no index to invalidate
+  by account without adding new state to the captcha module (out of this
+  sub-checkpoint's scope, and captcha is already single-use/short-TTL
+  regardless). Not implemented; tracked here as a known gap rather than
+  silently skipped.
+- The `RateLimitExceeded` handler in `app/main.py` returns a static
+  `Retry-After: 60` rather than a value computed from the exact limit
+  window's reset time -- `slowapi==0.1.9`'s `RateLimitExceeded` exception
+  doesn't expose a ready reset timestamp on `exc` itself (only the `Limit`
+  object's string form), and computing it precisely would mean reaching
+  into the limiter's storage backend from the handler. `60` safely
+  over-approximates every configured window (the shortest is `3/minute`,
+  i.e. a same-or-shorter reset in the worst case), so a well-behaved client
+  backing off by the header value never retries too early; a follow-up
+  precise value is a nice-to-have, not a correctness issue.
+- `app/main.py` additionally gained `app.state.limiter`, the
+  `RateLimitExceeded` exception handler, and `SlowAPIMiddleware`
+  registration -- same "small, deliberate, documented addition" reasoning
+  as P2.4's `AuditMiddleware` line above, not a `DRIFT:`.
+- None of `slowapi`, `starlette`, `sqlalchemy`, `jose`/`python-jose`, or
+  `structlog` are importable in this sandbox's bare Python 3.14 interpreter
+  (`pip install -r requirements.txt` has never been run here, per prior
+  CP1 entries), so nothing that touches FastAPI routing, JWT decoding, or
+  Postgres could be executed locally for P2.2-P2.5. All four sub-checkpoints'
+  code was written directly against the documented/inspected APIs (slowapi's
+  `extension.py`/`errors.py`/`middleware.py` were read from the locally
+  `pip install`-able `slowapi` package itself to confirm constructor
+  signatures and exception shape) and reviewed carefully; `ruff check`
+  passed clean on every file touched. Full execution is deferred to CI, per
+  this sandbox's standing infra-gap note.
+
 ## 2026-08-26 — CP2 P2.4 audit middleware, append-only log, query endpoint
 
 - `app/core/middleware_audit.py`'s `AuditMiddleware` logs every

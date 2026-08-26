@@ -12,10 +12,12 @@ from __future__ import annotations
 
 import re
 import time
+import uuid
 from uuid import UUID
 
 import phonenumbers
 from fastapi import APIRouter, Depends, Header, Request, Response
+from fastapi.responses import JSONResponse
 from pydantic import BaseModel, EmailStr
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -25,6 +27,13 @@ from app.core.captcha import create_challenge, verify_captcha_token
 from app.core.config import get_settings
 from app.core.deps import CurrentUser, get_current_user, require_captcha
 from app.core.errors import ApiError
+from app.core.ratelimit import (
+    clear_login_failures,
+    is_login_locked,
+    limiter,
+    login_lock_retry_after,
+    record_login_failure,
+)
 from app.db.models.patient import Patient
 from app.db.models.scheduling import Doctor
 from app.db.models.user import User
@@ -158,7 +167,9 @@ async def _token_response(db: AsyncSession, user: User, access: str, refresh: st
 
 
 @router.post("/auth/register", dependencies=[Depends(require_captcha)])
+@limiter.limit("3/minute")
 async def register(
+    request: Request,
     body: RegisterRequest,
     response: Response,
     authorization: str | None = Header(default=None),
@@ -217,13 +228,42 @@ async def register(
     return await _token_response(db, user, access, refresh)
 
 
+def _rate_limited_response(request: Request, retry_after: int, message: str) -> JSONResponse:
+    request_id = request.headers.get("X-Request-ID") or str(uuid.uuid4())
+    response = JSONResponse(
+        status_code=429,
+        content={
+            "error": {
+                "code": "RATE_LIMITED",
+                "message": message,
+                "request_id": request_id,
+                "details": {},
+            }
+        },
+    )
+    response.headers["Retry-After"] = str(retry_after)
+    return response
+
+
 @router.post("/auth/login", dependencies=[Depends(require_captcha)])
+@limiter.limit("5/minute")
 async def login(
+    request: Request,
     body: LoginRequest,
     response: Response,
     db: AsyncSession = Depends(get_db),
-) -> TokenResponse:
+) -> TokenResponse | JSONResponse:
     email = body.email.lower()
+
+    # Progressive lockout: 5 consecutive failures locks the *account* for 15
+    # minutes, independent of the 5/min/IP slowapi limit above -- this one
+    # is keyed by email so it survives an attacker rotating source IPs.
+    if await is_login_locked(email):
+        retry_after = await login_lock_retry_after(email)
+        return _rate_limited_response(
+            request, retry_after, "account temporarily locked after repeated failed logins"
+        )
+
     result = await db.execute(select(User).where(User.email == email))
     user = result.scalar_one_or_none()
 
@@ -231,10 +271,12 @@ async def login(
     password_ok = security.verify_password(body.password, password_hash)
 
     if user is None or not password_ok or not user.is_active:
+        await record_login_failure(email)
         raise ApiError(
             "AUTH_INVALID_CREDENTIALS", "incorrect email or password", status_code=401
         )
 
+    await clear_login_failures(email)
     access, refresh = await security.issue_token_pair(user.id, user.role)
     _set_refresh_cookie(response, refresh)
     return await _token_response(db, user, access, refresh)

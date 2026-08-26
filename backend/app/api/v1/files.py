@@ -11,13 +11,14 @@ from __future__ import annotations
 
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, File, Form, UploadFile
+from fastapi import APIRouter, Depends, File, Form, Request, UploadFile
 from fastapi.responses import StreamingResponse
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.deps import CurrentUser, get_current_user, require_captcha
 from app.core.errors import ApiError
+from app.core.ratelimit import limiter
 from app.db.models.patient import Patient
 from app.db.session import get_db
 from app.services.storage import (
@@ -55,7 +56,9 @@ async def _authorize_upload(db: AsyncSession, user: CurrentUser, patient_id: UUI
 
 
 @router.post("", dependencies=[Depends(require_captcha)])
+@limiter.limit("10/minute")
 async def upload_file(
+    request: Request,
     patient_id: UUID = Form(...),
     file: UploadFile = File(...),
     user: CurrentUser = Depends(get_current_user),
