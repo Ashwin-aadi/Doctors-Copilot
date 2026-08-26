@@ -22,7 +22,7 @@ def _load_expected(name: str) -> list[dict]:
 def test_field_accuracy_at_least_85_percent(name: str) -> None:
     result = run_ocr(FIXTURES_DIR / f"{name}.pdf")
     labs = parse_labs(result)
-    by_name = {l.normalized_name: l for l in labs}
+    by_name = {lab.normalized_name: lab for lab in labs}
     expected = _load_expected(name)
 
     total = 0
@@ -40,20 +40,20 @@ def test_field_accuracy_at_least_85_percent(name: str) -> None:
 
 def test_cbc_recovers_core_names_and_confidence_bounds() -> None:
     labs = parse_labs(run_ocr(FIXTURES_DIR / "cbc.pdf"))
-    names = {l.normalized_name for l in labs}
+    names = {lab.normalized_name for lab in labs}
     assert {"hemoglobin", "wbc_count", "platelet_count"} <= names
-    assert all(0 <= l.confidence <= 1 for l in labs)
+    assert all(0 <= lab.confidence <= 1 for lab in labs)
 
 
 def test_dedupes_across_table_and_line_modes() -> None:
     labs = parse_labs(run_ocr(FIXTURES_DIR / "cbc.pdf"))
-    names = [l.normalized_name for l in labs]
+    names = [lab.normalized_name for lab in labs]
     assert len(names) == len(set(names))
 
 
 def test_low_flag_does_not_misfire_as_critical() -> None:
     labs = parse_labs(run_ocr(FIXTURES_DIR / "cbc.pdf"))
-    hb = next(l for l in labs if l.normalized_name == "hemoglobin")
+    hb = next(lab for lab in labs if lab.normalized_name == "hemoglobin")
     assert hb.flag == "low"
     assert hb.value == 10.2
 

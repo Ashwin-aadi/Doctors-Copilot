@@ -42,7 +42,7 @@ class Page(np.ndarray):
         quality: float = 1.0,
         low_quality: bool = False,
         text: str | None = None,
-    ) -> "Page":
+    ) -> Page:
         obj = np.asarray(array).view(cls)
         obj.engine = engine
         obj.quality = quality

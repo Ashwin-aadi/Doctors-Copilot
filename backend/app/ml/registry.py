@@ -105,7 +105,6 @@ class Registry:
 
             nlp = spacy.load("en_core_sci_sm")
             try:
-                from negspacy.negation import Negex
 
                 nlp.add_pipe("negex", config={"chunk_prefix": ["no", "denies", "without"]})
             except Exception as exc:  # noqa: BLE001
