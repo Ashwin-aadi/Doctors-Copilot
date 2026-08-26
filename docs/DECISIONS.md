@@ -1,5 +1,84 @@
 # Decisions Log
 
+## 2026-08-26 — B2.3: live queue board
+
+- Built `src/lib/ws/client.ts` (`WsClient`): a generic reconnecting WebSocket
+  wrapper — exponential backoff with jitter (1s → 2s → 4s → 8s → capped at
+  30s), a 20s heartbeat ping so lossy-mobile-network proxies don't idle-kill
+  the connection, and a `WsStatus` callback (`connecting|open|reconnecting|closed`)
+  so containers can render a live "reconnecting" chip instead of silently
+  dropping updates. `WebSocketImpl` is injectable for unit tests.
+- Built `src/features/queue/{useQueueSocket.ts,QueueBoardContainer.tsx}` and
+  `src/lib/api/endpoints/queue.ts` (`getQueue`, `nextInQueue`, `escalateQueue`
+  against the live `GET/POST /queue/*` contract).
+- **Wire contract for `/ws/queue/{clinic_id}`** — this endpoint has no
+  established message shape yet (backend/app/api/v1/ws.py is a stub, see
+  BLOCKER below), so I've defined one for `useQueueSocket.ts` to implement
+  against: `{ type: "snapshot"|"patch"|"escalated", seq: number, entries:
+  QueueEntryOut[] }`. `seq` is a monotonically increasing counter; frames
+  with `seq <= last seen` are discarded so a duplicate or out-of-order frame
+  (retries, reordering on a flaky mobile connection) can't corrupt the
+  board. `entries` is always a full array (upsert/replace by id), not a
+  diff — simplest contract, and cheap enough at clinic-queue scale that a
+  diff format isn't worth the complexity. **API-BUGS (Ashwin, P1):** please
+  implement `/ws/queue/{clinic_id}` to this shape, or tell me here if a
+  different shape is already planned so I can adjust `useQueueSocket.ts`
+  before CP2 closes.
+- On socket `open` (including every reconnect), the client invalidates
+  `qk.queue(clinicId)` so a REST refetch backstops whatever the socket
+  missed while it was down — this is also what keeps the board correct
+  today, since the socket itself is inert (see BLOCKER).
+- "Call next" (`POST /queue/{id}/next`) is optimistic: the entry is removed
+  from the cached list immediately via `onMutate`, rolled back via the
+  snapshotted previous list in `onError`, and the query is invalidated in
+  `onSettled` either way so the server's view always wins eventually.
+  "Escalate" (`POST /queue/{id}/escalate`) follows the same
+  mutate/rollback/settle shape, optimistically flagging `emergency: true`
+  and `position: 1` so the row visually jumps to the head immediately
+  rather than waiting on the round trip.
+- `clinicId` needed a home: added `clinicId?: string` to `AuthUser`
+  (`src/store/auth.ts`), sourced from `DoctorProfile.clinic_id` via a new
+  shared `mapMeToAuthUser()` in `src/lib/api/endpoints/auth.ts`. Also fixed
+  a latent gap this surfaced: `LoginContainer.tsx` was only ever setting
+  `{id,email,role,name}` from the login response, so `doctorId`/`patientId`/
+  `clinicId`/`nmcRegNo` stayed `undefined` for a freshly logged-in session
+  until a full page reload triggered `AuthProvider`'s silent-refresh path
+  (which already called `me()`). `LoginContainer.onSuccess` now also awaits
+  `me()` and merges the full profile in, best-effort (a failure there still
+  leaves the base session usable). This was pre-existing and also affected
+  `useBooking.ts`'s reliance on `user.patientId` — not something introduced
+  by this checkpoint, but worth fixing since the queue board depends on the
+  same pattern.
+- Wired `QueueBoardContainer` onto `/doctor/queue`, replacing its
+  placeholder. `src/components/queue/{QueueRow.tsx,QueueStats.tsx}` hold the
+  container-side table row and stat-card widgets (in-scope per §2 — this
+  directory is mine, unlike the rest of `components/`).
+- **BLOCKER:** `backend/app/api/v1/ws.py`'s `/ws/queue/{clinic_id}` handler
+  accepts the connection and immediately closes it with code 1013 ("queue
+  stream lands in A3.5") — it's a stub, not a bug in my client. `WsClient`
+  handles this correctly (it's just a close-then-reconnect-with-backoff
+  loop, same as any dropped connection), so the board still works via the
+  `open`-triggered REST invalidation, but there is no actual push-based
+  live reorder yet, and the CP2 B2.3 verify requirement ("escalating via
+  API in one tab reorders the board in the other within 2s") cannot be
+  demonstrated until the backend implements this socket. Flagging for
+  Ashwin; re-verify `tests/e2e/queue.spec.ts` once it lands.
+- Unit tests: `src/lib/ws/__tests__/client.test.ts` (4 tests: message
+  delivery, growing backoff on unexpected close, no reconnect on
+  intentional close, heartbeat ping) and
+  `src/features/queue/__tests__/queue.test.tsx` (3 tests: renders seeded
+  entries, empty state, optimistic call-next with rollback on failure) —
+  7/7 passing. Full suite: 39/39 across 11 files. `tsc --noEmit` and
+  `npm run lint` both clean.
+- `tests/e2e/queue.spec.ts` added (escalate-reorders-the-board;
+  reconnect-resyncs-without-duplicates), seeding a walk-in via
+  `POST /queue/walk-in` against `scripts/seed.py`'s deterministic
+  clinic/doctor/patient ids since the seed script doesn't pre-populate the
+  queue. Both fail at the same pre-existing captcha/no-live-backend
+  environment blocker as every other e2e spec on this machine (see
+  2026-08-26 B2.1/B2.2 entries) — not a new regression, and separately
+  gated on the WS BLOCKER above once a backend is reachable.
+
 ## 2026-08-26 — B2.2: doctor copilot panel container
 
 - Built `src/features/copilot/{CopilotContainer.tsx,useBrief.ts,useCitations.ts}`

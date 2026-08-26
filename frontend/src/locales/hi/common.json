@@ -68,5 +68,32 @@
       "retrievingSources": "स्रोत खोजे जा रहे हैं…",
       "composing": "ब्रीफ तैयार किया जा रहा है…"
     }
+  },
+  "queue": {
+    "title": "लाइव कतार",
+    "boardTitle": "प्रतीक्षा कक्ष",
+    "connected": "लाइव",
+    "reconnecting": "पुनः जुड़ रहा है…",
+    "empty": "कोई मरीज प्रतीक्षा में नहीं है।",
+    "noClinic": "आपके खाते से अभी कोई क्लिनिक जुड़ा नहीं है।",
+    "patient": "मरीज",
+    "severity": "गंभीरता",
+    "statusLabel": "स्थिति",
+    "wait": "प्रतीक्षा",
+    "token": "टोकन",
+    "actions": "कार्रवाई",
+    "callNext": "अगला बुलाएं",
+    "escalate": "प्राथमिकता बढ़ाएं",
+    "emergency": "आपातकाल",
+    "waitedMinutes": "{{minutes}} मिनट",
+    "waitingCount": "प्रतीक्षा में",
+    "inConsultCount": "परामर्श में",
+    "avgWaitMinutes": "औसत प्रतीक्षा (मिनट)",
+    "status": {
+      "waiting": "प्रतीक्षा में",
+      "in_consult": "परामर्श में",
+      "done": "पूर्ण",
+      "cancelled": "रद्द"
+    }
   }
 }

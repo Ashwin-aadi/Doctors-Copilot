@@ -14,6 +14,7 @@ import { OnboardingContainer } from "../features/onboarding/OnboardingContainer"
 import { TriageContainer } from "../features/triage/TriageContainer";
 import { BookingContainer } from "../features/booking/BookingContainer";
 import { CopilotContainer } from "../features/copilot/CopilotContainer";
+import { QueueBoardContainer } from "../features/queue/QueueBoardContainer";
 import { PreviewPage } from "../pages/preview/PreviewPage";
 
 const isDev = import.meta.env.DEV;
@@ -117,7 +118,7 @@ export function AppRouter() {
             path={ROUTES.doctorQueue}
             element={
               <ProtectedRoute roles={DOCTOR_STAFF_ROLES}>
-                <PlaceholderPage label="Queue" />
+                <QueueBoardContainer />
               </ProtectedRoute>
             }
           />

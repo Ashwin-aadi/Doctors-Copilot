@@ -68,5 +68,32 @@
       "retrievingSources": "Retrieving sources…",
       "composing": "Composing brief…"
     }
+  },
+  "queue": {
+    "title": "Live Queue",
+    "boardTitle": "Waiting room",
+    "connected": "Live",
+    "reconnecting": "Reconnecting…",
+    "empty": "No patients waiting.",
+    "noClinic": "No clinic is linked to your account yet.",
+    "patient": "Patient",
+    "severity": "Severity",
+    "statusLabel": "Status",
+    "wait": "Waited",
+    "token": "Token",
+    "actions": "Actions",
+    "callNext": "Call next",
+    "escalate": "Escalate",
+    "emergency": "Emergency",
+    "waitedMinutes": "{{minutes}} min",
+    "waitingCount": "Waiting",
+    "inConsultCount": "In consult",
+    "avgWaitMinutes": "Avg. wait (min)",
+    "status": {
+      "waiting": "Waiting",
+      "in_consult": "In consult",
+      "done": "Done",
+      "cancelled": "Cancelled"
+    }
   }
 }
