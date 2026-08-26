@@ -9,7 +9,8 @@ from app.core.deps import CurrentUser, get_current_user, require_role
 from app.core.errors import ApiError
 from app.db.models.scheduling import Doctor, QueueEntry
 from app.db.session import SessionLocal
-from app.services.queueing.pq import enqueue, escalate, pop_next, snapshot
+from app.services.queueing.escalation import escalate_with_referral
+from app.services.queueing.pq import enqueue, pop_next, snapshot
 from app.services.queueing.schemas import QueueEntryOut
 
 router = APIRouter(prefix="/queue", tags=["queue"])
@@ -101,6 +102,6 @@ async def escalate_queue(
 ) -> QueueEntryOut:
     now = datetime.now(UTC)
     try:
-        return await escalate(queue_entry_id, body.reason, now=now)
+        return await escalate_with_referral(queue_entry_id, body.reason, now=now)
     except LookupError as exc:
         raise ApiError("NOT_FOUND", str(exc), status_code=404) from exc
