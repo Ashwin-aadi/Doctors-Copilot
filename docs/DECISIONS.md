@@ -1,5 +1,197 @@
 # Decisions Log
 
+## 2026-08-26 — P1.5 seed users, RBAC matrix, CP1 wrap
+
+- `Demo@1234` (the literal password text in the spec) is 9 characters --
+  one short of this checkpoint's own `>=10` password-policy minimum in
+  `app/core/security.py`. Used `Demo@12345` (10 characters) for every seeded
+  account instead, so they can all actually authenticate against the policy
+  this same checkpoint enforces. Logged rather than weakening the policy to
+  fit the shorter string, per the standing rule to never weaken security to
+  make something pass.
+- `scripts/seed_users.py` reuses `scripts/seed.py`'s exact fixed UUIDs for
+  clinics/doctors/patients (get-or-create, so both scripts are safe to run
+  in either order) but writes `@demo.local` emails and the
+  `Demo@12345` password, while `scripts/seed.py` writes `@doctorcopilot.dev`
+  / `demo-password-123` to the *same* rows. This is a genuine overlap, not
+  resolved here: `app/db/models/` and `scripts/seed.py` aren't owned paths,
+  and the CP1 spec gives this checkpoint its own literal demo-account values
+  independent of what `scripts/seed.py` already shipped. Whichever script
+  runs last wins on the overlapping fields; `docs/DEMO_ACCOUNTS.md` flags
+  this explicitly. Flagging as a DRIFT for Ashwin/the team to consolidate
+  into one seed script.
+- `scripts/seed_users.py` additionally seeds 2 admin + 2 staff `User` rows
+  (fixed ids `...000601/602` admin, `...000603/604` staff) that
+  `scripts/seed.py` doesn't create at all -- there's no admin/staff profile
+  table, just the `User` row with `role="admin"`/`"staff"`.
+- `test_rbac_matrix.py`'s table only asserts precise expected statuses for
+  routes this checkpoint owns (auth, captcha, patients); most other
+  teammates' routes are still `not_implemented` 501 stubs as of this
+  checkpoint, so a generic scan (`test_no_implemented_route_anonymously_leaks`,
+  built from the live OpenAPI schema so it can't silently drift) instead
+  asserts the weaker but still meaningful property that nothing outside the
+  auth/captcha/health/docs allowlist is anonymously readable, without
+  claiming to know every other checkpoint's eventual expected status.
+- Register/login rows in the RBAC table send a well-formed JSON body so
+  captcha-gating (`400 CAPTCHA_REQUIRED`) is the only thing determining the
+  outcome, avoiding ambiguity with FastAPI's dependency-vs-body-validation
+  ordering for a deliberately empty/invalid request.
+- **Infra caveat, CP1-wide**: this sandbox has no Docker/Postgres/Redis, and
+  the project targets Python 3.12 while only 3.14 is available here. Every
+  DB/Redis-backed test in `tests/security/` is written and reviewed but
+  could not be executed end to end in this sandbox. What *was* verified
+  throughout CP1: all new modules import and byte-compile cleanly; every
+  pure-logic unit (password hashing/policy, JWT issuance/rotation/reuse-
+  revocation, captcha challenge/solve/verify/replay, phone/ABHA/Aadhaar
+  validation, ownership/leak-proofing helpers) passes directly, with the
+  Redis-dependent paths additionally verified end-to-end against
+  `fakeredis`; `scripts/seed_users.py`'s UUID scheme and password now match
+  what `tests/conftest.py`'s `auth_headers` fixture signs tokens for; the
+  `patients` router builds a valid OpenAPI schema. Needs a real
+  `make up && make migrate && python scripts/seed_users.py` on Python 3.12
+  to run `pytest tests/security -q` and `scripts/guard.sh`'s open-route curl
+  script for real.
+
+## 2026-08-26 — P1.4 patient identity, ownership, consent
+
+- The DPDP-style consent artefact (`purpose`, `data_categories`,
+  `granular_scopes`, `expiry`, `language`, `withdrawn_at`) needs columns
+  `app/db/models/patient.py`'s `Consent` ORM class doesn't have, and that
+  file is Ashwin's. Added the columns additively via migration
+  `fecbbce145ed` (nothing dropped/narrowed) and read/write them through a
+  local SQLAlchemy Core `Table` object in the new `app/services/consent.py`
+  instead of Ashwin's `Consent` class -- both map the same `consents` table
+  without colliding, since only one of them is an ORM-mapped class. **Note
+  for Ashwin**: worth adding the new columns to `Consent` itself when
+  convenient so other checkpoints can use the ORM class directly instead of
+  importing `app.services.consent`.
+- Consent is withdrawn, never hard-deleted (`DELETE /patients/{id}/consent`
+  sets `withdrawn_at` on the latest artefact) -- DPDP requires both the
+  grant and the withdrawal to stay provable.
+- `require_self_or_role("patient_id", "doctor", "staff", "admin")` is a
+  coarse gate (self, or any of those three roles) per its documented
+  contract; `app/api/v1/patients.py` layers `_authorize_patient_access` on
+  top for the finer-grained rule a bare role check can't express -- a doctor
+  passes the route-level gate but is then rejected unless they have a
+  `Visit` or `Appointment` with that specific patient. Staff-to-clinic
+  scoping ("staff scoped to their clinic") is **not** implemented: `User`
+  has no clinic assignment column for staff, and adding one means editing
+  `app/db/models/user.py` (Ashwin's). Staff is treated as clinic-unrestricted
+  for now -- flagging as a DRIFT for Ashwin to model a staff-clinic
+  relationship.
+- A patient probing another patient's id and a patient probing a
+  nonexistent id both get a bare `403 AUTH_FORBIDDEN` with the same message
+  (`_get_patient_or_403`) -- per the hard requirement to never leak whether
+  an id exists.
+- `PatientIn` (Ashwin's schema) requires `name` with no default, so
+  `PATCH /patients/{id}` still needs `name` in the body even though it's
+  semantically a partial update -- inherited from the given schema, not
+  something this checkpoint can change without touching `app/schemas/`.
+- **Infra caveat**: same as P1.1-P1.3. What *was* verified without a live
+  DB: the router builds a valid OpenAPI schema (response models, path
+  params, and dependency wiring all resolve), and the ownership-adjacent
+  pure logic (`_authorize_patient_access` allowing staff/admin,
+  `_get_patient_or_403`'s leak-proof 403, both consent notices having
+  non-trivial `en`/`hi` text) passes directly.
+
+## 2026-08-26 — P1.3 captcha service
+
+- `docs/CAPTCHA.md` written same-day per the hard requirement ("Divyanshi and
+  Abhishek build against it"), documenting the exact algorithm, both payload
+  shapes, error codes and the 15-line JS solver.
+- Single-use is enforced via Redis `GETDEL` (atomic get-and-delete) rather
+  than a separate `used: bool` flag read-then-written -- that would be a
+  read-modify-write race under concurrent replay of the same token; `GETDEL`
+  has no such window. A wrong solve attempt against a valid challenge also
+  consumes it (the key is gone either way) -- stricter than "N attempts per
+  challenge", but simpler and closes a brute-force-retry avenue, which is
+  the point of a captcha in the first place.
+- Verified end to end (challenge shape, solve, verify, single-use replay
+  rejection, wrong-number rejection, malformed-token rejection) against
+  `fakeredis` in this sandbox's no-live-Redis environment -- same infra
+  caveat as P1.1.
+
+## 2026-08-26 — P1.2 auth endpoints
+
+- `app/schemas/auth.py`'s existing `RegisterIn`/`LoginIn`/`TokenOut`/`UserOut`
+  don't cover what the spec requires (`phone`, `name`, ABHA fields on
+  register; `expires_in` and a nested `user:{...}` on the token response) and
+  `app/schemas/` is off limits (Ashwin's). `app/api/v1/auth.py` defines its
+  own local `RegisterRequest`/`LoginRequest`/`TokenResponse`/`UserProfile`
+  instead, dropping the import from `app.schemas.auth` entirely -- the same
+  pattern `app/api/v1/documents.py` already uses for its own local
+  `DocumentUploadIn`.
+- `User` has no `name` column (only `Patient.name` / `Doctor.name` do), so
+  `TokenResponse.user.name` and `/auth/me`'s `name` field are resolved by
+  looking up the caller's `Patient`/`Doctor` row by `user_id`
+  (`_resolve_display_name`); `None` for staff/admin, which have no profile
+  table at all yet.
+- "role other than patient rejected unless caller is admin" needs to know
+  whether an authenticated admin is calling `/auth/register` -- an otherwise
+  public, unauthenticated endpoint. Reads an optional `Authorization` header
+  and treats it as an admin override only if it decodes to a real access
+  token for a user with `role=="admin"`; any decode failure is swallowed
+  (treated as anonymous, not a 401), since a bad/expired header on this one
+  endpoint should just fall back to "not an admin", not block registration.
+- Login's timing-uniformity guard hashes a fixed dummy password with the same
+  bcrypt cost factor for an unknown email, so an unknown-email 401 and a
+  wrong-password 401 always pay the same bcrypt-verify cost; both return the
+  identical `AUTH_INVALID_CREDENTIALS` message.
+- Progressive lockout (5 failed logins -> 15 min) is explicitly P2.5's scope
+  (rate limiting), not implemented here.
+- **Infra caveat**: the full `/auth/*` API round-trip tests in
+  `test_auth_api.py` need a reachable Postgres (the models use
+  `postgresql`-dialect `UUID`/`JSONB` columns, so SQLite can't substitute)
+  and could not run in this sandbox -- same caveat as P1.1. What *was*
+  verified: every pure-validation helper (`_normalize_phone`,
+  `_reject_full_aadhaar`, `_validate_abha_number/_address`) passes 16/16
+  tests directly, and the captcha challenge/solve/verify flow those API
+  tests build on is independently verified end to end against `fakeredis`
+  (see the P1.3 entry below).
+
+## 2026-08-26 — P1.1 security core
+
+- `passlib[bcrypt]==1.7.4` + `bcrypt==4.2.1` (both already pinned in
+  `backend/requirements.txt` before this checkpoint) are incompatible:
+  passlib's bcrypt backend self-test (`detect_wrap_bug`) hashes a >72-byte
+  probe string, which bcrypt>=4.1 rejects with `ValueError` instead of the
+  silent truncation older bcrypt did, so every `CryptContext(schemes=
+  ["bcrypt"]).hash(...)` call raises. `app/core/security.py` hashes via the
+  `bcrypt` module directly (`bcrypt.hashpw`/`bcrypt.checkpw`, rounds=12,
+  password bytes truncated to 72 ourselves) instead of routing through
+  passlib, sidestepping the incompatibility entirely. **Note for Ashwin**:
+  `scripts/seed.py` still uses `passlib.context.CryptContext(schemes=
+  ["bcrypt"])` and will hit the same `ValueError` when run against this
+  environment's `bcrypt==4.2.1` — not touched here since `scripts/seed.py`
+  isn't an owned path, flagging as a DRIFT for whoever runs it next.
+- `backend/tests/conftest.py`'s `auth_headers` fixture (shared, not in my
+  owned paths, but its own comment said to "swap the header construction for
+  a real login call once `/api/v1/auth/login` is implemented") now signs a
+  real access token via `app.core.security.create_access_token` instead of
+  returning the `test-{role}-token` placeholder `get_current_user` used to
+  special-case. Kept synchronous with the same `auth_headers("doctor") ->
+  dict` signature (existing tests like `tests/ml/test_documents_api.py` call
+  it unawaited inline as a `headers=` kwarg) by signing for one of
+  `scripts/seed_users.py`'s fixed per-role UUIDs rather than doing an awaited
+  DB lookup. `get_current_user` still loads that id from the DB and 401s if
+  it isn't seeded, so behaviour for an unseeded DB is unchanged.
+- `app/core/deps.py`'s `get_current_user` now decodes and verifies a real
+  JWT (`typ=="access"`, not on the Redis denylist, backing `User` active) in
+  place of the `test-{role}-token` placeholder branch the TEMP-ADAPTER
+  comment marked for removal; `CurrentUser`'s shape (`id`, `role`) is
+  unchanged so `app/api/v1/documents.py` needed no changes.
+- **Infra caveat**: this sandbox has no Docker/Postgres/Redis, and the
+  project pins Python >=3.12 while the only Python here is 3.14. Verified
+  what's actually checkable: a throwaway venv with just this checkpoint's
+  direct dependencies (not the full `requirements.txt`, which pulls in
+  torch/paddleocr/chromadb that don't have 3.14 wheels) installs and imports
+  cleanly; `pytest --noconftest tests/security/test_tokens.py` (bypassing the
+  shared conftest, which imports the full ML-heavy router tree) passes 10/10
+  logic tests, with the 2 Redis-dependent tests additionally verified end to
+  end against `fakeredis` (rotation, reuse-revokes-family, and denylist all
+  behave correctly). Needs a real `make up && make migrate` environment on
+  Python 3.12 to run the full suite through `conftest.py`.
+
 ## 2026-08-26 — V1.5 API, worker, push
 
 - `app/core/deps.py` (`get_current_user`) didn't exist anywhere on `main` —
