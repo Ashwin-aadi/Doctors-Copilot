@@ -42,3 +42,4 @@ negspacy==1.0.4
 transformers==4.46.3
 torch==2.5.1
 rapidfuzz==3.10.1
+reportlab==4.2.5
