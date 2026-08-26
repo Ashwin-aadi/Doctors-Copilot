@@ -53,5 +53,20 @@
     "queuePosition": "Queue position {{position}}",
     "estimatedWait": "Estimated wait: {{minutes}} min",
     "slotUnavailable": "That slot was just booked. Pick another doctor or time."
+  },
+  "copilot": {
+    "title": "AI Clinical Brief",
+    "decisionSupportBanner": "AI decision support — not a diagnosis. You confirm every action.",
+    "lowConfidence": "Low confidence",
+    "differentials": "Differentials",
+    "recommendedProcedures": "Recommended procedures",
+    "cautions": "Cautions",
+    "extractiveFallback": "No external sources were found for this brief; the summary is drawn directly from the visit record.",
+    "sourceDrawerTitle": "Source",
+    "stage": {
+      "skeleton": "Loading…",
+      "retrievingSources": "Retrieving sources…",
+      "composing": "Composing brief…"
+    }
   }
 }

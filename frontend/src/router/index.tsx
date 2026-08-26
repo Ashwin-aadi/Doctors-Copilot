@@ -13,6 +13,7 @@ import { ResetPasswordContainer } from "../features/auth/ResetPasswordContainer"
 import { OnboardingContainer } from "../features/onboarding/OnboardingContainer";
 import { TriageContainer } from "../features/triage/TriageContainer";
 import { BookingContainer } from "../features/booking/BookingContainer";
+import { CopilotContainer } from "../features/copilot/CopilotContainer";
 import { PreviewPage } from "../pages/preview/PreviewPage";
 
 const isDev = import.meta.env.DEV;
@@ -105,7 +106,10 @@ export function AppRouter() {
             path="/doctor/visit/:id"
             element={
               <ProtectedRoute roles={DOCTOR_STAFF_ROLES}>
-                <PlaceholderPage label="Doctor visit" />
+                {/* Interim: CopilotContainer wired directly here for CP2.
+                    B3.5's VisitContainer will own this route and compose the copilot
+                    panel alongside the stepper and other visit surfaces. */}
+                <CopilotContainer />
               </ProtectedRoute>
             }
           />

@@ -1,5 +1,49 @@
 # Decisions Log
 
+## 2026-08-26 — B2.2: doctor copilot panel container
+
+- Built `src/features/copilot/{CopilotContainer.tsx,useBrief.ts,useCitations.ts}`
+  and `src/lib/api/endpoints/copilot.ts` against the live `CopilotBrief`/
+  `Citation` schemas already present in the regenerated `types.ts`
+  (`POST /api/v1/copilot/brief {visit_id}` → `CopilotBrief`).
+- `useBrief` drives the panel via `useQuery` keyed on `qk.brief(visitId)`
+  (`retry: false`, `staleTime: Infinity` — invalidated explicitly per the
+  §4.2 table, not refetched on a timer) and layers a client-side stage label
+  (`skeleton` → `retrievingSources` → `composing`) over the single request
+  via timers, since the endpoint returns once, not progressively.
+- `[n]` markers in `summary`/`differentials` are bound to `onCitationClick`
+  (`useCitations.ts`, `splitCitationMarkers`) and open a drawer with the
+  matching `Citation`. **UI-BUGS (Abhishek, P2):** no `SourceCard`/
+  `EvidenceDrawer` component exists yet in `src/components/` — the drawer
+  content in `CopilotContainer` is a marked interim placeholder
+  (`TEMP-PLACEHOLDER: replace with <SourceCard>/<EvidenceDrawer>`) to be
+  swapped in once those ship.
+- `confidence < 0.4` renders a "Low confidence" badge without hiding the
+  panel; empty `citations[]` renders an extractive-fallback notice instead of
+  hiding the panel; `MODEL_UNAVAILABLE` (and any other `ApiError`) renders
+  `ErrorState` with a retry action wired to `refetch()`, never a crash. A
+  persistent decision-support banner (`copilot.decisionSupportBanner`,
+  en + hi) is mounted above every panel state per the Telemedicine Practice
+  Guidelines 2020 requirement in CLAUDE.md §0.5.
+- Wired `CopilotContainer` directly onto the existing `/doctor/visit/:id`
+  route (replacing its `PlaceholderPage`) so it's reachable for e2e —
+  B3.5's `VisitContainer` will own that route and compose the panel
+  alongside the stepper once it exists; noted inline in `router/index.tsx`.
+- Added `src/features/copilot/__tests__/copilot.test.tsx` (msw-backed: brief
+  render + citation click, extractive fallback, `MODEL_UNAVAILABLE` retry
+  action, low-confidence badge) — **6/6 passing**. Full suite now
+  **32/32 passing** across 9 files.
+- Added `tests/e2e/copilot.spec.ts` against the deterministic seeded visit
+  `00000000-0000-0000-0000-000000000301` from `scripts/seed.py`
+  (`doctor1@demo.example`) rather than routing through the queue board,
+  since B2.3 (live queue) isn't built yet. **Unverified on this dev
+  machine** — same environment blocker as CP1/B2.1 (no Python 3.12/Rust/
+  Docker locally, so the captcha challenge is unreachable and login never
+  completes); 1/2 passing here (the हिंदी untranslated-key check, which
+  doesn't need a live backend), consistent with the existing blocker, not a
+  new regression.
+- `npx tsc --noEmit` and `npm run lint`: both clean.
+
 ## 2026-08-26 — B2.1: pull integrated main, regenerate, regress
 
 - `git pull --ff-only origin main` brought in `pratyaksh cp2` (rate limiting,

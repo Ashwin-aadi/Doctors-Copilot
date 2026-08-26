@@ -53,5 +53,20 @@
     "queuePosition": "कतार में स्थान {{position}}",
     "estimatedWait": "अनुमानित प्रतीक्षा: {{minutes}} मिनट",
     "slotUnavailable": "वह स्लॉट अभी-अभी बुक हुआ। दूसरा डॉक्टर या समय चुनें।"
+  },
+  "copilot": {
+    "title": "एआई क्लिनिकल ब्रीफ",
+    "decisionSupportBanner": "एआई निर्णय सहायता — यह निदान नहीं है। हर कार्रवाई की पुष्टि आप करते हैं।",
+    "lowConfidence": "कम विश्वास",
+    "differentials": "विभेदक निदान",
+    "recommendedProcedures": "अनुशंसित प्रक्रियाएं",
+    "cautions": "सावधानियां",
+    "extractiveFallback": "इस ब्रीफ के लिए कोई बाहरी स्रोत नहीं मिला; सारांश सीधे विज़िट रिकॉर्ड से लिया गया है।",
+    "sourceDrawerTitle": "स्रोत",
+    "stage": {
+      "skeleton": "लोड हो रहा है…",
+      "retrievingSources": "स्रोत खोजे जा रहे हैं…",
+      "composing": "ब्रीफ तैयार किया जा रहा है…"
+    }
   }
 }
