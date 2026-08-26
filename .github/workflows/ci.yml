@@ -49,6 +49,9 @@ jobs:
       - run: pip install -r requirements.txt
       - run: ruff check .
       - run: alembic upgrade head
+      # tests/ml/test_documents_api.py authenticates as a seeded doctor user
+      # via app/core/deps.py's placeholder token resolution.
+      - run: python ../scripts/seed.py
       - run: pytest -q
 
   frontend:
