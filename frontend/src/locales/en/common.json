@@ -1,0 +1,57 @@
+{
+  "app": {
+    "name": "Doctor's Copilot"
+  },
+  "nav": {
+    "chat": "Symptom Check",
+    "booking": "Book Appointment",
+    "portal": "My Visits",
+    "abha": "ABHA",
+    "doctorQueue": "Queue",
+    "logout": "Log out",
+    "emergency": "Emergency: 112 / 108"
+  },
+  "errors": {
+    "boundaryTitle": "Something went wrong",
+    "boundaryBody": "This page hit an unexpected error. You can try again.",
+    "retry": "Try again",
+    "notFoundTitle": "Page not found",
+    "notFoundBody": "The page you're looking for doesn't exist.",
+    "forbiddenTitle": "Access denied",
+    "forbiddenBody": "You don't have permission to view this page.",
+    "goHome": "Go home",
+    "requestId": "Reference ID: {{id}}"
+  },
+  "errorCodes": {
+    "AUTH_INVALID_CREDENTIALS": "Incorrect email or password.",
+    "AUTH_TOKEN_EXPIRED": "Your session expired. Please log in again.",
+    "AUTH_FORBIDDEN": "You don't have permission to do that.",
+    "CAPTCHA_REQUIRED": "Verification is required.",
+    "CAPTCHA_INVALID": "Verification failed. Please try again.",
+    "VALIDATION_FAILED": "Some details were invalid.",
+    "NOT_FOUND": "We couldn't find that.",
+    "LOCKED": "This record is locked.",
+    "CONFLICT": "That slot was just taken. Please choose another.",
+    "RATE_LIMITED": "Too many attempts. Please wait and try again.",
+    "UPSTREAM_UNAVAILABLE": "Service temporarily unavailable. Please retry.",
+    "MODEL_UNAVAILABLE": "AI assistance is temporarily unavailable.",
+    "INTERNAL": "Something went wrong on our end.",
+    "NOT_IMPLEMENTED": "This feature isn't ready yet."
+  },
+  "auth": {
+    "registerBlockedTitle": "Registration needs a bit more",
+    "passwordResetUnavailable": "Password reset isn't available yet. Please contact your clinic."
+  },
+  "booking": {
+    "pincodeLabel": "PIN code",
+    "pincodePlaceholder": "6-digit PIN code",
+    "useLocation": "Use my location",
+    "locationNote": "Doctor ranking currently uses your location only; PIN-code ranking is coming soon.",
+    "nmc": "NMC Reg. No.",
+    "distance": "{{km}} away",
+    "book": "Book this slot",
+    "queuePosition": "Queue position {{position}}",
+    "estimatedWait": "Estimated wait: {{minutes}} min",
+    "slotUnavailable": "That slot was just booked. Pick another doctor or time."
+  }
+}

@@ -1,0 +1,50 @@
+import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
+import { render, screen } from "@testing-library/react";
+import { MemoryRouter } from "react-router-dom";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { ToastProvider } from "../../components/ui/Toast";
+import { AppRouter } from "../index";
+import { useAuthStore } from "../../store/auth";
+import { initI18n } from "../../lib/i18n";
+
+function renderAt(path: string) {
+  const client = new QueryClient();
+  return render(
+    <MemoryRouter initialEntries={[path]}>
+      <ToastProvider>
+        <QueryClientProvider client={client}>
+          <AppRouter />
+        </QueryClientProvider>
+      </ToastProvider>
+    </MemoryRouter>,
+  );
+}
+
+beforeAll(async () => {
+  await initI18n();
+  vi.stubGlobal(
+    "fetch",
+    vi.fn(() => Promise.reject(new Error("network disabled in this test"))),
+  );
+});
+
+beforeEach(() => {
+  useAuthStore.getState().clear();
+});
+
+describe("router", () => {
+  it("renders the login page at /login", async () => {
+    renderAt("/login");
+    expect(await screen.findByRole("heading", { name: /log in/i })).toBeTruthy();
+  });
+
+  it("redirects an anonymous visitor away from a patient-only route", async () => {
+    renderAt("/chat");
+    expect(await screen.findByRole("heading", { name: /log in/i })).toBeTruthy();
+  });
+
+  it("shows Not Found for an unknown path", async () => {
+    renderAt("/this-route-does-not-exist");
+    expect(await screen.findByText(/page not found/i)).toBeTruthy();
+  });
+});
