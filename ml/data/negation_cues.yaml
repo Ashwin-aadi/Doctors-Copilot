@@ -1,0 +1,29 @@
+# Fallback negation cue list, used when negspacy's spaCy pipeline is
+# unavailable. A hit within a window of the cue window (+-6 tokens, see
+# app/ml/ner.py in CP2) marks the nearby entity as negated.
+pre_cues:
+  - denies
+  - deny
+  - denied
+  - no evidence of
+  - no signs of
+  - no sign of
+  - without
+  - absence of
+  - negative for
+  - not
+  - rules out
+  - ruled out
+  - free of
+post_cues:
+  - was ruled out
+  - were ruled out
+  - is absent
+  - are absent
+  - is negative
+  - unremarkable
+termination_cues:
+  - but
+  - however
+  - although
+  - except

@@ -1,0 +1,43 @@
+# Bootstrap seed for the tier-3 NER fallback (gazetteer + rapidfuzz), used
+# only when neither scispaCy nor the HF biomedical-ner-all model can load.
+# This is a small starter list so the fallback tier is functional from
+# V1.1 onward; V2.2/V2.3 replace it with ml/data/india_brands.csv and
+# ml/data/rxcui_lookup.csv (>=1500 rows each).
+drugs:
+  - paracetamol
+  - crocin
+  - metformin
+  - glycomet
+  - amoxicillin
+  - augmentin
+  - aspirin
+  - warfarin
+  - insulin
+  - atorvastatin
+  - amlodipine
+  - omeprazole
+  - azithromycin
+  - ibuprofen
+  - cetirizine
+  - salbutamol
+  - metronidazole
+  - ciprofloxacin
+  - losartan
+  - levothyroxine
+conditions:
+  - diabetes
+  - hypertension
+  - dengue
+  - malaria
+  - typhoid
+  - tuberculosis
+  - chikungunya
+  - anaemia
+  - asthma
+  - peptic ulcer
+allergens:
+  - penicillin
+  - sulfa
+  - peanut
+  - shellfish
+  - latex

@@ -1,0 +1,25 @@
+# India-endemic hard critical rules, applied in addition to (not instead of)
+# the generic 1.5x-outside-range critical check. `unit`
+# is the unit the threshold is expressed in; parse_labs converts the parsed
+# value into this unit (via the small synonym table in lab_parser.py) before
+# comparing, and skips the rule silently if the unit isn't convertible.
+platelet_count:
+  operator: "<"
+  threshold: 50000
+  unit: "/uL"
+  reason: "dengue-risk critical thrombocytopenia"
+hemoglobin:
+  operator: "<"
+  threshold: 7
+  unit: "g/dL"
+  reason: "severe anaemia"
+random_glucose:
+  operator: ">"
+  threshold: 300
+  unit: "mg/dL"
+  reason: "hyperglycaemic crisis risk"
+creatinine:
+  operator: ">"
+  threshold: 2.0
+  unit: "mg/dL"
+  reason: "acute/advanced renal impairment"

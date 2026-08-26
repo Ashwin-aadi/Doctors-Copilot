@@ -1,5 +1,160 @@
 # Decisions Log
 
+## 2026-08-26 — V1.5 API, worker, push
+
+- `app/core/deps.py` (`get_current_user`) didn't exist anywhere on `main` —
+  Pratyaksh's login/JWT issuance hasn't landed yet, only stub `not_implemented`
+  routes in `app/api/v1/auth.py`. The spec requires `Depends(get_current_user)`
+  on both document routes, and `backend/tests/conftest.py`'s `auth_headers`
+  fixture already emits a `Bearer test-{role}-token` placeholder expecting
+  something to consume it. Added a minimal `get_current_user` that accepts
+  only that placeholder, resolving it to a real seeded `User` row of the
+  matching role (needed so `FileObject.uploaded_by`'s FK is satisfiable) —
+  same TEMP-ADAPTER pattern the spec already sanctions for the storage-not-
+  merged case. Marked for removal once `/auth/login` + real token issuance
+  exist; the file lives outside `app/ml` and `app/api/v1/documents.py` because
+  it's a shared interface both routes and other checkpoints will import.
+- `POST /documents/upload` branches on `Content-Type`: multipart (the
+  TEMP-ADAPTER storage path, storing to `STORAGE_ROOT/tmp/` and writing a
+  `FileObject` row directly) vs. JSON `{file_id, patient_id}` against an
+  already-existing `FileObject` (the real path once `/files` ships). Both are
+  handled in one handler via `Request` rather than two routes, since the spec
+  describes it as one endpoint with a conditional branch.
+- The worker (`app/workers/ocr_worker.py`) uses a **synchronous** SQLAlchemy
+  session over the same `postgresql+psycopg` URL, not the async engine in
+  `app/db/session.py` — that engine's pool is bound to the API process's
+  event loop, and RQ jobs run in a separate worker process with no running
+  loop of their own.
+- `document.done` is published via `redis.publish` directly (`app/core/events`
+  has only FastAPI lifespan hooks, no pub/sub helper), matching the spec's
+  documented fallback ("`app.core.events` if present, else `redis.publish`").
+- **Infra caveat**: this sandbox has no Docker/Postgres/Redis available, so
+  the DB-backed tests in `test_documents_api.py` and the curl end-to-end
+  Verify step could not actually be executed here. What *was* verified: all
+  new/changed modules import cleanly, `app.main`'s OpenAPI schema still
+  registers both document paths and all 48 non-health contract tests pass
+  (proving routing/dependency-injection wiring is sound), and the two
+  auth-only tests that don't need a DB connection (`test_upload_requires_auth`,
+  `test_get_requires_auth`) pass. The three DB-dependent tests fail purely on
+  `OperationalError: connection ... failed` (Postgres unreachable) — confirmed
+  by inspection to be an infra-availability failure, not a code path. Needs a
+  real `make up && make migrate && make seed` environment to close the loop.
+
+## 2026-08-26 — V1.4 lab report parser
+
+- `ml/data/critical_rules.yaml` is created even though it isn't in V1.4's
+  `Files:` header, because the `Do:` text explicitly requires it
+  (`ml/data/critical_rules.yaml` hard rules for platelets/haemoglobin/
+  glucose/creatinine) and it's `ml/data/*`, squarely Virat-owned. Same for
+  `ml/fixtures/expected/*.yaml`, needed to satisfy the "≥85% field accuracy,
+  asserted against a hand-written expected YAML" requirement.
+- Per-cell OCR confidence doesn't survive table clustering — `OcrResult`'s
+  `tables` field is `list[list[list[str]]]`, plain strings with no `conf`.
+  `parse_labs` recovers a confidence proxy by looking up each cell's exact
+  stripped text against the page's `blocks` (which do carry `conf`), falling
+  back to the page's mean block confidence when a cell's text doesn't match
+  any single block exactly (e.g. a cell joined from multiple OCR blocks).
+  `confidence = min(that proxy, alias-match score)` per the spec formula.
+- `reference_ranges.yaml` is a fallback only: all 5 fixtures print their own
+  reference range in the table's range column, so `_default_range()` never
+  fires against them. Its sex-specific (`male`/`female`) bounds for
+  haemoglobin/creatinine/uric_acid/ESR/iron/ferritin are populated for a
+  future caller with patient context (e.g. V2.5 `lab_flags.py`); `parse_labs`
+  itself has no patient argument (per the V1.4 signature), so it always uses
+  `default`.
+- "Critical when value is beyond 1.5x outside the range" is implemented as
+  `abs(value - nearest_bound) > 1.5 * (high - low)` (range-width multiple),
+  not `value > 1.5 * bound`, and only when both bounds are known. The
+  bound-multiple reading would misfire on ordinary `high`/`low` results with
+  a narrow range relative to the boundary (e.g. CBC's ESR 28 vs 0–15 would
+  wrongly flip to `critical` under a literal `value > 1.5*high` reading);
+  the width-multiple reading matches all 5 fixtures' hand-verified expected
+  flags with no false-positive criticals, and only the 4 explicit hard rules
+  in `critical_rules.yaml` can mark a result critical outside that.
+- Hard critical-rule unit conversion (`_to_rule_unit`) only handles the
+  specific unit strings the fixtures/spec actually use (`lakhs/cu mm` ->
+  `/uL` for the platelet rule; direct match for `g/dL`/`mg/dL`). It returns
+  `None` (rule skipped, never guessed) for any other unit spelling rather
+  than attempting a general unit-parser — safer than a wrong critical flag.
+
+## 2026-08-26 — V1.3 OCR service
+
+- `run_ocr` never runs OCR on a page `to_pages` already marked
+  `engine="pdf_text"`: it re-opens the source PDF and reads word-level
+  geometry via `fitz`'s `get_text("words")` (scaled by `300/72` to match the
+  300 DPI raster the rest of the pipeline uses) instead, with `conf=1.0` per
+  block. This was the design intent recorded in V1.2's decision entry — an
+  embedded text layer is already exact, so running PaddleOCR/Tesseract over
+  its raster would only add error and cost, never improve on it.
+- Table extraction uses the y-centroid/x-gap clustering fallback from the
+  spec unconditionally, even though `from paddleocr import PPStructure`
+  imports cleanly on this machine. PP-Structure's table/layout models are not
+  the ones cached from V1.1's `warm_up()` run (only `det/en`, `det/ml`,
+  `rec/en`, `rec/devanagari`, `cls`) and pulling its additional layout
+  weights would mean an uncontrolled network fetch mid-pipeline (and
+  mid-test-run) with no offline fallback of its own. The clustering path has
+  no such dependency and already passes every fixture. Revisit once
+  PP-Structure's weights are deliberately vendored/cached, per §3's
+  fallback-chain philosophy.
+- `run_ocr`'s fallback chain (PaddleOCR `en` -> PaddleOCR `devanagari` ->
+  Tesseract) keeps the highest-confidence result across whichever tiers
+  actually ran, rather than stopping at the first one to clear the 0.60
+  threshold, so a low-confidence English pass doesn't win over a
+  higher-confidence Devanagari or Tesseract rerun. Verified live end-to-end
+  against `ml/fixtures/cbc_noisy_scan.pdf` (no system Tesseract on this dev
+  box, so only the PaddleOCR tiers are exercised locally): `paddle_en`
+  resolves the rotated/noised scan at `mean_confidence=0.966` without
+  needing the Devanagari or Tesseract reruns.
+
+## 2026-08-26 — V1.2 ingestion & preprocessing
+
+- `reportlab` added as a dev-time dependency (not in `backend/requirements.txt`,
+  since it's only used to *generate* fixtures, never imported by app code) to
+  build the 5 lab-report PDF fixtures as realistic Indian diagnostic-lab
+  layouts. `ml/generate_fixtures.py` is kept in-repo (not deleted after the
+  one-off run) so the fixtures are reproducible/regenerable, matching
+  `ml/*` ownership.
+- The skewed/noisy scan fixture (`ml/fixtures/cbc_noisy_scan.pdf`) is built
+  by rasterising the clean `cbc.pdf` at 300 DPI, injecting Gaussian pixel
+  noise, and rotating 7.5 degrees, then saving as an image-only PDF (no
+  text layer) via Pillow. This forces `to_pages` down the image-preprocessing
+  path (`engine="ocr"`) rather than the `pdf_text` fast path, exercising
+  deskew/denoise/CLAHE/threshold the way a real phone-camera scan would.
+- `to_pages` returns `list[Page]`, a thin `np.ndarray` subclass carrying
+  `engine`/`quality`/`low_quality`/`text` metadata. Chosen over a bare
+  `list[np.ndarray]` + separate metadata list so the literal spec signature
+  (`list[np.ndarray]`) still holds by subtyping, while V1.3's OCR service
+  can read `page.engine == "pdf_text"` to skip OCR and reuse `page.text`
+  directly instead of re-extracting it.
+
+## 2026-08-25 — V1.1 model registry + bootstrap
+
+- `transformers` pinned to `4.46.3` instead of the `4.47.1` in the original
+  spec draft: `4.47.1` requires `tokenizers>=0.21`, which conflicts with
+  `chromadb==0.5.23` (Ashwin's pin, `tokenizers<=0.20.3`). `4.46.3` requires
+  `tokenizers>=0.20,<0.21`, satisfying both. No change to any line outside
+  the ones this checkpoint owns.
+- Local dev machine has no Microsoft C++ Build Tools installed, so
+  `chroma-hnswlib` (a `chromadb` transitive dependency, not owned by this
+  checkpoint) fails to build from source here. This blocks a from-scratch
+  `pip install -r requirements.txt` on this box specifically; it is a
+  pre-existing local toolchain gap, not caused by the V1.1 additions, and
+  CI/other machines with the build tools (or a prebuilt wheel) are
+  unaffected. Verified locally by installing every V1.1 dependency except
+  `chromadb` directly.
+- No system Tesseract binary is installed on this dev machine, so
+  `registry.ocr_engine()` degrades past the `tesseract` tier straight to
+  the `pymupdf` embedded-text-layer tier during local verification — this
+  is the fallback chain in §3 working as designed, not a bug. PaddleOCR
+  itself installs and is attempted first; whichever tier actually succeeds
+  is logged once via `structlog`.
+- `ml/data/negation_cues.yaml` and `ml/data/ner_gazetteer_seed.yaml` were
+  created now (V1.1) as small starter files so `Registry.available()` can
+  report a real `ner` capability from the first bootstrap, ahead of the
+  full `ml/data/india_brands.csv` / `rxcui_lookup.csv` builds scheduled for
+  V2.2/V2.3. They are seed data only and are superseded, not duplicated,
+  when those later checkpoints land.
+
 ## 2026-08-25 — Relocalisation: the product targets India, not the US
 
 CP1 shipped with an implicitly US-centric spine (MedlinePlus-only corpus, ESI

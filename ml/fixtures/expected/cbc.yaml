@@ -1,0 +1,16 @@
+# Hand-written ground truth for parse_labs(run_ocr("ml/fixtures/cbc.pdf")),
+# derived directly from the row data baked into ml/generate_fixtures.py.
+# Each entry checks normalized_name/value/unit/flag; test_lab_parser.py
+# treats every one of these 4 fields as a separate accuracy point.
+- {normalized_name: hemoglobin, value: 10.2, unit: g/dL, flag: low}
+- {normalized_name: wbc_count, value: 11800, unit: cells/cu mm, flag: high}
+- {normalized_name: platelet_count, value: 1.42, unit: lakhs/cu mm, flag: low}
+- {normalized_name: rbc_count, value: 4.1, unit: mill/cu mm, flag: low}
+- {normalized_name: pcv, value: 33.5, unit: "%", flag: low}
+- {normalized_name: mcv, value: 81.7, unit: fL, flag: low}
+- {normalized_name: mch, value: 24.9, unit: pg, flag: low}
+- {normalized_name: mchc, value: 30.4, unit: g/dL, flag: low}
+- {normalized_name: neutrophils, value: 68, unit: "%", flag: normal}
+- {normalized_name: lymphocytes, value: 24, unit: "%", flag: normal}
+- {normalized_name: eosinophils, value: 3, unit: "%", flag: normal}
+- {normalized_name: esr, value: 28, unit: mm/hr, flag: high}
