@@ -7,8 +7,6 @@ themselves; `GET /files/{id}/raw` streams the actual content given a valid
 `app.services.storage.get_file_object_for_requester`.
 """
 
-from __future__ import annotations
-
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, File, Form, Request, UploadFile
