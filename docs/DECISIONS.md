@@ -1,5 +1,31 @@
 # Decisions Log
 
+## 2026-08-26 — CP2 re-verify: MSVC installed, full `tests/ml`/`tests/integration` now green
+
+- MSVC Build Tools got installed on this machine after the CP2 entry below,
+  so `pip install -r requirements.txt` now builds `chroma-hnswlib` cleanly
+  and `tests/conftest.py` collects (it imports the full `app.main` router,
+  including the chromadb-backed RAG routes). Ran the real suites instead of
+  only direct function calls:
+  - `pytest tests/ml -q`: found one real bug in *my own test*, not the
+    implementation -- `test_flag_value_low_and_unknown` asserted
+    `_flag_value(0.2, 0.6, 1.3) == "low"`, but 0.2 is below
+    `ref_low / CRITICAL_RANGE_MULTIPLIER` (0.6/1.5=0.4), so `lab_flags.py`
+    correctly returns `"critical"` -- consistent with the `1.5` critical-range
+    multiplier convention `app/ml/lab_parser.py` already uses. Fixed the test
+    to assert `"low"` at 0.5 and `"critical"` at 0.2. 50 passed after the fix.
+  - `pytest tests/integration -q`: 50 passed, 1 skipped -- no DB needed
+    (mocked/sqlite-backed).
+  - The only remaining failures are 3 pre-existing `tests/ml/test_documents_api.py`
+    tests unrelated to CP2 -- they fail on `redis.exceptions.ConnectionError`
+    from `get_current_user`'s denylist check (`app/core/security.py`), since
+    this machine still has no Docker/Postgres/Redis running. Confirmed
+    Docker is not actually installed here (no `Program Files\Docker`, no
+    Docker service/process, no WSL) despite MSVC having been installed;
+    live `curl` verification against a running API and `make migrate`
+    remain blocked on that, not on anything CP2-specific.
+- `ruff check .` (whole `backend/`) and `./scripts/guard.sh` both clean.
+
 ## 2026-08-26 — CP2 complete: interaction/allergy/lab-flag KB and engine
 
 - `ml/data/interactions.db` built by `app/ml/kb_build.py`: 1012 interaction

@@ -14,7 +14,8 @@ def test_flag_value_high_and_critical() -> None:
 
 
 def test_flag_value_low_and_unknown() -> None:
-    assert _flag_value(0.2, 0.6, 1.3) == "low"
+    assert _flag_value(0.5, 0.6, 1.3) == "low"
+    assert _flag_value(0.2, 0.6, 1.3) == "critical"  # below ref_low / CRITICAL_RANGE_MULTIPLIER
     assert _flag_value(1.0, None, None) == "unknown"
     assert _flag_value("text", 0.6, 1.3) == "unknown"
 
