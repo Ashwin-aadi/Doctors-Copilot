@@ -15,6 +15,7 @@ import { TriageContainer } from "../features/triage/TriageContainer";
 import { BookingContainer } from "../features/booking/BookingContainer";
 import { CopilotContainer } from "../features/copilot/CopilotContainer";
 import { QueueBoardContainer } from "../features/queue/QueueBoardContainer";
+import { UploadContainer } from "../features/documents/UploadContainer";
 import { PreviewPage } from "../pages/preview/PreviewPage";
 
 const isDev = import.meta.env.DEV;
@@ -99,7 +100,11 @@ export function AppRouter() {
             path="/doctor/patient/:id"
             element={
               <ProtectedRoute roles={DOCTOR_STAFF_ROLES}>
-                <PlaceholderPage label="Patient chart" />
+                {/* Interim: UploadContainer wired directly here for CP2.
+                    A future PatientChartContainer will own this route and
+                    compose the upload pipeline alongside the rest of the
+                    patient chart. */}
+                <UploadContainer />
               </ProtectedRoute>
             }
           />

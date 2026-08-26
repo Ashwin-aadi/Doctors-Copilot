@@ -95,5 +95,27 @@
       "done": "Done",
       "cancelled": "Cancelled"
     }
+  },
+  "documents": {
+    "title": "Upload reports",
+    "dropzoneLabel": "Tap to choose photos or PDFs of lab reports",
+    "cancel": "Cancel upload",
+    "noPatient": "No patient is selected.",
+    "processing": "Reading your document…",
+    "ocrFailed": "We couldn't read this document. Try a clearer photo or a different file.",
+    "noLabs": "No lab values were found in this document.",
+    "test": "Test",
+    "value": "Value",
+    "unit": "Unit",
+    "confidence": "Confidence",
+    "lowConfidence": "Please verify",
+    "confirmCorrections": "Save corrections",
+    "corrected": "Corrections saved.",
+    "status": {
+      "uploading": "Uploading…",
+      "uploaded": "Uploaded",
+      "failed": "Failed",
+      "cancelled": "Cancelled"
+    }
   }
 }

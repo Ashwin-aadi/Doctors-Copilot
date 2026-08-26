@@ -1,5 +1,91 @@
 # Decisions Log
 
+## 2026-08-27 — B2.4: document upload pipeline
+
+- Built `src/features/documents/{UploadContainer.tsx,useUpload.ts,useDocumentPolling.ts}`
+  plus `src/lib/api/endpoints/{files.ts,documents.ts}`.
+- `uploadFileWithProgress` (`files.ts`) posts to `POST /files` via raw
+  `XMLHttpRequest`, not `fetch` — that's the only way to get real
+  `upload.onprogress` events and a genuinely cancellable in-flight upload
+  (`xhr.abort()`), matching the spec. It reimplements the same header set
+  as `client.ts`'s `request()` (`X-Request-ID`, `Accept-Language`,
+  `Authorization`, `X-Captcha-Token`, `credentials`) since `request()` is
+  fetch-only and doesn't expose progress. `POST /files`' generated type in
+  `types.ts` is an empty `Record<string, never>` (the backend endpoint
+  takes `Form()`/`File()` params and returns a bare `-> dict`, which
+  `openapi-typescript` can't capture), so the request/response shape here
+  is hand-typed against `backend/app/api/v1/files.py`, same precedent as
+  `endpoints/auth.ts`.
+- `useUpload` manages the multi-file list; each item's state
+  (`uploading|uploaded|failed|cancelled`) is independent, so one file's
+  422 never blocks the others — verified in
+  `__tests__/upload.test.tsx`. Cancel is captured via a `clientId ->
+  UploadHandle` map so `cancelUpload()` can call the in-flight XHR's
+  `abort()`, or short-circuit a still-captcha-solving upload before its
+  XHR has started.
+- `useDocumentPolling` backs off `GET /documents/{id}` on the specified
+  schedule (1s x5, 3s x10, then a steady 5s) via TanStack's
+  `refetchInterval`, and gives up (stops polling, but leaves the last
+  known "processing" state on screen rather than erroring) after 3
+  minutes total. There is no document- or visit-scoped push channel to
+  stop polling early on a `document.done` event — `/ws/visit/{id}` is
+  also a stub today (same file as the queue socket, see the B2.3 entry
+  above), and wiring that up is B3.5's job (`VisitContainer`/`useVisitSocket`),
+  not something to bolt on here ahead of that container existing. Noted
+  so B3.5 remembers to make `useDocumentPolling` stop early once that
+  channel is real.
+- **BLOCKER:** `PATCH /api/v1/documents/{document_id}/labs` (the OCR
+  correction endpoint from the B2.4 spec) does not exist on the backend —
+  `backend/app/api/v1/documents.py` only implements `POST /upload` and
+  `GET /{document_id}`. Also, `LabResultOut` has no per-row `id`, so there
+  is no way to address a single corrected value; `correctDocumentLabs()`
+  in `documents.ts` is written to PATCH the *entire* `labs` array back
+  (full replace) since that's the only addressable shape available.
+  `DocumentPanel` in `UploadContainer.tsx` calls it as specified, and on a
+  404 shows "This feature isn't ready yet" (reusing `errorCodes.NOT_IMPLEMENTED`
+  copy) while keeping the user's edits on screen rather than discarding
+  them — so the UI is honest about not having synced, instead of silently
+  losing the correction or crashing. **API-BUGS (Virat/Ashwin, P1):**
+  please add the correction endpoint (ideally with row ids on
+  `LabResultOut` so future corrections can be partial, not full-replace)
+  and confirm invalidation targets (`document`, `visit`, `brief` per the
+  §4.2 table) once it's live; re-verify `tests/e2e/upload.spec.ts` then.
+- Both `POST /files` and `POST /documents/upload` are exercised through
+  the real `DocumentUploadIn` JSON path (`startDocumentUpload` sends
+  `{file_id, patient_id}` as spec'd), not the documents.py TEMP-ADAPTER
+  multipart fallback Pratyaksh left in place for when `/files` wasn't
+  merged yet — that adapter is his to remove once he confirms `/files` is
+  stable; not touching it from here since it's outside my owned paths.
+- Wired `UploadContainer` onto `/doctor/patient/:id`, replacing its
+  placeholder (same interim-wiring pattern as B2.2/B2.3, pending a real
+  `PatientChartContainer`).
+- Abhishek hasn't shipped `Dropzone` or `OcrReview` yet (neither exists
+  under `src/components/`), so both are TEMP-PLACEHOLDER inline markup in
+  `UploadContainer.tsx` (a native `<input type="file">` behind a styled
+  drop target, and a plain editable `Table` for lab rows) — flagged as
+  **UI-BUGS (Abhishek, P2)**.
+- **Test-environment note, not a product bug:** jsdom's `XMLHttpRequest`
+  doesn't reproduce a real browser's auto-computed multipart
+  `Content-Type: multipart/form-data; boundary=...` header when sending a
+  `FormData` body, so msw's `request.formData()` can't read the uploaded
+  file's name inside a Vitest handler (confirmed via a standalone repro).
+  `upload.test.tsx`'s "independent per-file state" test therefore branches
+  on call order instead of filename. Production code never sets
+  `Content-Type` manually (letting the browser compute the boundary, as
+  it must), so this doesn't affect real usage — only worth remembering if
+  a future test tries to inspect multipart body contents in Vitest.
+- Unit tests: `src/features/documents/__tests__/upload.test.tsx` (3
+  tests: upload → done → editable low-confidence cell; one failed file
+  doesn't block another's success; correction save surfaces the
+  "not ready" notice on 404) — 3/3 passing. Full suite: 42/42 across 12
+  files. `tsc --noEmit` and `npm run lint` both clean.
+- `tests/e2e/upload.spec.ts` added, uploading the real fixture
+  `ml/fixtures/cbc.pdf` against the seeded doctor/patient. Fails at the
+  same pre-existing captcha/no-live-backend environment blocker as every
+  other e2e spec on this machine — not a new regression, and separately
+  gated on the labs-correction BLOCKER above for the reload-persistence
+  step once a backend is reachable.
+
 ## 2026-08-26 — B2.3: live queue board
 
 - Built `src/lib/ws/client.ts` (`WsClient`): a generic reconnecting WebSocket
