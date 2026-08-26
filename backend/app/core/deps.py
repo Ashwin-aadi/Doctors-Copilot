@@ -113,3 +113,31 @@ async def require_captcha(x_captcha_token: str | None = Header(default=None)) ->
     if not x_captcha_token:
         raise ApiError("CAPTCHA_REQUIRED", "X-Captcha-Token header is required", status_code=400)
     await verify_captcha_token(x_captcha_token)
+
+
+def require_consent(scope: str) -> Callable:
+    """Block triage/copilot routes for a patient who hasn't granted (or has
+    withdrawn) consent covering `scope`. For Ashwin's triage/copilot routes:
+    `Depends(require_consent("triage"))` alongside a `patient_id` path param.
+    """
+
+    async def _dep(
+        request: Request,
+        db: AsyncSession = Depends(get_db),
+    ) -> None:
+        from app.services.consent import get_active_consent
+
+        raw_patient_id = request.path_params.get("patient_id")
+        if raw_patient_id is None:
+            raise ApiError("VALIDATION_FAILED", "patient_id path param required", status_code=422)
+
+        patient_id = UUID(str(raw_patient_id))
+        consent = await get_active_consent(db, patient_id)
+        if consent is None or not consent.get("granular_scopes", {}).get(scope):
+            raise ApiError(
+                "AUTH_FORBIDDEN",
+                f"patient has not consented to '{scope}'",
+                status_code=403,
+            )
+
+    return _dep

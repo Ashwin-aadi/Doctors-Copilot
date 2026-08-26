@@ -1,5 +1,47 @@
 # Decisions Log
 
+## 2026-08-26 — P1.4 patient identity, ownership, consent
+
+- The DPDP-style consent artefact (`purpose`, `data_categories`,
+  `granular_scopes`, `expiry`, `language`, `withdrawn_at`) needs columns
+  `app/db/models/patient.py`'s `Consent` ORM class doesn't have, and that
+  file is Ashwin's. Added the columns additively via migration
+  `fecbbce145ed` (nothing dropped/narrowed) and read/write them through a
+  local SQLAlchemy Core `Table` object in the new `app/services/consent.py`
+  instead of Ashwin's `Consent` class -- both map the same `consents` table
+  without colliding, since only one of them is an ORM-mapped class. **Note
+  for Ashwin**: worth adding the new columns to `Consent` itself when
+  convenient so other checkpoints can use the ORM class directly instead of
+  importing `app.services.consent`.
+- Consent is withdrawn, never hard-deleted (`DELETE /patients/{id}/consent`
+  sets `withdrawn_at` on the latest artefact) -- DPDP requires both the
+  grant and the withdrawal to stay provable.
+- `require_self_or_role("patient_id", "doctor", "staff", "admin")` is a
+  coarse gate (self, or any of those three roles) per its documented
+  contract; `app/api/v1/patients.py` layers `_authorize_patient_access` on
+  top for the finer-grained rule a bare role check can't express -- a doctor
+  passes the route-level gate but is then rejected unless they have a
+  `Visit` or `Appointment` with that specific patient. Staff-to-clinic
+  scoping ("staff scoped to their clinic") is **not** implemented: `User`
+  has no clinic assignment column for staff, and adding one means editing
+  `app/db/models/user.py` (Ashwin's). Staff is treated as clinic-unrestricted
+  for now -- flagging as a DRIFT for Ashwin to model a staff-clinic
+  relationship.
+- A patient probing another patient's id and a patient probing a
+  nonexistent id both get a bare `403 AUTH_FORBIDDEN` with the same message
+  (`_get_patient_or_403`) -- per the hard requirement to never leak whether
+  an id exists.
+- `PatientIn` (Ashwin's schema) requires `name` with no default, so
+  `PATCH /patients/{id}` still needs `name` in the body even though it's
+  semantically a partial update -- inherited from the given schema, not
+  something this checkpoint can change without touching `app/schemas/`.
+- **Infra caveat**: same as P1.1-P1.3. What *was* verified without a live
+  DB: the router builds a valid OpenAPI schema (response models, path
+  params, and dependency wiring all resolve), and the ownership-adjacent
+  pure logic (`_authorize_patient_access` allowing staff/admin,
+  `_get_patient_or_403`'s leak-proof 403, both consent notices having
+  non-trivial `en`/`hi` text) passes directly.
+
 ## 2026-08-26 — P1.3 captcha service
 
 - `docs/CAPTCHA.md` written same-day per the hard requirement ("Divyanshi and
