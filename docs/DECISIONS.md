@@ -1,5 +1,36 @@
 # Decisions Log
 
+## 2026-08-26 — N1.2 slot engine: sync DB access inside a frozen sync signature
+
+`free_slots` (`app/services/scheduling/slots.py`) is frozen by the CP1
+interface section as a **synchronous** function taking only `doctor_id`,
+`clinic_id`, `date_from`, `date_to`, `booked` -- no `db` session, no `now`,
+and critically no `availability` parameter, so it cannot receive its
+templates from a caller. Since every other repo helper (`repo.py`) is async
+(`SessionLocal` is an `async_sessionmaker`), and the frozen signature can't
+be changed to `async def` without breaking the interface freeze, `slots.py`
+opens its own short-lived **sync** SQLAlchemy session against the same
+`postgresql+psycopg` DSN (`create_engine`, psycopg3 supports both sync and
+async over one driver) to read `Availability`/`Clinic` rows. This keeps the
+function pure in the sense the spec cares about -- no wall-clock reads, no
+hidden mutable state, same DB content + same `booked` always yields the same
+slots -- even though it is not pure in the strict FP sense of taking all its
+inputs as arguments.
+
+Reused `repo.py`'s `_CLINIC_LOCALE_OVERRIDES` / `_clinic_locale_default`
+(imported, not duplicated) to resolve `facility_type` for the Sunday-closure
+rule, so the PHC/CHC/DH classification has exactly one source of truth
+between the two modules.
+
+Added `app/services/rules/packs/queue.yaml` early (it's an owned path,
+officially due at N1.4) with just the two keys N1.2 needs --
+`holidays: [...]` (the four dates already fixed in the CP1 spec) and a new
+`inter_clinic_travel_minutes: 30`, used to enforce a gap between a doctor's
+sessions at two different clinics on the same day so a slot is never offered
+at a time they can't physically reach the clinic by. N1.4 will extend this
+file with the remaining priority-queue keys (`aging_minutes`,
+`avg_consult_minutes`, etc.) without touching these two.
+
 ## 2026-08-26 — N1.1 scheduling repo layer, DRIFT: missing locale/scheme columns
 
 `app/services/scheduling/repo.py` (niyati, owned path) needs four fields the
