@@ -14,7 +14,11 @@ from sqlalchemy import delete
 
 from app.db.models.scheduling import QueueEntry
 from app.db.session import SessionLocal
-from app.services.queueing.escalation import detect_red_flags, escalate_with_referral, should_escalate
+from app.services.queueing.escalation import (
+    detect_red_flags,
+    escalate_with_referral,
+    should_escalate,
+)
 from app.services.queueing.pq import enqueue
 from tests.services.conftest import CLINIC_PHC, doctor_id, patient_id
 

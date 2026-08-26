@@ -22,8 +22,8 @@ from app.db.session import SessionLocal
 from app.services.queueing import pq
 from app.services.queueing.schemas import QueueEntryOut
 from app.services.scheduling.repo import (
-    ClinicRow,
     _CLINIC_LOCALE_OVERRIDES,
+    ClinicRow,
     _clinic_locale_default,
     all_clinics,
 )

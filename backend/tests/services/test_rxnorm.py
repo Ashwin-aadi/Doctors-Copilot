@@ -11,7 +11,11 @@ import httpx
 import pytest
 
 from app.core.errors import ApiError
-from app.services.mapping.india_drugs import closest_ingredient_suggestion, normalize_brand, to_generic
+from app.services.mapping.india_drugs import (
+    closest_ingredient_suggestion,
+    normalize_brand,
+    to_generic,
+)
 
 _CSV_PATH = "backend/app/services/mapping/data/india_drugs.csv"
 
