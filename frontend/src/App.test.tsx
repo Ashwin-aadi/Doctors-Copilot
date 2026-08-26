@@ -3,8 +3,8 @@ import { describe, expect, it } from "vitest";
 import App from "./App";
 
 describe("App", () => {
-  it("renders the app shell", () => {
+  it("redirects to the design preview harness", async () => {
     render(<App />);
-    expect(screen.getByText("Doctor's Copilot")).toBeTruthy();
+    expect(await screen.findByText(/Design Preview/)).toBeTruthy();
   });
 });

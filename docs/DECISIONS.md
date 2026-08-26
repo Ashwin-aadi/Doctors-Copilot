@@ -1,5 +1,33 @@
 # Decisions Log
 
+## 2026-08-26 — D1.1-D1.5: design system, auth, onboarding, chat shell
+
+Palette shifted from the spec's cool teal-on-grey clinical look to a warmer,
+organic flat palette (turmeric/terracotta accents on paper-like cream
+neutrals) — still flat, no gradients, shadows capped at `md`, same severity
+colour roles — to read as an Indian clinic product rather than a generic
+US SaaS dashboard. Added an `--accent` token pair (saffron/terracotta) not
+in the original spec, for brand moments (auth panel, onboarding) that
+shouldn't borrow the clinical `--primary` teal.
+
+All copy across auth, onboarding and chat is India-first per the project's
+India-context requirements: `+91` phone prefix, Indian states/PIN codes, ABHA ID field
+(optional) in onboarding, NMC registration numbers in doctor-facing mocks,
+`112`/`108` emergency copy everywhere a US "911"/"ER" would otherwise land,
+DPDP Act 2023 consent language (not HIPAA), NLEM/Jan Aushadhi framing in the
+generic-medicine mock. Mock fixtures use Indian names, cities and ₹ pricing.
+
+`CaptchaWidget` implements the exact protocol in `docs/CAPTCHA.md`
+(challenge/salt/maxnumber, SHA-256 brute force, base64 token) rather than a
+generic placeholder, since Pratyaksh's spec was already committed.
+
+`App.tsx` got a minimal `BrowserRouter` wrapping just `previewRoutes` so
+`/__preview` is reachable via `npm run dev` today. Marked `// TEMP` — this is
+normally Abhishek's `src/router/`/`src/app/` territory; replace wholesale
+once his router/providers shell lands rather than merging with it.
+
+DRIFT: none outside owned paths.
+
 ## 2026-08-26 — N1.3-N1.5: reasons_hi/token via owned-path subclassing, Redis side-channel, route shape calls
 
 Section 7 mandates `reasons_hi: list[str]` alongside `DoctorRanked.reasons`

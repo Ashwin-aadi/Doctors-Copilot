@@ -1,8 +1,18 @@
+import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import { previewRoutes } from "./pages/preview";
+
+// TEMP: minimal routing so /__preview is reachable before the real router/providers
+// shell lands. Replace with the full app router.
 function App() {
   return (
-    <div className="flex min-h-screen items-center justify-center bg-white text-slate-900">
-      <h1 className="text-3xl font-semibold">Doctor's Copilot</h1>
-    </div>
+    <BrowserRouter>
+      <Routes>
+        <Route path="/" element={<Navigate to="/__preview" replace />} />
+        {previewRoutes.map((route) => (
+          <Route key={route.path} path={route.path} element={route.element} />
+        ))}
+      </Routes>
+    </BrowserRouter>
   );
 }
 

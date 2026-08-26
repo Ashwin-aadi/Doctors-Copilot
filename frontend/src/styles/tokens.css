@@ -1,0 +1,82 @@
+/*
+  Doctor's Copilot design tokens.
+  Warm, organic, flat palette for Indian primary care: turmeric/terracotta
+  warmth on paper-like neutrals, no gradients, shadows capped at md.
+*/
+:root {
+  --bg: #FBF7F1;
+  --surface: #FFFFFF;
+  --surface-2: #F4EEE3;
+  --border: #E7DCC9;
+
+  --fg: #241B12;
+  --fg-muted: #6B5D4B;
+  --fg-subtle: #96876F;
+
+  --primary: #0F6B5C;
+  --primary-hover: #0B5548;
+  --primary-fg: #FFFFFF;
+  --primary-soft: #E6F2EF;
+
+  --accent: #C9711A;
+  --accent-hover: #A85E14;
+  --accent-fg: #FFFFFF;
+  --accent-soft: #FBEADA;
+
+  --critical: #B3261E;
+  --critical-soft: #FDECEA;
+  --high: #B15C00;
+  --high-soft: #FFF2E0;
+  --moderate: #8A6D00;
+  --moderate-soft: #FFF8DE;
+  --normal: #1B6E3C;
+  --normal-soft: #E8F5EC;
+  --info: #1A5FA8;
+  --info-soft: #E8F1FB;
+
+  --ring: #0F6B5C40;
+
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 14px;
+
+  --shadow-sm: 0 1px 2px rgb(36 27 18 / 0.07);
+  --shadow-md: 0 4px 12px rgb(36 27 18 / 0.09);
+}
+
+[data-theme="dark"] {
+  --bg: #17130D;
+  --surface: #1F1A12;
+  --surface-2: #2A2318;
+  --border: #3A3121;
+
+  --fg: #F3ECDF;
+  --fg-muted: #B9AA8F;
+  --fg-subtle: #85795F;
+
+  --primary: #3FA890;
+  --primary-hover: #52BCA3;
+  --primary-fg: #0B1A16;
+  --primary-soft: #123029;
+
+  --accent: #E2914A;
+  --accent-hover: #EEA766;
+  --accent-fg: #241002;
+  --accent-soft: #3A2712;
+
+  --critical: #F2807A;
+  --critical-soft: #3A1A18;
+  --high: #E2A155;
+  --high-soft: #3A2A12;
+  --moderate: #D8C25E;
+  --moderate-soft: #332E12;
+  --normal: #5FBE85;
+  --normal-soft: #15301F;
+  --info: #78AEEB;
+  --info-soft: #122539;
+
+  --ring: #3FA89050;
+
+  --shadow-sm: 0 1px 2px rgb(0 0 0 / 0.35);
+  --shadow-md: 0 4px 12px rgb(0 0 0 / 0.45);
+}
