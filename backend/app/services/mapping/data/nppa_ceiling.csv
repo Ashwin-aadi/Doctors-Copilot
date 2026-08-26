@@ -1,0 +1,185 @@
+ingredient,strength,form,nppa_ceiling_inr
+adrenaline,1mg/ml,injection,7.20
+albendazole,400mg,tablet,10.80
+allopurinol,100mg,tablet,18.00
+amikacin,500mg,injection,28.80
+amlodipine,10mg,tablet,16.70
+amlodipine,2.5mg,tablet,14.40
+amlodipine,5mg,tablet,15.55
+amoxicillin,250mg,capsule,32.40
+amoxicillin,500mg,capsule,34.99
+amoxicillin+clavulanate,1g,tablet,112.75
+amoxicillin+clavulanate,625mg,tablet,104.40
+amoxicillin-syrup,125mg/5ml,syrup,43.20
+anti-rabies-vaccine,0.5ml/1ml,injection,252.00
+aspirin,150mg,tablet,7.78
+aspirin,75mg,tablet,7.20
+atenolol,25mg,tablet,14.40
+atenolol,50mg,tablet,15.55
+atorvastatin,10mg,tablet,39.60
+atorvastatin,20mg,tablet,42.77
+atorvastatin,40mg,tablet,45.94
+atropine,0.6mg/ml,injection,7.20
+azithromycin,250mg,tablet,64.80
+azithromycin,500mg,tablet,69.98
+azithromycin-syrup,100mg/5ml,syrup,64.80
+beclomethasone-nasal,50mcg/dose,nasal spray,93.60
+benzyl-benzoate,25% w/v,lotion,43.20
+betamethasone,0.5mg,tablet,18.00
+betamethasone-cream,0.1% w/w,cream,43.20
+bisacodyl,5mg,tablet,10.80
+bromhexine,standard,syrup,32.40
+budesonide+formoterol,200mcg/6mcg,inhaler,288.00
+calcium+vitamin-d3,500mg/250IU,tablet,93.60
+carbimazole,5mg,tablet,21.60
+carvedilol,3.125mg,tablet,50.40
+carvedilol,6.25mg,tablet,54.43
+cefixime,200mg,tablet,72.00
+ceftriaxone,1g,injection,57.60
+cephalexin,250mg,capsule,39.60
+cephalexin,500mg,capsule,42.77
+cetirizine,10mg,tablet,10.80
+chloramphenicol-eye-drop,0.5% w/v,eye drop,18.00
+chlorhexidine+cetrimide,standard,solution,43.20
+chloroquine,250mg,tablet,7.20
+ciprofloxacin,250mg,tablet,39.60
+ciprofloxacin,500mg,tablet,42.77
+ciprofloxacin-eye-drop,0.3% w/v,eye drop,21.60
+clarithromycin,250mg,tablet,64.80
+clarithromycin,500mg,tablet,69.98
+clindamycin,150mg,capsule,43.20
+clindamycin,300mg,capsule,46.66
+clopidogrel,75mg,tablet,28.80
+clopidogrel+aspirin,75mg/75mg,tablet,32.40
+clotrimazole,1% w/w,cream,39.60
+cotrimoxazole,standard,tablet,10.80
+dexamethasone,4mg/ml,injection,10.80
+diazepam,5mg/ml,injection,10.80
+diclofenac,100mg,tablet,15.55
+diclofenac,50mg,tablet,14.40
+dicyclomine+paracetamol,standard,tablet,21.60
+digoxin,0.25mg,tablet,10.80
+domperidone,10mg,tablet,18.00
+doxycycline,100mg,capsule,21.60
+enalapril,5mg,tablet,14.40
+esomeprazole,20mg,tablet,46.80
+esomeprazole,40mg,tablet,50.54
+fexofenadine,120mg,tablet,93.60
+fexofenadine,180mg,tablet,101.09
+fluconazole,150mg,tablet,21.60
+folic-acid,5mg,tablet,7.20
+furosemide,40mg,tablet,10.80
+gliclazide,40mg,tablet,28.80
+gliclazide,80mg,tablet,31.10
+glimepiride,1mg,tablet,28.80
+glimepiride,2mg,tablet,31.10
+heparin,5000IU/ml,injection,43.20
+human-rabies-immunoglobulin,150IU/ml,injection,2160.00
+hydrochlorothiazide,12.5mg,tablet,10.80
+hydrochlorothiazide,25mg,tablet,11.66
+hydrocortisone,100mg,injection,18.00
+hydroxychloroquine,200mg,tablet,28.80
+hyoscine-butylbromide,10mg,tablet,18.00
+ibuprofen+paracetamol,400mg/325mg,tablet,21.60
+insulin-glargine,100IU/ml,injection,432.00
+insulin-human-regular,40IU/ml,injection,108.00
+ipratropium+salbutamol,500mcg/2.5mg,nebule,64.80
+iron+folic-acid,100mg/0.5mg,tablet,18.00
+iron-syrup,standard,syrup,57.60
+isosorbide-dinitrate,5mg,tablet,14.40
+ivermectin,12mg,tablet,23.33
+ivermectin,6mg,tablet,21.60
+ketoconazole-shampoo,2% w/v,shampoo,108.00
+labetalol,100mg,tablet,28.80
+lactulose,10g/15ml,syrup,64.80
+levetiracetam,250mg,tablet,43.20
+levetiracetam,500mg,tablet,46.66
+levocetirizine,5mg,tablet,21.60
+levothyroxine,100mcg,tablet,75.17
+levothyroxine,25mcg,tablet,64.80
+levothyroxine,50mcg,tablet,69.98
+loperamide,2mg,tablet,10.80
+lorazepam,1mg,tablet,10.80
+losartan,25mg,tablet,28.80
+losartan,50mg,tablet,31.10
+magnesium-sulphate,50% w/v,injection,14.40
+mebendazole,100mg,tablet,10.80
+metformin,1000mg,tablet,20.88
+metformin,500mg,tablet,18.00
+metformin,850mg,tablet,19.44
+methotrexate,7.5mg,tablet,28.80
+methylergometrine,0.125mg,tablet,10.80
+metoprolol,25mg,tablet,32.40
+metoprolol,50mg,tablet,34.99
+metronidazole,400mg,tablet,18.00
+mifepristone+misoprostol,combipack,tablet,288.00
+misoprostol,200mcg,tablet,21.60
+mometasone-cream,0.1% w/w,cream,64.80
+montelukast,10mg,tablet,64.80
+montelukast+levocetirizine,10mg/5mg,tablet,79.20
+morphine,10mg,tablet,21.60
+mupirocin,2% w/w,ointment,72.00
+nebivolol,5mg,tablet,43.20
+nifedipine,10mg,tablet,10.80
+nifedipine,20mg,tablet,11.66
+norfloxacin,400mg,tablet,28.80
+ofloxacin+ornidazole,200mg/500mg,tablet,46.80
+omeprazole,20mg,capsule,25.20
+ondansetron,4mg,tablet,21.60
+ondansetron,8mg,tablet,23.33
+oral-contraceptive-combined,standard,tablet,3.60
+oral-rehydration-salts,21g,sachet,14.40
+ors-zinc-combo,standard,combipack,28.80
+oxytocin,10IU/ml,injection,7.20
+pantoprazole,20mg,tablet,32.40
+pantoprazole,40mg,tablet,34.99
+paracetamol,500mg,tablet,14.40
+paracetamol,650mg,tablet,15.55
+paracetamol-syrup,125mg/5ml,syrup,25.20
+paracetamol-syrup,250mg/5ml,syrup,27.22
+permethrin,5% w/v,lotion,64.80
+phenytoin,100mg,tablet,10.80
+pioglitazone,15mg,tablet,32.40
+pioglitazone,30mg,tablet,34.99
+polyvalent-anti-snake-venom,10ml vial,injection,360.00
+povidone-iodine,10% w/v,solution,46.66
+povidone-iodine,5% w/v,solution,43.20
+pralidoxime,500mg,injection,43.20
+prednisolone,10mg,tablet,15.55
+prednisolone,5mg,tablet,14.40
+primaquine,2.5mg,tablet,7.20
+progesterone,100mg,capsule,93.60
+progesterone,200mg,capsule,101.09
+promethazine,25mg,tablet,10.80
+propylthiouracil,50mg,tablet,28.80
+pyridoxine,10mg,tablet,14.40
+pyridoxine,40mg,tablet,15.55
+rabeprazole,20mg,tablet,39.60
+ramipril,2.5mg,tablet,28.80
+ramipril,5mg,tablet,31.10
+ranitidine,150mg,tablet,18.00
+ranitidine,300mg,tablet,19.44
+rosuvastatin,10mg,tablet,43.20
+rosuvastatin,20mg,tablet,46.66
+salbutamol,100mcg/dose,inhaler,79.20
+salmeterol+fluticasone,25mcg/125mcg,inhaler,252.00
+silver-sulfadiazine,1% w/w,cream,64.80
+sodium-valproate,200mg,tablet,28.80
+sodium-valproate,500mg,tablet,31.10
+spironolactone,25mg,tablet,21.60
+streptokinase,1.5MU,injection,2520.00
+sucralfate,1g/10ml,suspension,54.00
+telmisartan,20mg,tablet,43.20
+telmisartan,40mg,tablet,46.66
+telmisartan,80mg,tablet,50.11
+terbinafine,250mg,tablet,64.80
+theophylline,100mg,tablet,21.60
+theophylline,200mg,tablet,23.33
+timolol-eye-drop,0.5% w/v,eye drop,43.20
+tramadol,50mg,capsule,21.60
+vitamin-b-complex,standard,tablet,36.00
+warfarin,1mg,tablet,14.40
+warfarin,5mg,tablet,15.55
+xylometazoline,0.05%,nasal drop,32.40
+xylometazoline,0.1%,nasal drop,34.99
+zinc-sulphate,20mg,tablet,10.80

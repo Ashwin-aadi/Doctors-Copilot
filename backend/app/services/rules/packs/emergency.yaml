@@ -1,0 +1,109 @@
+# Emergency red-flag phrases and the referral-ladder floor each implies.
+# `min_facility_type` is the lowest facility rung (phc < chc < sdh < dh <
+# medical_college, same rank table as optimizer.yaml) that can actually
+# manage the condition -- used to decide whether the assigned clinic needs a
+# transfer suggestion. `phrase` is matched case-insensitively as a substring
+# against the escalation reason / triage red flags (deterministic, no LLM).
+#
+# Sources: MoHFW/NELS emergency triage categories, NRHM First Referral Unit
+# (FRU) criteria for obstetric emergencies, NTEP for haemoptysis, NPCDCS for
+# DKA, NVBDCP/state snakebite protocols.
+red_flags:
+  - {phrase: "chest pain with sweating", category: acs, min_facility_type: chc}
+  - {phrase: "crushing chest pain", category: acs, min_facility_type: chc}
+  - {phrase: "chest pain radiating to arm", category: acs, min_facility_type: chc}
+  - {phrase: "chest pain radiating to jaw", category: acs, min_facility_type: chc}
+  - {phrase: "facial droop", category: stroke_fast, min_facility_type: dh}
+  - {phrase: "slurred speech", category: stroke_fast, min_facility_type: dh}
+  - {phrase: "sudden weakness on one side", category: stroke_fast, min_facility_type: dh}
+  - {phrase: "sudden weakness one side", category: stroke_fast, min_facility_type: dh}
+  - {phrase: "worst headache of", category: stroke_fast, min_facility_type: dh}
+  - {phrase: "anaphyla", category: anaphylaxis, min_facility_type: chc}
+  - {phrase: "severe allergic reaction", category: anaphylaxis, min_facility_type: chc}
+  - {phrase: "airway swelling", category: anaphylaxis, min_facility_type: chc}
+  - {phrase: "severe bleeding", category: haemorrhage, min_facility_type: chc}
+  - {phrase: "severe hemorrhage", category: haemorrhage, min_facility_type: chc}
+  - {phrase: "severe haemorrhage", category: haemorrhage, min_facility_type: chc}
+  - {phrase: "uncontrolled bleeding", category: haemorrhage, min_facility_type: chc}
+  - {phrase: "vomiting blood", category: haemorrhage, min_facility_type: chc}
+  - {phrase: "unresponsive", category: gcs_drop, min_facility_type: dh}
+  - {phrase: "loss of consciousness", category: gcs_drop, min_facility_type: dh}
+  - {phrase: "not responding to voice", category: gcs_drop, min_facility_type: dh}
+  - {phrase: "glasgow coma", category: gcs_drop, min_facility_type: dh}
+  - {phrase: "spo2 below 90", category: hypoxia, min_facility_type: chc}
+  - {phrase: "oxygen saturation below 90", category: hypoxia, min_facility_type: chc}
+  - {phrase: "blue lips", category: hypoxia, min_facility_type: chc}
+  - {phrase: "snakebite with bleeding", category: snakebite, min_facility_type: chc}
+  - {phrase: "snake bite with bleeding", category: snakebite, min_facility_type: chc}
+  - {phrase: "snakebite with ptosis", category: snakebite, min_facility_type: chc}
+  - {phrase: "drooping eyelid", category: snakebite, min_facility_type: chc}
+  - {phrase: "snakebite with bleeding gums", category: snakebite, min_facility_type: chc}
+  - {phrase: "organophosphate poisoning", category: poisoning, min_facility_type: chc}
+  - {phrase: "pesticide poisoning", category: poisoning, min_facility_type: chc}
+  - {phrase: "frothing at the mouth", category: poisoning, min_facility_type: chc}
+  - {phrase: "frothing from the mouth", category: poisoning, min_facility_type: chc}
+  - {phrase: "consumed poison", category: poisoning, min_facility_type: chc}
+  - {phrase: "road traffic accident", category: polytrauma, min_facility_type: dh}
+  - {phrase: "polytrauma", category: polytrauma, min_facility_type: dh}
+  - {phrase: "multiple injuries after accident", category: polytrauma, min_facility_type: dh}
+  - {phrase: "high speed collision", category: polytrauma, min_facility_type: dh}
+  - {phrase: "post-partum haemorrhage", category: pph, min_facility_type: chc}
+  - {phrase: "postpartum hemorrhage", category: pph, min_facility_type: chc}
+  - {phrase: "bleeding after delivery", category: pph, min_facility_type: chc}
+  - {phrase: "heavy bleeding after childbirth", category: pph, min_facility_type: chc}
+  - {phrase: "eclampsia", category: eclampsia, min_facility_type: chc}
+  - {phrase: "severe pre-eclampsia", category: eclampsia, min_facility_type: chc}
+  - {phrase: "severe preeclampsia", category: eclampsia, min_facility_type: chc}
+  - {phrase: "seizures in pregnancy", category: eclampsia, min_facility_type: chc}
+  - {phrase: "blood pressure very high in pregnancy", category: eclampsia, min_facility_type: chc}
+  - {phrase: "obstructed labour", category: obstructed_labour, min_facility_type: chc}
+  - {phrase: "obstructed labor", category: obstructed_labour, min_facility_type: chc}
+  - {phrase: "prolonged labour", category: obstructed_labour, min_facility_type: chc}
+  - {phrase: "fetal distress", category: obstructed_labour, min_facility_type: chc}
+  - {phrase: "neonatal sepsis", category: neonatal_emergency, min_facility_type: dh}
+  - {phrase: "not feeding", category: neonatal_emergency, min_facility_type: dh}
+  - {phrase: "newborn not feeding", category: neonatal_emergency, min_facility_type: dh}
+  - {phrase: "newborn lethargy", category: neonatal_emergency, min_facility_type: dh}
+  - {phrase: "severe acute malnutrition with complications", category: sam_complicated, min_facility_type: dh}
+  - {phrase: "sam with complications", category: sam_complicated, min_facility_type: dh}
+  - {phrase: "severe wasting with edema", category: sam_complicated, min_facility_type: dh}
+  - {phrase: "heat stroke", category: heat_stroke, min_facility_type: chc}
+  - {phrase: "very high body temperature with confusion", category: heat_stroke, min_facility_type: chc}
+  - {phrase: "no sweating with high fever", category: heat_stroke, min_facility_type: chc}
+  - {phrase: "massive haemoptysis", category: haemoptysis, min_facility_type: dh}
+  - {phrase: "massive hemoptysis", category: haemoptysis, min_facility_type: dh}
+  - {phrase: "coughing up blood", category: haemoptysis, min_facility_type: dh}
+  - {phrase: "coughing large amounts of blood", category: haemoptysis, min_facility_type: dh}
+  - {phrase: "dka", category: dka, min_facility_type: chc}
+  - {phrase: "diabetic ketoacidosis", category: dka, min_facility_type: chc}
+  - {phrase: "fruity breath with high sugar", category: dka, min_facility_type: chc}
+  - {phrase: "deep rapid breathing with high sugar", category: dka, min_facility_type: chc}
+  - {phrase: "acute severe asthma", category: severe_asthma, min_facility_type: chc}
+  - {phrase: "cannot complete sentences", category: severe_asthma, min_facility_type: chc}
+  - {phrase: "silent chest", category: severe_asthma, min_facility_type: chc}
+  - {phrase: "rabies category iii", category: rabies, min_facility_type: chc}
+  - {phrase: "category iii animal bite", category: rabies, min_facility_type: chc}
+  - {phrase: "multiple deep bites", category: rabies, min_facility_type: chc}
+  - {phrase: "drowning", category: drowning, min_facility_type: dh}
+  - {phrase: "near drowning", category: drowning, min_facility_type: dh}
+  - {phrase: "pulled from water unresponsive", category: drowning, min_facility_type: dh}
+  - {phrase: "electrocution", category: electrocution, min_facility_type: dh}
+  - {phrase: "electric shock", category: electrocution, min_facility_type: dh}
+  - {phrase: "burns more than 20", category: burns_severe, min_facility_type: dh}
+  - {phrase: "burns over 20 percent", category: burns_severe, min_facility_type: dh}
+  - {phrase: "extensive burns", category: burns_severe, min_facility_type: dh}
+  - {phrase: "acute abdomen", category: acute_abdomen, min_facility_type: chc}
+  - {phrase: "rigid abdomen", category: acute_abdomen, min_facility_type: chc}
+  - {phrase: "severe abdominal pain with rigidity", category: acute_abdomen, min_facility_type: chc}
+  - {phrase: "status epilepticus", category: status_epilepticus, min_facility_type: dh}
+  - {phrase: "continuous seizures", category: status_epilepticus, min_facility_type: dh}
+  - {phrase: "seizure not stopping", category: status_epilepticus, min_facility_type: dh}
+  - {phrase: "severe dehydration in a child", category: severe_dehydration_child, min_facility_type: chc}
+  - {phrase: "severe dehydration in child", category: severe_dehydration_child, min_facility_type: chc}
+  - {phrase: "sunken eyes with no urine", category: severe_dehydration_child, min_facility_type: chc}
+  - {phrase: "very lethargic child", category: severe_dehydration_child, min_facility_type: chc}
+
+# Facility-rank table, mirrored from optimizer.yaml so this pack is
+# self-contained (escalation.py doesn't need to import optimizer.py's module
+# constant for a rank lookup).
+facility_rank: {phc: 0, chc: 1, sdh: 2, dh: 3, medical_college: 4}

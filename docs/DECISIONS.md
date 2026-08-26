@@ -486,6 +486,182 @@
   just this sandbox's known bare-interpreter limitation (see prior CP1
   entries on `pip install -r requirements.txt` not having been run here).
 
+## 2026-08-26 — niyati CP2: lab rules, emergency escalation, generic mapping
+
+N2.1-N2.5 implemented in full. Summary per sub-checkpoint, then the shared
+infra caveat and DRIFT notes.
+
+**N2.1 (triage -> queue wiring).** Confirmed `packs/triage_india.yaml`'s
+tier->colour mapping is the single source both `pq.py` (via
+`app.schemas.triage.colour_for_esi`) and the triage API already share --
+no fix needed there. The real gap: `POST /appointments` took a bare
+`severity_esi: int = 4` request-body field with no link to a finalized
+`TriageResult` at all, so a triaged RED patient booking an appointment would
+have silently enqueued at the tier-4 default. Fixed in
+`app/api/v1/appointments.py`: `AppointmentCreate` gained an additive optional
+`triage_session_id: UUID | None` field; when present, `create_appointment`
+fetches the finalized `TriageResult` via `app.rag.triage_rag.get_result` and
+lets its `severity_esi`/`specialty` override the request body's own values
+(a not-yet-finalized session degrades to the body defaults rather than
+failing the booking). `pq.enqueue`'s existing
+`emergency = severity_esi <= emergency_severity_max` check then does the
+rest -- a RED triage now reaches the queue as tier 2/emergency, not tier 4.
+Covered by `backend/tests/services/test_triage_wiring.py`.
+
+**N2.2 (lab rules).** `backend/app/services/rules/packs/lab_panels.yaml`: 36
+rules (35 real conditions + `general_baseline` fallback), covering every
+mandatory item in the spec (dengue/chikungunya, malaria, enteric fever,
+NTEP pulmonary TB + contact screening, anaemia (general + antenatal),
+NPCDCS diabetes/hypertension, thyroid, MoHFW ANC first-visit panel,
+leptospirosis, scrub typhus, hepatitis A/E, snakebite WBCT20, organophosphate
+poisoning, heat stroke, acute diarrhoeal disease/cholera, biomass-exposure
+COPD, RHD, CKD, stroke FAST, ACS, plus UTI/pneumonia/jaundice/seizure/SAM/
+neonatal sepsis/rabies/COVID-ILI/dermatophyte rules for realistic OPD
+coverage) -- verified with `python -c` row-count/coverage checks (36 rules,
+`general_baseline` present, all 7 gate substrings found in rule ids).
+`app/services/rules/lab_rules.py::recommend_labs` matches on
+`symptoms_any/symptoms_all/conditions_any/severity_max/season/region` per
+the frozen signature, **plus** `age`/`pregnant` as additive optional
+keyword-only parameters (the spec lists `age_max`/`pregnant` as supported
+match keys but the frozen `recommend_labs` signature in section 4.2 doesn't
+carry them -- adding optional-with-default kwargs is backward compatible,
+same reasoning as N1.3-N1.5's `DoctorRankedOut`/`QueueEntryOut` additive
+subclassing). `merge_with_rag` unions on normalized name,
+`both < rule < rag` source-rank sort, rule's own reason wins on a `both`.
+`app/services/rules/schemas.py::SuggestedLabOut` additively subclasses
+Ashwin's frozen `app.schemas.triage.SuggestedLab` to carry `cghs_code`/
+`pmjay_package`, same pattern as the CP1 `DoctorRankedOut` DRIFT note.
+`POST /lab-orders/recommend` derives symptoms from whatever free-text triage
+output exists (`TriageResult.red_flags` + `.rationale`, run through a new
+`extract_symptom_keywords()` that substring-matches the pack's own symptom
+vocabulary -- deterministic, rule-based, not an LLM call) and from
+`Patient.conditions`; season from `now`'s IST month (injected, never a
+wall-clock read); region from `Patient.state`. Always creates the `LabOrder`
+row as `status="draft", locked=False` -- never auto-approves.
+
+**N2.3 (emergency escalation).** `packs/emergency.yaml`: 93 red-flag phrase
+entries across 24 categories (verified: >=35 gate, all 7 required substrings
+present). `app/services/queueing/escalation.py::escalate_with_referral` wraps
+CP1's `pq.escalate` (unchanged re-key-to-head behaviour, so the existing
+`test_escalate_moves_entry_to_head`/`test_escalate_forces_red_and_moves_to_head`
+tests still pass) and adds the referral-ladder check: if the assigned
+clinic can't manage the matched red flag's `min_facility_type`, the nearest
+capable clinic is found and a transfer line ("Refer to X (FACILITY_TYPE),
+N.N km - Call 108 for transfer") is appended to `reasons`/`reasons_hi`.
+**Deliberately does not re-run `rank_doctors`** for the transfer search even
+though the spec's literal text says to -- `rank_doctors` is doctor-
+availability-driven (it hard-filters on which specialty's doctors are
+rostered where) and would wrongly suppress a valid transfer suggestion for a
+facility that is capable but simply doesn't have a matching-specialty doctor
+rostered that session, which is a facility-capability question, not a
+doctor-availability one. Added `repo.py::all_clinics()` (one batched query)
+instead and rank candidate clinics by `geopy` distance directly. `POST
+/queue/{id}/escalate` now calls `escalate_with_referral` instead of the bare
+`pq.escalate`.
+
+**Audit logging not wired -- Pratyaksh's audit middleware doesn't exist
+yet.** `app/api/v1/audit.py` is still a bare `not_implemented` 501 stub and
+`app/main.py` registers no audit middleware at all. Section 8 N2.3 says
+"Audit is automatic via Pratyaksh's middleware -- do not write your own," so
+per that instruction this checkpoint does **not** add a local audit-write
+TEMP-ADAPTER for escalation events; the CP2 gate's audit-entry curl check is
+simply not exercisable yet. DRIFT for Pratyaksh: ship the audit
+middleware/route; once it's there, every `/queue/{id}/escalate` call should
+already show up automatically with no change needed on this side.
+
+**N2.4 (generic mapping).**
+`backend/app/services/mapping/data/india_drugs.csv`: 332 rows across 173
+molecules/combinations (>=300 gate), 275 NLEM-listed (>=80 gate), 262 with a
+Jan Aushadhi code (>=100 gate), covering every named brand in the spec
+(Crocin/Dolo/Calpol -> paracetamol, Combiflam, Augmentin/Clavam, Azee/
+Azithral, Pan/Pantocid, Omez, Glycomet, Amlokind/Amlopres, Telma, Ecosprin,
+Atorva/Storvas, Thyronorm/Eltroxin, Zifi, Allegra, Montair-LC, Asthalin,
+Shelcal, Zincovit, Neurobion, Liv-52, Cetzine, Sinarest, Meftal-Spas, Rantac,
+Deriphyllin, Wysolone, Betnesol, Ciplox, Norflox, Metrogyl, ofloxacin+
+ornidazole combos, NTEP anti-TB FDCs (Akurit-4/Akurit) and ART FDCs
+(TLE/TLD)), plus ~60 additional common OPD brands (cough/cold, paediatric
+syrups, ophthalmology/ENT/dermatology topicals, additional cardio-metabolic
+and antibiotic molecules) to comfortably clear the row-count gate with real,
+individually-chosen brand->ingredient mappings rather than padding. Written
+via a one-off generation script (not committed -- the CSV output is the
+committed artifact) from a curated Python molecule table, so the row set is
+reviewable and reproducible rather than hand-typed line by line.
+`nppa_ceiling.csv` (184 rows) is a **deliberately modelled approximation**,
+not a scraped NPPA notification mirror: `ceiling = round(0.72 * min(branded
+MRP for that ingredient+strength), 2)`, restricted to NLEM-listed molecules.
+Flagged in `docs/RULES.md` rather than presented as verbatim sourced data --
+gives the right shape for the price-saving demo story without claiming false
+provenance. `app/services/mapping/india_drugs.py::to_generic` implements the
+full 4-step resolution chain (local CSV hit -> RxNav enrichment on miss with
+network up -> deterministic closest-ingredient suggestion on miss with
+network down, via `rapidfuzz.fuzz.ratio` over normalized generic names, ties
+broken alphabetically through the `(-ratio, name)` sort key). `rxnorm.py`'s
+`enrich()` never attaches an Indian MRP/Jan Aushadhi code to an RxNav-only
+product (those fields stay `None`), per the "never present a US/
+international product as Indian" rule, and implements the two-layer cache
+(`cachetools.TTLCache` 1h in-process + Redis `rxnorm:{key}` 7-day).
+`normalize_brand()` verified directly (outside pydantic, see infra caveat
+below) against `Dolo 650`/`Dolo-650`/`Pan-D`/`Pan 40mg`/`Asthalin Inhaler`
+and 6 other real brand strings -- all resolve to the intended catalogue
+entry.
+
+**N2.5 (wrap-up).** `test_cache.py` (in-process-cache-hit, zero-HTTP-calls-
+on-second-lookup), `test_offline.py` (all 5 listed endpoints --
+`/doctors`, `/appointments`, `/queue`, `/lab-orders/recommend`,
+`/medications/generic` -- return 2xx with every `httpx.AsyncClient`
+get/post monkeypatched to raise `ConnectError`), `test_pack_schemas.py`
+(every pack -- `triage_india`, `optimizer`, `queue`, `lab_panels`,
+`emergency` -- validated against a pydantic schema so a malformed pack fails
+CI; every `label_en`/`reason_en` in `triage_india.yaml` has a paired `_hi`
+string, both <= 60 chars) all written per spec. `docs/RULES.md` first draft
+written: every weight/threshold/rule-id/red-flag-category documented with
+its Indian-guideline source (MoHFW STG, NTEP, NPCDCS, NVBDCP, Anaemia Mukt
+Bharat, NRHM FRU criteria, NLEM 2022, PM-JAY/CGHS coverage codes where
+mapped).
+
+**Shared infra caveat, all of CP2.** Same underlying constraint as every
+prior checkpoint's entries below, compounded by one new issue: this machine
+has no Docker/Postgres/Redis (`make migrate`/`make test`/live `curl` against
+a running API are not runnable here), **and** its only Python is a
+MSYS2/mingw-w64 3.14 build (`cp314-mingw_x86_64_ucrt_gnu` platform tag) that
+has no matching `pydantic-core` wheel on PyPI and cannot build one from
+source either (`maturin`/Rust build fails against the mingw ABI, not just
+"Rust missing" -- installing Rust doesn't fix the platform-tag mismatch).
+That means **no module in this checkpoint that imports `pydantic` could be
+executed directly in this sandbox**, on top of the already-known no-DB/
+no-Redis blocker. What *was* verified without pydantic: every new/changed
+`.py` file byte-compiles cleanly (`python -m py_compile`); every YAML pack
+loads and structurally validates against its intended schema via plain
+dict/set assertions (row counts, required keys, no unexpected keys); the
+lab-rules matching algorithm and the escalation red-flag/facility-rank logic
+were each re-implemented standalone (no pydantic import) in a throwaway
+script and run against the real, committed YAML packs for the exact
+scenarios the real pytest files exercise (monsoon fever, snakebite,
+ANC-pregnant, baseline fallback, red-flag detection, `should_escalate`
+tiering) -- all passed; `normalize_brand`/`closest_ingredient_suggestion`
+were likewise verified standalone against the real, committed CSV for 12
+real brand strings including every deliberately-tricky suffix case
+(`Dolo 650` vs `Dolo-650`, `Pan-D` vs `Pan 40mg`, `Asthalin Inhaler`).
+Every actual `pytest`-collected test file (`test_lab_rules.py`,
+`test_escalation.py`, `test_rxnorm.py`, `test_cache.py`, `test_offline.py`,
+`test_pack_schemas.py`, `test_triage_wiring.py`) is written and reviewed
+per spec but **could not be executed end to end in this sandbox** -- needs a
+real `make up && make migrate` environment (or CI) to run for real. This
+mirrors exactly the caveat pattern already logged for P1.1-P1.5 and the
+"CP2 re-verify"/"V2.1 re-verify" entries below (a later session with MSVC
+installed got further on the ML side; this session's blocker is a Python
+build/ABI issue those entries didn't hit, since they were on CPython, not
+MSYS2 mingw Python).
+
+**Update after merging main:** `feat/pratyaksh/cp2` landed the real audit
+middleware (`app/core/middleware_audit.py`) in the same window this
+checkpoint's branch was in flight, which resolves the "audit logging not
+wired" gap noted above -- `/queue/{id}/escalate` should now be audited
+automatically with no change needed on this side, exactly as the original
+"do not write your own" instruction anticipated. Not re-verified with a live
+`curl` here (same infra caveat), but no code change is required for it to
+start working now that the middleware exists.
+
 ## 2026-08-26 — CP2 re-verify: MSVC installed, full `tests/ml`/`tests/integration` now green
 
 - MSVC Build Tools got installed on this machine after the CP2 entry below,

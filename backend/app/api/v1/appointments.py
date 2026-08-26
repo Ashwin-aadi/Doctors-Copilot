@@ -30,6 +30,12 @@ class AppointmentCreate(BaseModel):
     language: str | None = None
     scheme: str | None = None
     severity_esi: int = 4
+    # N2.1: if a triage session already ran for this booking, its own
+    # severity/specialty must win over the body defaults above -- booking
+    # must not silently default a triaged RED patient down to the routine
+    # tier-4 default. Additive, optional field; omitting it keeps the exact
+    # CP1 request shape working unchanged.
+    triage_session_id: UUID | None = None
 
 
 class AppointmentPatch(BaseModel):
@@ -73,8 +79,25 @@ async def create_appointment(
     if date_from.tzinfo is None:
         date_from = date_from.replace(tzinfo=UTC)
 
+    specialty = body.specialty
+    severity_esi = body.severity_esi
+    if body.triage_session_id is not None:
+        from app.core.errors import ApiError as _ApiError
+        from app.rag import triage_rag
+
+        try:
+            async with SessionLocal() as session:
+                triage_result = await triage_rag.get_result(session, body.triage_session_id)
+            specialty = triage_result.specialty or specialty
+            severity_esi = triage_result.severity_esi
+        except _ApiError:
+            # triage session exists but hasn't been finalized yet -- fall
+            # back to whatever the caller supplied rather than failing the
+            # booking outright.
+            pass
+
     ranked = await rank_doctors(
-        specialty=body.specialty,
+        specialty=specialty,
         lat=body.lat,
         lng=body.lng,
         date_from=date_from,
@@ -126,7 +149,7 @@ async def create_appointment(
         patient_id=body.patient_id,
         doctor_id=chosen.doctor_id,
         clinic_id=chosen.clinic_id,
-        severity_esi=body.severity_esi,
+        severity_esi=severity_esi,
         emergency=False,
         enqueued_at=now,
         status="waiting",
