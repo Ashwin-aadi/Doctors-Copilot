@@ -1,5 +1,42 @@
 # Decisions Log
 
+## 2026-08-26 — N1.1 scheduling repo layer, DRIFT: missing locale/scheme columns
+
+`app/services/scheduling/repo.py` (niyati, owned path) needs four fields the
+CP1 spec's interface section assumes exist but don't, on models I'm not
+allowed to edit (`app/db/models/` is Ashwin's):
+
+- `Doctor.languages` (ISO-639-1 list) and `Doctor.registration_council` --
+  `Doctor` currently only has `nmc_reg_no`.
+- `Clinic.facility_type` (`phc|chc|sdh|dh|medical_college|...`) and
+  `Clinic.schemes` (`pmjay|cghs|esic|state_scheme`) -- `Clinic` currently only
+  has `is_emergency_capable`.
+
+Rather than an additive migration (which would still need `db/models/` edited
+to map the new columns into the ORM, an owned-path violation), added a
+TEMP-ADAPTER in `repo.py`: `_DOCTOR_LOCALE_OVERRIDES` /
+`_CLINIC_LOCALE_OVERRIDES`, dicts keyed by the fixed demo UUIDs used in
+`tests/services/conftest.py`'s Chennai fixture (doctor ids `...201`-`...206`,
+clinic ids `...0001`-`...0003`), with a generic fallback (`languages=["en"]`,
+`registration_council=None`; `facility_type` inferred from
+`is_emergency_capable`, `schemes=[]`) for any row not in the table. `DoctorRow`
+and `ClinicRow` (both mine, in `repo.py`) always populate these fields, so
+downstream optimizer code never has to know the columns are synthetic.
+
+DRIFT for Ashwin: please add `languages JSONB`, `registration_council
+VARCHAR`, `facility_type VARCHAR`, `schemes JSONB` to `doctors`/`clinics` via
+an additive migration when convenient. Once those land, delete the two
+override dicts and the `_clinic_locale_default`/`_DOCTOR_LOCALE_DEFAULT`
+fallbacks in `repo.py` and read the real columns directly.
+
+`tests/services/conftest.py`'s Chennai fixture (3 clinics -- 1 PHC, 1 CHC, 1
+emergency-capable PM-JAY district hospital -- and 6 doctors with mixed
+`ta/hi/te/en` languages, IST split-session availability, fixed
+`now = 2026-01-12T09:00:00Z` / 14:30 IST) seeds real rows via `SessionLocal`
+so `repo.py`'s own internal sessions (opened per-call, matching the frozen
+no-`db`-param interface signatures) see committed data, not a rolled-back
+test transaction.
+
 ## 2026-08-26 — CI fixes after integrating pratyaksh cp1
 
 Full `pytest -q` run on CI (post-merge of `feat/pratyaksh/cp1`) surfaced
