@@ -35,6 +35,7 @@ conditions:
   - anaemia
   - asthma
   - peptic ulcer
+  - chest pain
 allergens:
   - penicillin
   - sulfa
