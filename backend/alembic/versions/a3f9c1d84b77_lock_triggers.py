@@ -5,7 +5,7 @@ Revises: fecbbce145ed
 Create Date: 2026-08-26 15:00:00.000000
 
 Additive only -- no column changed. This is the second of the two
-enforcement layers CLAUDE.md P2.3 requires for approval locking: the
+enforcement layers the approval-locking spec requires: the
 service layer (app/api/v1/approvals.py) already rejects a re-approval of a
 `locked` row with 409, but that only protects writes that go through this
 router. A `BEFORE UPDATE` trigger on both tables raises `record_locked` for

@@ -1,4 +1,4 @@
-"""Tests for the audit middleware and /audit query endpoint (CLAUDE.md
+"""Tests for the audit middleware and /audit query endpoint (checkpoint
 P2.4). Route-template/entity parsing and the mutating-method filter are
 pure logic and run here with no infra. The full request-logged-then-
 queryable round trip and the append-only DB grant need a reachable

@@ -1,4 +1,4 @@
-"""Secure upload pipeline (CLAUDE.md P2.2).
+"""Secure upload pipeline (checkpoint P2.2).
 
 MIME is sniffed from content, never trusted from the client-supplied
 extension or `Content-Type` header. Uploads are capped at 20MB, PDFs

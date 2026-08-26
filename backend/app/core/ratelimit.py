@@ -1,4 +1,4 @@
-"""Rate limiting & progressive account lockout (CLAUDE.md P2.5).
+"""Rate limiting & progressive account lockout (checkpoint P2.5).
 
 `limiter` is a `slowapi.Limiter` backed by Redis (`settings.redis_url`), so
 counts survive across worker processes/restarts the same way the captcha
@@ -7,7 +7,7 @@ caller's user id when a valid bearer token is present, falling back to the
 client IP otherwise -- this makes an un-decorated route's registered
 `default_limits` behave as "N/min/user" for authenticated calls and
 "N/min/IP" for anonymous ones (register/login, before a token exists) in
-one function, matching both flavours CLAUDE.md's limit table asks for
+one function, matching both flavours the limit table asks for
 without two separate limiter instances.
 
 Per-route stricter limits (login, register, this checkpoint's own

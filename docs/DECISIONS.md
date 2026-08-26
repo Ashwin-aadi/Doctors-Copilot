@@ -4,7 +4,7 @@
 
 - `app/core/ratelimit.py`'s `limiter` (`slowapi.Limiter`, Redis-backed via
   `settings.redis_url`) uses one key function, `_user_or_ip_key`, for both
-  the "N/min/user" and "N/min/IP" flavours CLAUDE.md's limit table asks
+  the "N/min/user" and "N/min/IP" flavours the checkpoint's limit table asks
   for: it resolves to `user:{sub}` for a valid, non-expired **access**
   token (explicitly checking `typ == "access"` so a refresh token
   presented as a bearer doesn't count as an authenticated identity), and
@@ -12,12 +12,12 @@
   login, before any token exists) is naturally "/IP" and an authenticated
   one is naturally "/user" with the same function. `default_limits=
   ["120/minute"]` gives the global cap; per-route `@limiter.limit(...)`
-  stacks a stricter limit on top where CLAUDE.md specifies one.
+  stacks a stricter limit on top where the spec specifies one.
 - Wired directly (owned files): `POST /auth/register` -> `3/minute`,
   `POST /auth/login` -> `5/minute`, `POST /files` -> `10/minute`.
 - **Not wired directly (not this checkpoint's files)**: `POST
   /documents/upload` and `/chat/patient` both need `10/minute` and
-  `30/minute` respectively per CLAUDE.md, but live in files this checkpoint
+  `30/minute` respectively per spec, but live in files this checkpoint
   doesn't own. `limiter` is exported from `app/core/ratelimit.py`
   specifically so those files' owners can add
   `@limiter.limit("10/minute")` / `@limiter.limit("30/minute")` themselves
@@ -32,7 +32,7 @@
   failure on any bad attempt (unknown email, wrong password, or inactive
   account, indistinguishable per the uniform-timing rule from CP1), and
   clears the counter on success.
-- **Simplification, noted as instructed**: CLAUDE.md P2.5 also asks to
+- **Simplification, noted as instructed**: checkpoint P2.5 also asks to
   "invalidate outstanding captcha challenges tied to recent attempts for
   that account" on lockout. Captcha challenges in `app/core/captcha.py`
   are keyed by the random `challenge` hash itself, with no stored
@@ -106,7 +106,7 @@
   a CP4 hardening item in `docs/SECURITY.md`'s OWASP table rather than
   silently claimed as enforced -- shipping something that "does not
   actually enforce append-only" without saying so would be exactly the
-  overclaim CLAUDE.md's compliance section warns against.
+  overclaim the compliance section warns against.
 - `GET /audit` restricted to `doctor|admin` via `require_role`, paginated
   (`limit` default 50 max 200, `offset`), newest-first, filterable by
   `entity`, `entity_id`, `actor_id`, `from`, `to`. No mutation endpoint
@@ -144,7 +144,7 @@
   change (both covered by pure unit tests in `test_locks.py`).
 - A doctor's assignment to the visit is checked via `Visit.doctor_id ==
   Doctor.id` (resolved from the caller's `user_id`) *after* the locked
-  check, matching CLAUDE.md's "re-approval of an already-locked record ->
+  check, matching the spec's "re-approval of an already-locked record ->
   409 before doing anything else" ordering.
 - `app/api/v1/lab_orders.py` (Niyati's) still has no mutation route as of
   this checkpoint (see the P2.1 entry above) -- there is currently nothing
@@ -222,9 +222,9 @@
   extension.
 - Added `python-magic==0.4.27` and `itsdangerous==2.2.0` to
   `backend/requirements.txt` (both were missing; already flagged as pinned
-  additions in CLAUDE.md §3). **Note to Ashwin**: `python-magic` needs
-  `libmagic1` on the image (`apt-get install -y libmagic1`), per CLAUDE.md
-  §3 -- please add it to `Dockerfile.backend` alongside the
+  additions in the spec). **Note to Ashwin**: `python-magic` needs
+  `libmagic1` on the image (`apt-get install -y libmagic1`), per the
+  spec -- please add it to `Dockerfile.backend` alongside the
   pango/weasyprint system packages already noted there. On this Windows
   dev box, `python-magic-bin` (a bundled-libmagic Windows wheel) was
   installed locally only for import-smoke-testing `magic.from_buffer` --

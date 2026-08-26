@@ -1,4 +1,4 @@
-"""Secure file upload/download (CLAUDE.md P2.2).
+"""Secure file upload/download (checkpoint P2.2).
 
 `POST /files` is multipart, captcha-gated and authenticated. `GET
 /files/{id}` returns a signed-URL descriptor (JSON) rather than the bytes

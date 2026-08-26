@@ -100,7 +100,7 @@ async def test_clear_login_failures_unlocks_account() -> None:
 #
 # Covered end to end in CI once seeded: 7 consecutive bad-password logins
 # for the same account -> first 5 are 401 AUTH_INVALID_CREDENTIALS, the
-# 6th and 7th are 429 RATE_LIMITED with a Retry-After header (the CLAUDE.md
+# 6th and 7th are 429 RATE_LIMITED with a Retry-After header (the checkpoint
 # P2.5 verify sequence: "401 401 401 401 401 429 429"). Written and
 # reviewed against app/api/v1/auth.py's login() but not locally executed in
 # this sandbox -- see docs/DECISIONS.md.

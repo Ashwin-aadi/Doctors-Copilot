@@ -1,4 +1,4 @@
-"""Append-only audit trail middleware (CLAUDE.md P2.4).
+"""Append-only audit trail middleware (checkpoint P2.4).
 
 Every mutating request (`POST`/`PATCH`/`PUT`/`DELETE`) is logged as an
 `AuditLog` row: actor/role decoded best-effort from the bearer token (never

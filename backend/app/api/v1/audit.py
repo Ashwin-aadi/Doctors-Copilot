@@ -1,4 +1,4 @@
-"""Audit log query endpoint (CLAUDE.md P2.4). Read-only by design -- the
+"""Audit log query endpoint (checkpoint P2.4). Read-only by design -- the
 table itself is append-only (see
 alembic/versions/c7e2a9f01b3d_audit_log_append_only.py), and this router
 exposes no mutation route at all.

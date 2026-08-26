@@ -1,4 +1,4 @@
-"""Doctor approval + immutable lock (CLAUDE.md P2.3).
+"""Doctor approval + immutable lock (checkpoint P2.3).
 
 Approving a lab order or prescription is one-way: `content_hash` is a
 SHA-256 of the canonical (sorted-key, no-whitespace) JSON of `items`, the

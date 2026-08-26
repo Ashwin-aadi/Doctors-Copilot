@@ -4,7 +4,7 @@ Revision ID: c7e2a9f01b3d
 Revises: a3f9c1d84b77
 Create Date: 2026-08-26 16:00:00.000000
 
-CLAUDE.md P2.4: "revoke UPDATE, DELETE on audit_log from the app role".
+Spec calls for "revoke UPDATE, DELETE on audit_log from the app role".
 Table is actually named `audit_logs` (plural, per
 app/db/models/audit.py's `__tablename__`) -- the spec's singular
 `audit_log` was a naming slip, not a second table.
