@@ -33,12 +33,12 @@ _PATIENT_1 = "00000000-0000-0000-0000-000000000101"
 _PATIENT_2 = "00000000-0000-0000-0000-000000000102"
 
 _VALID_REGISTER_BODY = {
-    "email": "rbac-probe@demo.local",
+    "email": "rbac-probe@demo.example",
     "phone": "9876543210",
     "password": "Str0ngPass99",
     "name": "RBAC Probe",
 }
-_VALID_LOGIN_BODY = {"email": "patient1@demo.local", "password": "Demo@12345"}
+_VALID_LOGIN_BODY = {"email": "patient1@demo.example", "password": "Demo@12345"}
 
 RBAC_TABLE: list[tuple[str, str, str | None, int, dict | None]] = [
     ("POST", "/api/v1/auth/register", None, 400, _VALID_REGISTER_BODY),
@@ -115,6 +115,6 @@ async def test_rbac_matrix_covers_every_get_route_at_least_once() -> None:
         "/api/v1/captcha/challenge",
         "/api/v1/patients",
     }
-    covered = {path for method, path, _role, _status in RBAC_TABLE if method == "GET"}
+    covered = {path for method, path, _role, _status, _body in RBAC_TABLE if method == "GET"}
     missing = owned_get_paths - {p.split("/{")[0] for p in covered}
     assert not missing, f"RBAC_TABLE missing coverage for: {missing}"

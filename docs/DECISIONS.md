@@ -1,5 +1,45 @@
 # Decisions Log
 
+## 2026-08-26 — CI fixes after integrating pratyaksh cp1
+
+Full `pytest -q` run on CI (post-merge of `feat/pratyaksh/cp1`) surfaced
+several defects. Fixed directly rather than filing DRIFT notes since these
+were blocking CI for the whole team and each fix was small/unambiguous:
+
+- **Missing dependencies**: `phonenumbers` and `email-validator` were
+  imported (`app/api/v1/auth.py`) but never added to `requirements.txt`,
+  breaking test collection entirely. Added both (own `requirements.txt`).
+- **`.local` emails rejected by `EmailStr`**: `email-validator` treats
+  `.local` as a reserved/special-use TLD and rejects it outright, so every
+  `@demo.local` seeded/test account failed request-body validation on
+  `/auth/register` and `/auth/login` with 422 instead of exercising the
+  intended logic. Renamed every `@demo.local` occurrence to `@demo.example`
+  (RFC 2606 documentation domain, passes `EmailStr`) across
+  `scripts/seed_users.py`, `docs/DEMO_ACCOUNTS.md`, and
+  `backend/tests/security/{test_auth_api,test_rbac_matrix}.py`.
+- **CI never seeded admin/staff users**: `ci.yml` only ran `scripts/seed.py`
+  (doctors/patients), not `scripts/seed_users.py` (the one that additionally
+  creates the 2 admin + 2 staff demo accounts). RBAC tests authenticating as
+  those fixed-UUID admin/staff users got 401 "user not found". Added a
+  `python ../scripts/seed_users.py` step to the CI job (own `ci.yml`).
+- **`RuntimeError: Event loop is closed` across ~a dozen tests**: `engine`
+  (`app/db/session.py`) and `redis_client` (`app/core/redis_client.py`) are
+  module-level singletons whose pooled connections bind to whichever event
+  loop first used them. With `asyncio_default_fixture_loop_scope = "function"`
+  each test gets a fresh loop, so any test after the first to touch the DB
+  or Redis reused a connection tied to an already-closed loop. Added an
+  autouse fixture in `tests/conftest.py` (own file) that disposes the engine
+  and resets/closes the Redis client after every test.
+- **`test_rbac_matrix_covers_every_get_route_at_least_once` crashed** with
+  `ValueError: too many values to unpack (expected 4)`: `RBAC_TABLE` rows are
+  5-tuples (`method, path, role, expected, body`) but the coverage test still
+  unpacked 4. One-line fix to unpack 5.
+
+Verified locally against disposable postgres/redis containers on non-default
+ports (5432/6379 on this dev box are held by an unrelated project): full
+`pytest -q --ignore=tests/ml` (143 tests) plus `tests/ml/test_documents_api.py`
+green.
+
 ## 2026-08-26 — P1.5 seed users, RBAC matrix, CP1 wrap
 
 - `Demo@1234` (the literal password text in the spec) is 9 characters --
@@ -11,7 +51,7 @@
   make something pass.
 - `scripts/seed_users.py` reuses `scripts/seed.py`'s exact fixed UUIDs for
   clinics/doctors/patients (get-or-create, so both scripts are safe to run
-  in either order) but writes `@demo.local` emails and the
+  in either order) but writes `@demo.example` emails and the
   `Demo@12345` password, while `scripts/seed.py` writes `@doctorcopilot.dev`
   / `demo-password-123` to the *same* rows. This is a genuine overlap, not
   resolved here: `app/db/models/` and `scripts/seed.py` aren't owned paths,

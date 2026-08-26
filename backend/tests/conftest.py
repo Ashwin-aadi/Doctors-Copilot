@@ -19,8 +19,9 @@ import pytest
 import pytest_asyncio
 from httpx import ASGITransport, AsyncClient
 
+import app.core.redis_client as _redis_module
 from app.core.security import create_access_token
-from app.db.session import SessionLocal
+from app.db.session import SessionLocal, engine
 from app.main import app
 
 # Matches scripts/seed_users.py's fixed UUIDs for the first seeded user of
@@ -31,6 +32,21 @@ _ROLE_USER_IDS: dict[str, UUID] = {
     "staff": UUID("00000000-0000-0000-0000-000000000603"),
     "admin": UUID("00000000-0000-0000-0000-000000000601"),
 }
+
+
+@pytest_asyncio.fixture(autouse=True)
+async def _dispose_engine_after_test() -> AsyncIterator[None]:
+    # Each test runs in its own event loop (asyncio_default_fixture_loop_scope
+    # = "function"), but `engine` and `redis_client` are module-level
+    # singletons whose pooled connections bind to whichever loop first used
+    # them. Left undisposed, the next test's loop reuses a connection tied
+    # to an already-closed loop and every DB/Redis call in that test fails
+    # with "Event loop is closed".
+    yield
+    await engine.dispose()
+    if _redis_module._client is not None:
+        await _redis_module._client.aclose()
+        _redis_module._client = None
 
 
 @pytest_asyncio.fixture

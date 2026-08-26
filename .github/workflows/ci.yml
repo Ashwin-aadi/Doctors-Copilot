@@ -62,6 +62,9 @@ jobs:
       # tests/ml/test_documents_api.py authenticates as a seeded doctor user
       # via app/core/deps.py's placeholder token resolution.
       - run: python ../scripts/seed.py
+      # security RBAC tests authenticate as fixed admin/staff seed users that
+      # only scripts/seed_users.py creates.
+      - run: python ../scripts/seed_users.py
       - run: pytest -q
 
   frontend:

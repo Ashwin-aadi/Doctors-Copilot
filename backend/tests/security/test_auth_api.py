@@ -88,7 +88,7 @@ async def _solved_captcha_header(client) -> dict[str, str]:
 @pytest.mark.asyncio
 async def test_register_login_me_round_trip(client) -> None:
     headers = await _solved_captcha_header(client)
-    email = f"patient-{uuid4().hex[:10]}@demo.local"
+    email = f"patient-{uuid4().hex[:10]}@demo.example"
     register_resp = await client.post(
         "/api/v1/auth/register",
         json={
@@ -116,13 +116,13 @@ async def test_login_unknown_email_and_wrong_password_are_uniform(client) -> Non
     headers1 = await _solved_captcha_header(client)
     resp_unknown = await client.post(
         "/api/v1/auth/login",
-        json={"email": "nobody-at-all@demo.local", "password": "Str0ngPass99"},
+        json={"email": "nobody-at-all@demo.example", "password": "Str0ngPass99"},
         headers=headers1,
     )
     headers2 = await _solved_captcha_header(client)
     resp_wrong = await client.post(
         "/api/v1/auth/login",
-        json={"email": "patient1@demo.local", "password": "definitely-wrong-1"},
+        json={"email": "patient1@demo.example", "password": "definitely-wrong-1"},
         headers=headers2,
     )
     assert resp_unknown.status_code == resp_wrong.status_code == 401
@@ -134,7 +134,7 @@ async def test_register_without_captcha_is_rejected(client) -> None:
     resp = await client.post(
         "/api/v1/auth/register",
         json={
-            "email": f"nocap-{uuid4().hex[:8]}@demo.local",
+            "email": f"nocap-{uuid4().hex[:8]}@demo.example",
             "phone": "9876500001",
             "password": "Str0ngPass99",
             "name": "No Captcha",
@@ -146,7 +146,7 @@ async def test_register_without_captcha_is_rejected(client) -> None:
 
 @pytest.mark.asyncio
 async def test_register_duplicate_email_conflicts(client) -> None:
-    email = f"dupe-{uuid4().hex[:8]}@demo.local"
+    email = f"dupe-{uuid4().hex[:8]}@demo.example"
     payload = {
         "email": email,
         "phone": "9876500002",

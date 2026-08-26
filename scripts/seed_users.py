@@ -130,13 +130,13 @@ async def seed() -> None:
         for i in range(1, 3):
             await _get_or_create(
                 session, User, admin_user_id(i),
-                email=f"admin{i}@demo.local", phone=f"+9190{i:04d}30000"[:15],
+                email=f"admin{i}@demo.example", phone=f"+9190{i:04d}30000"[:15],
                 password_hash=DEMO_PASSWORD_HASH, role="admin", is_active=True,
             )
         for i in range(1, 3):
             await _get_or_create(
                 session, User, staff_user_id(i),
-                email=f"staff{i}@demo.local", phone=f"+9191{i:04d}40000"[:15],
+                email=f"staff{i}@demo.example", phone=f"+9191{i:04d}40000"[:15],
                 password_hash=DEMO_PASSWORD_HASH, role="staff", is_active=True,
             )
 
@@ -144,7 +144,7 @@ async def seed() -> None:
             u_id = doctor_user_id(i)
             await _get_or_create(
                 session, User, u_id,
-                email=f"doctor{i}@demo.local", phone=f"+9198{i:04d}10000"[:15],
+                email=f"doctor{i}@demo.example", phone=f"+9198{i:04d}10000"[:15],
                 password_hash=DEMO_PASSWORD_HASH, role="doctor", is_active=True,
             )
             await _get_or_create(
@@ -163,7 +163,7 @@ async def seed() -> None:
             state, pin, base_lat, base_lng = PATIENT_LOCALES[(i - 1) % 3]
             await _get_or_create(
                 session, User, u_id,
-                email=f"patient{i}@demo.local", phone=f"+9199{i:04d}20000"[:15],
+                email=f"patient{i}@demo.example", phone=f"+9199{i:04d}20000"[:15],
                 password_hash=DEMO_PASSWORD_HASH, role="patient", is_active=True,
             )
             await _get_or_create(
