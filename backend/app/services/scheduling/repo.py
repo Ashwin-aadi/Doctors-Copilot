@@ -18,13 +18,21 @@ columns land.
 from __future__ import annotations
 
 from dataclasses import dataclass
-from datetime import date, datetime, time
+from datetime import date, datetime, time, timedelta, timezone
 from uuid import UUID
 
 from sqlalchemy import func, select
 
 from app.db.models.scheduling import Appointment, Availability, Clinic, Doctor, QueueEntry
 from app.db.session import SessionLocal
+
+# Appointment statuses that hand the slot back to the free pool. Defined here
+# rather than in `lifecycle` (which imports this module) to keep the
+# dependency one-way; `lifecycle` re-exports it under the same name.
+RELEASING_STATUSES = ("cancelled", "no_show", "referred")
+
+# IST is a half-hour offset -- any code that assumes whole hours is a bug.
+_IST = timezone(timedelta(hours=5, minutes=30))
 
 
 @dataclass(frozen=True, slots=True)
@@ -174,7 +182,11 @@ async def booked_slots(
     stmt = (
         select(Appointment)
         .where(Appointment.doctor_id.in_(doctor_ids))
-        .where(Appointment.status.notin_(["cancelled", "no_show"]))
+        # N3.2: `referred` joins cancelled/no_show as a slot-releasing status.
+        # A patient sent up the referral ladder is not coming to this OPD
+        # session, so holding their slot would leave it dark for the rest of
+        # the day.
+        .where(Appointment.status.notin_(list(RELEASING_STATUSES)))
         .where(Appointment.slot_start >= range_start)
         .where(Appointment.slot_start <= range_end)
         .order_by(Appointment.doctor_id, Appointment.slot_start)
@@ -200,6 +212,59 @@ async def queue_load(clinic_ids: list[UUID], *, now: datetime) -> dict[UUID, int
         result = await session.execute(stmt)
         for clinic_id, count in result.all():
             out[clinic_id] = count
+    return out
+
+
+async def doctor_session_load(
+    doctor_ids: list[UUID], *, now: datetime
+) -> dict[UUID, int]:
+    """How many patients each doctor is already carrying for the current OPD
+    service day: booked appointments plus still-open queue entries.
+
+    N3.3's fairness constraint compares this against
+    `max_patients_per_doctor_per_session`. Counted over the IST service day
+    (not a rolling 24 h) because that is the unit an OPD session is actually
+    scheduled in. Two queries total regardless of how many doctors are
+    passed -- the optimizer's batching budget has no room for an N+1 here.
+    """
+    out: dict[UUID, int] = {doctor_id: 0 for doctor_id in doctor_ids}
+    if not doctor_ids:
+        return out
+
+    service_date = now.astimezone(_IST).date()
+    day_start = datetime.combine(service_date, time.min, tzinfo=_IST)
+    day_end = day_start + timedelta(days=1)
+
+    async with SessionLocal() as session:
+        appt_rows = (
+            await session.execute(
+                select(Appointment.doctor_id, func.count(Appointment.id))
+                .where(Appointment.doctor_id.in_(doctor_ids))
+                .where(Appointment.status.notin_(list(RELEASING_STATUSES)))
+                .where(Appointment.slot_start >= day_start)
+                .where(Appointment.slot_start < day_end)
+                .group_by(Appointment.doctor_id)
+            )
+        ).all()
+        # walk-ins have no appointment row, so they are counted separately off
+        # the queue; a booked patient who has checked in appears in both and
+        # is deduplicated by only counting appointment-less queue entries.
+        queue_rows = (
+            await session.execute(
+                select(QueueEntry.doctor_id, func.count(QueueEntry.id))
+                .where(QueueEntry.doctor_id.in_(doctor_ids))
+                .where(QueueEntry.appointment_id.is_(None))
+                .where(QueueEntry.status.in_(["waiting", "in_consult"]))
+                .where(QueueEntry.enqueued_at >= day_start)
+                .where(QueueEntry.enqueued_at < day_end)
+                .group_by(QueueEntry.doctor_id)
+            )
+        ).all()
+
+    for doctor_id, count in appt_rows:
+        out[doctor_id] = out.get(doctor_id, 0) + count
+    for doctor_id, count in queue_rows:
+        out[doctor_id] = out.get(doctor_id, 0) + count
     return out
 
 
