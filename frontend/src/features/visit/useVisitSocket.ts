@@ -23,10 +23,20 @@ interface VisitUpdatedMessage {
   updated_at: string;
 }
 
-function isVisitUpdated(value: unknown): value is VisitUpdatedMessage {
+export function isVisitUpdated(value: unknown): value is VisitUpdatedMessage {
   if (typeof value !== "object" || value === null) return false;
   const v = value as Record<string, unknown>;
   return typeof v.visit_id === "string" && typeof v.state === "string" && typeof v.updated_at === "string";
+}
+
+/**
+ * `/ws/visit/{id}` carries no sequence number (unlike the queue channel), so
+ * ordering is enforced against `updated_at`: a frame no newer than what the
+ * cache already holds is a duplicate or a reorder and is dropped.
+ */
+export function isNewerFrame(cachedUpdatedAt: string | undefined, frameUpdatedAt: string): boolean {
+  if (!cachedUpdatedAt) return true;
+  return Date.parse(frameUpdatedAt) > Date.parse(cachedUpdatedAt);
 }
 
 function buildVisitSocketUrl(visitId: string, accessToken: string): string {
@@ -56,7 +66,7 @@ export function useVisitSocket(visitId: string | null): { status: WsStatus } {
         if (!isVisitUpdated(raw) || raw.visit_id !== visitId) return;
 
         const cached = queryClient.getQueryData<VisitOut>(qk.visit(visitId));
-        if (cached && Date.parse(raw.updated_at) <= Date.parse(cached.updated_at)) return;
+        if (!isNewerFrame(cached?.updated_at, raw.updated_at)) return;
 
         // The frame carries the new state but not the assembled visit, so patch
         // the state optimistically and refetch the rest (brief, documents,

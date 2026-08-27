@@ -75,9 +75,19 @@ async def test_health_endpoint_all_ok(client):
     assert all(v != "down" for v in body.values())
 
 
-async def test_unimplemented_stub_returns_error_envelope(client):
+async def test_error_response_uses_the_envelope(client):
+    """Every non-2xx carries the envelope from docs/API_CONTRACT.md.
+
+    This probed a 501 stub until CP3, when the last contracted stub
+    (`POST /appointments/simulate`) was implemented and started answering 401
+    to an anonymous caller. There is no unimplemented endpoint left to probe,
+    so the envelope is asserted on an unauthenticated call instead -- the point
+    of the test was always the shape of the body, not that particular status.
+    """
+
     resp = await client.post("/api/v1/appointments/simulate")
-    assert resp.status_code == 501
+    assert resp.status_code == 401
     body = resp.json()
-    assert body["error"]["code"] == "NOT_IMPLEMENTED"
+    assert body["error"]["code"].startswith("AUTH_")
+    assert body["error"]["message"]
     assert "request_id" in body["error"]

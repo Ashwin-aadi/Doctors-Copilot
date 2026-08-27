@@ -1,4 +1,4 @@
-import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it } from "vitest";
+import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { render, screen, fireEvent, waitFor } from "@testing-library/react";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
@@ -6,6 +6,15 @@ import { http, HttpResponse } from "msw";
 import { setupServer } from "msw/node";
 import { VisitContainer } from "../VisitContainer";
 import { actionsFor, nextState } from "../useVisit";
+import { isNewerFrame, isVisitUpdated } from "../useVisitSocket";
+
+// The live socket is exercised by its own unit tests below; mounting it here
+// would open a real WebSocket that msw cannot intercept. Same approach as the
+// queue board's tests.
+vi.mock("../useVisitSocket", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("../useVisitSocket")>();
+  return { ...actual, useVisitSocket: () => ({ status: "open" as const }) };
+});
 import { useAuthStore } from "../../../store/auth";
 import { env } from "../../../lib/env";
 import { initI18n } from "../../../lib/i18n";
@@ -49,7 +58,55 @@ function visit(state: VisitState, overrides: Partial<VisitOut> = {}): VisitOut {
   } as VisitOut;
 }
 
+/**
+ * The visit surface composes the copilot, safety and prescription containers,
+ * so their endpoints have to be stubbed too -- msw is configured to fail the
+ * run on any unhandled request, which is what keeps a stray real fetch from
+ * silently passing as a green test.
+ */
+function mockComposedSurfaces() {
+  server.use(
+    http.post(`${env.apiBase}/api/v1/copilot/brief`, () =>
+      HttpResponse.json({
+        visit_id: VISIT_ID,
+        summary: "No brief for this fixture.",
+        differentials: [],
+        recommended_procedures: [],
+        cautions: [],
+        citations: [],
+        confidence: 0,
+      }),
+    ),
+    http.post(`${env.apiBase}/api/v1/ml/interactions`, () =>
+      HttpResponse.json({
+        pairs: [],
+        allergy_conflicts: [],
+        contraindications: [],
+        generated_at: "2026-08-27T09:00:00Z",
+      }),
+    ),
+    http.get(`${env.apiBase}/api/v1/medications/substitutions`, () => HttpResponse.json([])),
+    http.get(`${env.apiBase}/api/v1/medications/generic`, () =>
+      HttpResponse.json({
+        input: "",
+        rxcui: null,
+        ingredient: "",
+        generics: [],
+        nlem: false,
+        schedule_h: false,
+        source_url: null,
+        cached: true,
+        reasons: [],
+      }),
+    ),
+    http.get(`${env.apiBase}/api/v1/captcha/challenge`, () =>
+      HttpResponse.json({ algorithm: "SHA-256", challenge: "x", salt: "s", maxnumber: 1 }),
+    ),
+  );
+}
+
 function mockVisit(body: VisitOut) {
+  mockComposedSurfaces();
   server.use(
     http.get(`${env.apiBase}/api/v1/visits/:id`, () => HttpResponse.json(body)),
     http.get(`${env.apiBase}/api/v1/patients/:id`, () =>
@@ -133,6 +190,7 @@ describe("VisitContainer", () => {
 
   it("refetches instead of erroring when someone else advanced the visit first", async () => {
     let calls = 0;
+    mockComposedSurfaces();
     server.use(
       http.get(`${env.apiBase}/api/v1/visits/:id`, () => {
         calls += 1;
@@ -166,6 +224,7 @@ describe("VisitContainer", () => {
   });
 
   it("shows the error envelope's code when the visit cannot be read", async () => {
+    mockComposedSurfaces();
     server.use(
       http.get(`${env.apiBase}/api/v1/visits/:id`, () =>
         HttpResponse.json(
@@ -177,5 +236,24 @@ describe("VisitContainer", () => {
     renderVisit();
 
     expect(await screen.findByText(/don.t have permission/i)).toBeTruthy();
+  });
+});
+
+describe("useVisitSocket frame handling", () => {
+  it("accepts only frames newer than what the cache holds", () => {
+    expect(isNewerFrame("2026-08-27T09:00:00Z", "2026-08-27T09:00:01Z")).toBe(true);
+    // A duplicate or a reordered frame must not roll the visit backwards.
+    expect(isNewerFrame("2026-08-27T09:00:00Z", "2026-08-27T09:00:00Z")).toBe(false);
+    expect(isNewerFrame("2026-08-27T09:00:00Z", "2026-08-27T08:59:59Z")).toBe(false);
+    // Nothing cached yet: take the frame.
+    expect(isNewerFrame(undefined, "2026-08-27T09:00:00Z")).toBe(true);
+  });
+
+  it("ignores frames that are not a visit update", () => {
+    expect(isVisitUpdated({ type: "heartbeat" })).toBe(false);
+    expect(isVisitUpdated(null)).toBe(false);
+    expect(
+      isVisitUpdated({ visit_id: VISIT_ID, state: "CONSULTED", updated_at: "2026-08-27T09:00:00Z" }),
+    ).toBe(true);
   });
 });
