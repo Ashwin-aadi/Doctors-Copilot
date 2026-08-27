@@ -1,5 +1,66 @@
 # Decisions Log
 
+## 2026-08-27 — CP3 P3.5 session management, CP3 wrap
+
+- `app/core/security.py` gains per-user session tracking: `_register_refresh`
+  now also writes `auth:sessions:{user_id}` (a Redis set of active jtis) and
+  `auth:session:meta:{jti}` (`{ip, user_agent, issued_at}`, same TTL as the
+  refresh token itself), populated from `issue_token_pair`/`rotate_refresh`'s
+  new optional `ip`/`user_agent` kwargs (both call sites in `auth.py` pass
+  `request.client.host`/`request.headers.get("user-agent")`). `revoke()`
+  now also removes the jti from its user's session set, so a revoked session
+  disappears from `GET /auth/sessions` immediately rather than lingering
+  until its metadata key expires.
+- `list_sessions`/`revoke_session`/`revoke_all_sessions` are the new
+  primitives `GET /auth/sessions`, `DELETE /auth/sessions/{jti}`,
+  `POST /auth/password/change` and (via `app/api/v1/users.py`, new this
+  checkpoint) role-change/deactivation all build on. `revoke_session`
+  never distinguishes "not yours" from "doesn't exist" (returns `False`
+  either way -> the route raises a bare 403), same pattern as every other
+  ownership check in this codebase.
+- **Password reset** (`create_reset_token`/`consume_reset_token`) uses
+  `itsdangerous.URLSafeTimedSerializer` (already a dependency, P2.2) rather
+  than a DB table: the token carries its own `jti` and a 30-minute
+  `max_age` baked into the signature check; `consume_reset_token` marks
+  that `jti` used in Redis (`auth:reset:used:{jti}`, TTL 30 min) so it can
+  never be replayed even inside its validity window. `POST
+  /auth/password/forgot` always returns `200 {"status":"ok"}` regardless of
+  whether the email exists or the mail send succeeds -- no account-
+  enumeration signal from this endpoint, matching the same uniform-
+  response principle CP1's login timing already established.
+- `POST /auth/password/change` revokes every *other* session for the
+  caller (decodes both the presented access-token jti's refresh cookie, if
+  present, and excludes it via `except_jti`) -- the session making the
+  change survives, matching "revokes all other sessions" literally rather
+  than logging the caller out of their own request.
+- **New file, `app/api/v1/users.py`** (was an empty stub router with no
+  routes): `PATCH /users/{id}/status` (admin-only) is the one user-
+  management mutation this checkpoint's spec actually needs -- "role
+  change or deactivation revokes every session immediately." Deliberately
+  minimal (no full user CRUD/list), since nothing else in P3.5's spec asks
+  for one and this checkpoint's owned-file list only grants `users.py` for
+  auth-adjacent concerns, not a general admin panel.
+- `docs/AUTH_FLOWS.md` ships the four required Mermaid sequence diagrams
+  (login, captcha, refresh rotation, approval-lock) -- the approval-lock
+  diagram folds in this checkpoint's P3.2 `notify()` call
+  (`app/api/v1/approvals.py`) so it reflects the code as it now stands, not
+  just the CP2 version.
+- **CP3 wrap**: same standing infra-gap note as every prior checkpoint --
+  this sandbox has no Docker/Postgres/Redis and no installed
+  `fastapi`/`sqlalchemy`/`weasyprint`/`aiosmtplib`/`babel`, so
+  `make migrate && make test` and every live-`curl` verify step in the
+  spec could not be executed here. Every module in P3.1-P3.5 was written
+  and reviewed against the actual existing classes/schemas (not guessed
+  shapes -- `Doctor`, `Clinic`, `Availability`, `Notification`,
+  `LabOrder`/`Prescription`, `Patient`, `User` were all read directly from
+  `app/db/models/` before use), byte-compiled clean, and the pure-logic
+  subset of each new test file (regex/time/lat-lng validation, template
+  loading and substitution, IST formatting, token signature/replay checks,
+  router path registration) was written to run with zero infra so at least
+  that slice is genuinely verified rather than only reviewed. Full
+  execution of every DB/Redis-backed path is deferred to CI, consistent
+  with every prior checkpoint's documented condition.
+
 ## 2026-08-27 — CP3 P3.4 doctor & clinic profile management
 
 - `app/api/v1/doctors_profile.py` implements admin-only CRUD for `Doctor`

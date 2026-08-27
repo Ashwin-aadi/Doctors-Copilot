@@ -223,7 +223,12 @@ async def register(
     await db.commit()
     await db.refresh(user)
 
-    access, refresh = await security.issue_token_pair(user.id, user.role)
+    access, refresh = await security.issue_token_pair(
+        user.id,
+        user.role,
+        ip=request.client.host if request.client else None,
+        user_agent=request.headers.get("user-agent"),
+    )
     _set_refresh_cookie(response, refresh)
     return await _token_response(db, user, access, refresh)
 
@@ -277,7 +282,12 @@ async def login(
         )
 
     await clear_login_failures(email)
-    access, refresh = await security.issue_token_pair(user.id, user.role)
+    access, refresh = await security.issue_token_pair(
+        user.id,
+        user.role,
+        ip=request.client.host if request.client else None,
+        user_agent=request.headers.get("user-agent"),
+    )
     _set_refresh_cookie(response, refresh)
     return await _token_response(db, user, access, refresh)
 
@@ -299,7 +309,11 @@ async def refresh_endpoint(
     if not token:
         raise ApiError("AUTH_INVALID_CREDENTIALS", "refresh token required", status_code=401)
 
-    access, new_refresh = await security.rotate_refresh(token)
+    access, new_refresh = await security.rotate_refresh(
+        token,
+        ip=request.client.host if request.client else None,
+        user_agent=request.headers.get("user-agent"),
+    )
     claims = security.decode_token(access)
     user = await db.get(User, UUID(claims["sub"]))
     if user is None:
@@ -393,4 +407,116 @@ async def captcha_verify(x_captcha_token: str | None = Header(default=None)) -> 
     if not x_captcha_token:
         raise ApiError("CAPTCHA_REQUIRED", "X-Captcha-Token header is required", status_code=400)
     await verify_captcha_token(x_captcha_token)
+    return {"status": "ok"}
+
+
+# ---------------------------------------------------------- P3.5 sessions --
+
+
+class ForgotPasswordRequest(BaseModel):
+    email: EmailStr
+
+
+class ResetPasswordRequest(BaseModel):
+    token: str
+    new_password: str
+
+
+class ChangePasswordRequest(BaseModel):
+    current_password: str
+    new_password: str
+
+
+@router.post("/auth/password/forgot")
+async def forgot_password(
+    body: ForgotPasswordRequest, db: AsyncSession = Depends(get_db)
+) -> dict:
+    """Always returns 200, even for an unknown email -- never lets a caller
+    learn whether an account exists from this endpoint's response."""
+    result = await db.execute(select(User).where(User.email == body.email.lower()))
+    user = result.scalar_one_or_none()
+    if user is not None and user.is_active:
+        token = security.create_reset_token(user.id)
+        reset_link = f"{get_settings().frontend_url}/reset-password?token={token}"
+        try:
+            from app.services.notify import send_email
+
+            await send_email(
+                user.email,
+                "Doctor's Copilot: reset your password",
+                f"Use this link within 30 minutes to reset your password: {reset_link}",
+            )
+        except Exception:
+            pass  # best-effort; never let delivery failure leak account existence either
+    return {"status": "ok"}
+
+
+@router.post("/auth/password/reset")
+async def reset_password(body: ResetPasswordRequest, db: AsyncSession = Depends(get_db)) -> dict:
+    user_id = await security.consume_reset_token(body.token)
+    security.validate_password_policy(body.new_password)
+
+    user = await db.get(User, user_id)
+    if user is None:
+        raise ApiError("AUTH_INVALID_CREDENTIALS", "account no longer exists", status_code=401)
+
+    user.password_hash = security.hash_password(body.new_password)
+    await db.commit()
+    await security.revoke_all_sessions(user.id)
+    return {"status": "ok"}
+
+
+@router.post("/auth/password/change")
+async def change_password(
+    body: ChangePasswordRequest,
+    request: Request,
+    current_user: CurrentUser = Depends(get_current_user),
+    authorization: str | None = Header(default=None),
+    db: AsyncSession = Depends(get_db),
+) -> dict:
+    user = await db.get(User, current_user.id)
+    if user is None:
+        raise ApiError("NOT_FOUND", "user not found", status_code=404)
+
+    if not security.verify_password(body.current_password, user.password_hash):
+        raise ApiError(
+            "AUTH_INVALID_CREDENTIALS", "current password is incorrect", status_code=401
+        )
+    security.validate_password_policy(body.new_password)
+
+    user.password_hash = security.hash_password(body.new_password)
+    await db.commit()
+
+    # Keep the session making this request alive; revoke every other one.
+    current_jti = None
+    if authorization and authorization.startswith("Bearer "):
+        try:
+            current_jti = security.decode_token(
+                authorization.removeprefix("Bearer ").strip()
+            ).get("jti")
+        except ApiError:
+            current_jti = None
+    refresh_token = request.cookies.get("refresh_token")
+    except_jti = None
+    if refresh_token:
+        try:
+            except_jti = security.decode_token(refresh_token).get("jti")
+        except ApiError:
+            except_jti = None
+    await security.revoke_all_sessions(user.id, except_jti=except_jti)
+    return {"status": "ok"}
+
+
+@router.get("/auth/sessions")
+async def list_sessions(current_user: CurrentUser = Depends(get_current_user)) -> list[dict]:
+    return await security.list_sessions(current_user.id)
+
+
+@router.delete("/auth/sessions/{jti}")
+async def delete_session(
+    jti: str, current_user: CurrentUser = Depends(get_current_user)
+) -> dict:
+    revoked = await security.revoke_session(current_user.id, jti)
+    if not revoked:
+        raise ApiError("AUTH_FORBIDDEN", "not permitted", status_code=403)
     return {"status": "ok"}
