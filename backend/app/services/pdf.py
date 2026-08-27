@@ -117,17 +117,15 @@ async def _doctor_extra_fields(db: AsyncSession, doctor_id: UUID) -> dict:
 
 
 def _status_banner(locked: bool, locale: str) -> tuple[str, str]:
-    """Returns (banner_html, watermark_html)."""
+    """Returns (banner_html, watermark_html). Both stamps are always
+    bilingual (English + Hindi), per spec -- independent of the template's
+    own `locale`, since the watermark must be unambiguous to any reader."""
     if locked:
-        text = "DOCTOR-APPROVED" if locale == "en" else "DOCTOR-APPROVED / डॉक्टर-अनुमोदित"
+        text = "DOCTOR-APPROVED / डॉक्टर-अनुमोदित"
         banner = f'<div class="banner approved">{text}</div>'
         watermark = f'<div class="watermark">{text}</div>'
         return banner, watermark
-    text = (
-        "DRAFT — NOT FOR CLINICAL USE"
-        if locale == "en"
-        else "DRAFT — NOT FOR CLINICAL USE / प्रारूप — नैदानिक उपयोग के लिए नहीं"
-    )
+    text = "DRAFT — NOT FOR CLINICAL USE / प्रारूप — नैदानिक उपयोग के लिए नहीं"
     banner = f'<div class="banner draft">{text}</div>'
     watermark = '<div class="watermark">DRAFT</div>'
     return banner, watermark
