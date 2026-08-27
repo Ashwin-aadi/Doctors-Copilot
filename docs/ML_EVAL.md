@@ -19,7 +19,9 @@
 | conditions | 0.302 | 0.905 | 0.452 |
 | allergens | 0.75 | 1.0 | 0.857 |
 
-Drug F1 threshold: 0.8
+Model tier used: bc5cdr
+
+Drug F1 threshold: 0.8 (enforced only on the full model tier)
 
 ## Interaction recall (30 known pairs)
 
@@ -33,7 +35,7 @@ Found 30/30 = **100.0%** (threshold 85.0%)
 
 | Endpoint | p50 | p95 |
 |---|---|---|
-| ocr_per_page | 106.2 | 107.4 |
-| ml_entities | 10.3 | 87.8 |
-| ml_interactions | 0.9 | 1.2 |
+| ocr_per_page | 115.1 | 115.7 |
+| ml_entities | 10.8 | 78.9 |
+| ml_interactions | 1.0 | 1.3 |
 
