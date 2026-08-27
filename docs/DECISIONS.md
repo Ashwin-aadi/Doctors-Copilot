@@ -227,6 +227,451 @@
   me for lab-order/prescription-approved since `app/api/v1/approvals.py` is
   an owned path -- see the P3.2 commit for that one-line addition).
 
+## 2026-08-27 — CP3 (V3.1-V3.5): SOAP summary, medication ranking, tool adapters, eval
+
+- Environment gap found before any CP3 work: `.env` didn't exist (copied from
+  `.env.example`), `python-magic` needed `python-magic-bin` on Windows (plain
+  `python-magic` hangs forever probing for `libmagic` rather than raising),
+  and the DB had never been seeded (`scripts/seed_users.py` +
+  `scripts/seed.py`) -- every RBAC/security/offline/rxnorm/KG test was 401ing
+  for that reason alone, not a code defect. All three fixed; full suite was
+  374 passed / 0 failed after seeding, before any CP3 code was written.
+- **DRIFT: `app/ml/tools.py` vs. the frozen §4.2 signatures for
+  `check_interactions`/`flag_labs`.** The original interface spec's pseudocode has
+  `check_interactions(req: InteractionRequest) -> InteractionReport` and
+  `flag_labs(patient_id, results: list[LabResultOut]) -> list[LabResultOut]`.
+  But `app/rag/tool_bridge.py` (Ashwin's, already merged to `main`, already
+  called from `app/services/visit.py._safety` and
+  `app/rag/clinical_rag.py.build_brief`) imports those two names and calls
+  them as `check_interactions(patient_id, medications: list[dict|str]) ->
+  dict` and `flag_labs(patient_id, labs: list[dict]) -> list[dict]`.
+  Implemented `app/ml/tools.py` to match `tool_bridge.py`'s actual call
+  convention instead of the pseudocode: it's real, already-merged
+  integration code, and matching the pseudocode instead would leave
+  `tool_bridge`'s own `except Exception` swallow every call silently and
+  keep returning its typed-empty fallback forever -- a worse outcome than
+  the signature drift itself. `extract_entities(text) -> EntityBundle` and
+  the two CP3-only functions (`build_summary`, `suggest_medications`, no
+  other consumer exists yet) match §4.2 verbatim. Flagging for Ashwin in
+  case `tool_bridge.py` is meant to be updated instead.
+- `app/ml/kb_build.py` extended (additive, same owned file): `label_sections`
+  now also carries `indications_and_usage` and `warnings` openFDA sections
+  (previously only `drug_interactions`/`contraindications`), the ingredient
+  target list grew from 15 to ~35 to cover common India-relevant conditions
+  (diabetes, hypertension, infection, pain/fever, asthma, GERD, allergy, TB,
+  depression), and an `indications_fts` FTS5 table is built from
+  `indications_and_usage` rows for V3.3's BM25 retrieval (falls back to a
+  `LIKE` scan if the local sqlite3 build lacks FTS5 -- verified present
+  here). Rerun via `python -m app.ml.kb_build` after pulling this branch.
+- `app/ml/med_suggest.py` resolves NLEM/Jan Aushadhi/MRP by reading
+  `app/services/mapping/data/india_drugs.csv` directly, keyed by
+  *ingredient* rather than brand. Niyati's `app.services.mapping.
+  india_drugs.to_generic(name=...)` only resolves brand/rxcui -> ingredient
+  (its `_brand_index()` is keyed off the `brand` column), so it can't answer
+  "what Indian brands treat this ingredient" -- the direction V3.3 needs.
+  Read-only; `india_drugs.py` itself untouched.
+- `V3.1`'s `python -m app.ml.eval --quick` step was skipped as written:
+  `app/ml/eval.py` is a V3.5 deliverable and doesn't exist until this same
+  checkpoint builds it, so there was nothing to run yet.
+- Endpoint-level `curl` verification (as written in V3.2/V3.3's Verify blocks)
+  could not be run against a live `uvicorn app.main:app` process on this
+  Windows machine: uvicorn's default event loop is `ProactorEventLoop`,
+  which psycopg's async driver refuses outright
+  (`psycopg.InterfaceError: Psycopg cannot use the 'ProactorEventLoop'...`).
+  `app/db/session.py` already sets `WindowsSelectorEventLoopPolicy` at import
+  time, but uvicorn's own loop is already running by the time that import
+  happens, so it has no effect. Confirmed pre-existing and unrelated to CP3:
+  the already-shipped `/api/v1/ml/entities` (CP2) 500s identically against
+  the same running server. `pytest` doesn't hit this (httpx's ASGI transport
+  never starts a real uvicorn loop), which is why the full suite -- 374
+  passed before CP3, 379 after -- exercises every one of these same
+  DB-backed code paths successfully -- 374 passed before CP3, 395 after (21
+  new tests across `test_summary.py`/`test_med_suggest.py`/`test_tools.py`/
+  `test_eval.py`). Verified `/ml/summary` and
+  `/ml/medications/suggest` end-to-end via `tests/ml/test_summary.py` and
+  `tests/ml/test_med_suggest.py` instead.
+
+## 2026-08-27 — Frontend CP2: doctor workspace & Indian lab report review
+
+- Built the presentational component set for the doctor workspace checkpoint:
+  `pages/doctor/{DoctorDashboardPage,PatientListPanel,PatientHeaderCard,
+  QueueSummaryCard,LabOrderApprovalPage,LabOrderItemRow,LockedRecordBanner}.tsx`
+  and `components/upload/{Dropzone,FileRow,OcrReview,LabTableEditor,
+  ConfidenceLegend,uploadTypes}.tsx`, plus new `components/ui/TriageColourBadge.tsx`
+  and `components/ui/states/{ListSkeleton,CardSkeleton,TableSkeleton}.tsx`.
+  All are pure (props in, JSX out) -- no fetch/store/router hooks.
+- `LabOrder*` types aren't in `lib/types.ts` yet (neither `/lab-orders/*` nor
+  `/approvals/lab-order/*` carries a Pydantic `response_model`, so
+  openapi-typescript only ever saw `Record<string, never>` -- same situation
+  Pratyaksh already documented for `lib/api/endpoints/approvals.ts`). Rather
+  than re-typing them, `components/types.ts` re-exports the hand-typed
+  `LabOrderItem`/`LabOrderOut`/`LabOrderApproved` from that file, and adds a
+  few doctor-dashboard-only extensions (`PatientListItem`, `QueueSummary`,
+  `LabCatalogItem`, `PageImage`, `LabResultRow`) via `Pick<>`/`&` rather than
+  inventing a fake API shape.
+- `LabOrderOut` only stores `approved_by` as a user id, not a display name or
+  NMC number -- `LabOrderApprovalPage` and `LockedRecordBanner` take
+  `approverName`/`approverNmc` as separate props for the (future) container
+  to join in from the doctor profile. Similarly, the GET lab-order response
+  has no `content_hash` (only the approve-mutation response does), so
+  `LabOrderApprovalPage` accepts an optional `contentHash` prop and falls
+  back to the order id until a container wires the real hash through.
+- Read `features/approvals/LabOrderApprovalContainer.tsx` and
+  `features/documents/UploadContainer.tsx` before building (per the CP2
+  brief) -- both already have `TEMP-PLACEHOLDER` comments marking exactly
+  where these new presentational components should slot in. Left both files
+  untouched; wiring them up is their owner's next step, not this pass's.
+- Casualty-colour tone mapping reuses the existing `SeverityPill` convention
+  (ESI 1-2 -> critical/red, 3 -> high/yellow, 4-5 -> normal/green) so the new
+  `TriageColourBadge` stays visually consistent with the severity pill
+  already in the design system, rather than inventing a fourth tone scale.
+- Playwright/visual-regression browser tests are out of scope for this pass:
+  `@playwright/test` is a devDependency but no browsers are installed in this
+  environment and installing them was not attempted (network-heavy, out of
+  scope for a presentational-component pass). Only Vitest + Testing Library
+  coverage was added, per the CP2 brief's explicit allowance to skip
+  browser-automation checks and note it here.
+- `lib/errorCopy.ts` and the `upload.*` / new `components/types.ts` additions
+  are the only touches outside the strictly-owned directory list, and both
+  are files the CP2 brief names explicitly.
+
+## 2026-08-27 — B2.5: approval flow, role nav, notifications (CP2 close)
+
+- Pulled `origin/main` (5 commits ahead: Niyati's CP2 lab rules/queue
+  escalation/generic mapping merge, plus fixes) into `feat/divyanshi/cp2`
+  before starting -- clean auto-merge, only `docs/DECISIONS.md` needed a
+  trivial merge (both sides only appended). `npx tsc -b` was clean
+  immediately after merging, so no contract breaks in my files from that
+  merge itself (see the `page` field note below for what I *did* catch,
+  separately, from build).
+- **Correction to earlier verify runs, not new work:** `npx tsc --noEmit`
+  with no project flag silently checks nothing -- the root `tsconfig.json`
+  is a bare project-reference pointer (`files: []`). Every prior
+  checkpoint's "tsc clean" in this log actually only proved that. Caught
+  it here because `npm run build` (`tsc -b && vite build`) failed on a
+  real error `npx tsc --noEmit` had been silently skipping: `LabResultOut`
+  gained a required `page: number` field (regenerated into `types.ts` by
+  whoever landed the OCR/document work on `main` before I merged it), and
+  my `upload.test.tsx` fixture predated that field. Fixed the fixture.
+  Going forward, `npx tsc -b` (matching the real `build` script) is the
+  command that actually verifies -- noting this so B3+ don't repeat the
+  false-green.
+- Built `src/lib/api/endpoints/{approvals.ts,notifications.ts}`,
+  `src/features/approvals/LabOrderApprovalContainer.tsx`, `src/app/Nav.tsx`,
+  `src/features/notifications/{NotificationsContainer.tsx,useNotificationSocket.ts}`.
+- `approvals.ts` is hand-typed against `backend/app/api/v1/{lab_orders,approvals}.py`
+  (both endpoints return a bare `-> dict`, so `types.ts` only has
+  `Record<string, never>` for them -- same precedent as `auth.ts`/`files.ts`).
+  `GET /lab-orders/{id}` backs the container's query; `POST
+  /approvals/lab-order/{id}` is the captcha-gated approve mutation.
+- `LabOrderApprovalContainer`: draft items render read-only (no
+  Abhishek-built lab-order page exists yet, so this is a
+  `TEMP-PLACEHOLDER` list, not styled UI -- **UI-BUGS (Abhishek, P2)**);
+  "Approve lab order" opens a `Modal` with `CaptchaWidget`; on success the
+  order + its visit are invalidated and the locked view renders in place.
+  On `409 LOCKED` (someone else, or a retried request, already approved
+  it) the mutation's `onError` closes the modal and refetches instead of
+  toasting -- confirmed via a test where the approve POST always 409s and
+  the UI still lands on the locked view, not an error state.
+- `Nav.tsx`: link set keyed strictly by `auth.user.role` (a
+  `Record<Role, NavItem[]>` lookup), never by the current route --
+  verified with a test that renders a doctor's nav while sitting on the
+  patient-and-doctor-shared `/visit/:id` route and confirms doctor links
+  render, patient links don't. Wired into `RootLayout.tsx` (mine to
+  touch, `src/app/**`) alongside a new `<NotificationsContainer />` in the
+  header.
+- **BLOCKER:** `backend/app/api/v1/notify.py` raises `not_implemented(...)`
+  (501) on all three routes -- literally `"notifications owned by
+  pratyaksh"` in the source. Built `NotificationsContainer` against the
+  real contract anyway (list, unread count, optimistic mark-read) so it's
+  ready the moment the backend lands; today it renders the bell with the
+  translated "isn't ready yet" state instead of crashing or retry-looping
+  forever (`retry: false` on the query). Also **no `/ws/notify/{userId}`
+  channel exists at all** -- not even a stub in `ws.py` (only `/ws/visit`
+  and `/ws/queue` exist, both stubs too, see the B2.3 entry). Wrote
+  `useNotificationSocket` against the same `WsClient` used for the queue
+  board, pointed at `/api/v1/ws/notify/{userId}`; it degrades to the
+  normal reconnect-backoff loop against a route that doesn't exist, never
+  crashing. **API-BUGS (Pratyaksh, P2):** notifications list/create/read,
+  plus the `notify.{userId}` socket, whenever that's picked up.
+- Side note, not a regression: a GET that 501s still goes through
+  `client.ts`'s retry-on-5xx path (it only special-cases `>=500`, not
+  `>=500 && <501`), adding ~1.2s of retry latency before the "not ready"
+  notice appears. Harmless (finite, bounded retries) but worth knowing if
+  that delay ever shows up in a demo.
+- Unit tests: `approvals.test.tsx` (2: approve-and-lock end to end with a
+  real solved captcha, 409-race lands on the locked view),
+  `notifications.test.tsx` (2: 501 shows the not-ready notice, unread
+  count + optimistic mark-read), `app/__tests__/Nav.test.tsx` (3: signed
+  out renders nothing, patient links, doctor links independent of route)
+  -- 7/7 passing. Full suite: 49/49 across 15 files. `npx tsc -b`,
+  `npm run lint`, and `npm run build` all clean.
+- `tests/e2e/approval.spec.ts` added: creates a lab order via `POST
+  /lab-orders/recommend` against the seeded visit (there's no UI trigger
+  for lab-order creation yet -- that's backend-only so far), then drives
+  the real approve-with-captcha UI end to end, asserts the locked view,
+  and reloads to confirm the locked state survives a refetch without a
+  crash. Ran the full local e2e suite (`triage`, `booking`, `copilot`,
+  `queue`, `upload`, `approval`, plus the हिंदी-only checks): 2 pass (the
+  language checks, which don't need a backend), 7 fail at the same
+  pre-existing captcha/no-live-backend blocker logged since B2.1 -- no
+  regressions from this branch.
+- `./scripts/guard.sh` passes (no assistant footprint in commits, no
+  banned files staged, clean `git grep`).
+
+**CP2 GATE:** live queue reorders across tabs -- built, gated on the
+`/ws/queue/{clinic_id}` backend stub (B2.3 BLOCKER). Upload → OCR →
+correction → brief refetch -- built and unit-tested end to end (B2.4);
+gated on the `PATCH /documents/{id}/labs` backend gap (B2.4 BLOCKER) for
+the persistence half. Approval locks the UI -- built, unit-tested, and
+e2e-specced against the real backend contract (this entry). All three
+gate items are code-complete and green everywhere except against a live
+backend, which remains the standing environment blocker for this machine
+(no Python 3.12 + Rust toolchain -- logged since B2.1, 2026-08-26).
+Merging to `main` now per the daily protocol; CP2's backend-completeness
+gap is Ashwin/Pratyaksh/Virat's to close, tracked via the API-BUGS/BLOCKER
+entries above and in B2.2-B2.4.
+
+## 2026-08-27 — B2.4: document upload pipeline
+
+- Built `src/features/documents/{UploadContainer.tsx,useUpload.ts,useDocumentPolling.ts}`
+  plus `src/lib/api/endpoints/{files.ts,documents.ts}`.
+- `uploadFileWithProgress` (`files.ts`) posts to `POST /files` via raw
+  `XMLHttpRequest`, not `fetch` — that's the only way to get real
+  `upload.onprogress` events and a genuinely cancellable in-flight upload
+  (`xhr.abort()`), matching the spec. It reimplements the same header set
+  as `client.ts`'s `request()` (`X-Request-ID`, `Accept-Language`,
+  `Authorization`, `X-Captcha-Token`, `credentials`) since `request()` is
+  fetch-only and doesn't expose progress. `POST /files`' generated type in
+  `types.ts` is an empty `Record<string, never>` (the backend endpoint
+  takes `Form()`/`File()` params and returns a bare `-> dict`, which
+  `openapi-typescript` can't capture), so the request/response shape here
+  is hand-typed against `backend/app/api/v1/files.py`, same precedent as
+  `endpoints/auth.ts`.
+- `useUpload` manages the multi-file list; each item's state
+  (`uploading|uploaded|failed|cancelled`) is independent, so one file's
+  422 never blocks the others — verified in
+  `__tests__/upload.test.tsx`. Cancel is captured via a `clientId ->
+  UploadHandle` map so `cancelUpload()` can call the in-flight XHR's
+  `abort()`, or short-circuit a still-captcha-solving upload before its
+  XHR has started.
+- `useDocumentPolling` backs off `GET /documents/{id}` on the specified
+  schedule (1s x5, 3s x10, then a steady 5s) via TanStack's
+  `refetchInterval`, and gives up (stops polling, but leaves the last
+  known "processing" state on screen rather than erroring) after 3
+  minutes total. There is no document- or visit-scoped push channel to
+  stop polling early on a `document.done` event — `/ws/visit/{id}` is
+  also a stub today (same file as the queue socket, see the B2.3 entry
+  above), and wiring that up is B3.5's job (`VisitContainer`/`useVisitSocket`),
+  not something to bolt on here ahead of that container existing. Noted
+  so B3.5 remembers to make `useDocumentPolling` stop early once that
+  channel is real.
+- **BLOCKER:** `PATCH /api/v1/documents/{document_id}/labs` (the OCR
+  correction endpoint from the B2.4 spec) does not exist on the backend —
+  `backend/app/api/v1/documents.py` only implements `POST /upload` and
+  `GET /{document_id}`. Also, `LabResultOut` has no per-row `id`, so there
+  is no way to address a single corrected value; `correctDocumentLabs()`
+  in `documents.ts` is written to PATCH the *entire* `labs` array back
+  (full replace) since that's the only addressable shape available.
+  `DocumentPanel` in `UploadContainer.tsx` calls it as specified, and on a
+  404 shows "This feature isn't ready yet" (reusing `errorCodes.NOT_IMPLEMENTED`
+  copy) while keeping the user's edits on screen rather than discarding
+  them — so the UI is honest about not having synced, instead of silently
+  losing the correction or crashing. **API-BUGS (Virat/Ashwin, P1):**
+  please add the correction endpoint (ideally with row ids on
+  `LabResultOut` so future corrections can be partial, not full-replace)
+  and confirm invalidation targets (`document`, `visit`, `brief` per the
+  §4.2 table) once it's live; re-verify `tests/e2e/upload.spec.ts` then.
+- Both `POST /files` and `POST /documents/upload` are exercised through
+  the real `DocumentUploadIn` JSON path (`startDocumentUpload` sends
+  `{file_id, patient_id}` as spec'd), not the documents.py TEMP-ADAPTER
+  multipart fallback Pratyaksh left in place for when `/files` wasn't
+  merged yet — that adapter is his to remove once he confirms `/files` is
+  stable; not touching it from here since it's outside my owned paths.
+- Wired `UploadContainer` onto `/doctor/patient/:id`, replacing its
+  placeholder (same interim-wiring pattern as B2.2/B2.3, pending a real
+  `PatientChartContainer`).
+- Abhishek hasn't shipped `Dropzone` or `OcrReview` yet (neither exists
+  under `src/components/`), so both are TEMP-PLACEHOLDER inline markup in
+  `UploadContainer.tsx` (a native `<input type="file">` behind a styled
+  drop target, and a plain editable `Table` for lab rows) — flagged as
+  **UI-BUGS (Abhishek, P2)**.
+- **Test-environment note, not a product bug:** jsdom's `XMLHttpRequest`
+  doesn't reproduce a real browser's auto-computed multipart
+  `Content-Type: multipart/form-data; boundary=...` header when sending a
+  `FormData` body, so msw's `request.formData()` can't read the uploaded
+  file's name inside a Vitest handler (confirmed via a standalone repro).
+  `upload.test.tsx`'s "independent per-file state" test therefore branches
+  on call order instead of filename. Production code never sets
+  `Content-Type` manually (letting the browser compute the boundary, as
+  it must), so this doesn't affect real usage — only worth remembering if
+  a future test tries to inspect multipart body contents in Vitest.
+- Unit tests: `src/features/documents/__tests__/upload.test.tsx` (3
+  tests: upload → done → editable low-confidence cell; one failed file
+  doesn't block another's success; correction save surfaces the
+  "not ready" notice on 404) — 3/3 passing. Full suite: 42/42 across 12
+  files. `tsc --noEmit` and `npm run lint` both clean.
+- `tests/e2e/upload.spec.ts` added, uploading the real fixture
+  `ml/fixtures/cbc.pdf` against the seeded doctor/patient. Fails at the
+  same pre-existing captcha/no-live-backend environment blocker as every
+  other e2e spec on this machine — not a new regression, and separately
+  gated on the labs-correction BLOCKER above for the reload-persistence
+  step once a backend is reachable.
+
+## 2026-08-26 — B2.3: live queue board
+
+- Built `src/lib/ws/client.ts` (`WsClient`): a generic reconnecting WebSocket
+  wrapper — exponential backoff with jitter (1s → 2s → 4s → 8s → capped at
+  30s), a 20s heartbeat ping so lossy-mobile-network proxies don't idle-kill
+  the connection, and a `WsStatus` callback (`connecting|open|reconnecting|closed`)
+  so containers can render a live "reconnecting" chip instead of silently
+  dropping updates. `WebSocketImpl` is injectable for unit tests.
+- Built `src/features/queue/{useQueueSocket.ts,QueueBoardContainer.tsx}` and
+  `src/lib/api/endpoints/queue.ts` (`getQueue`, `nextInQueue`, `escalateQueue`
+  against the live `GET/POST /queue/*` contract).
+- **Wire contract for `/ws/queue/{clinic_id}`** — this endpoint has no
+  established message shape yet (backend/app/api/v1/ws.py is a stub, see
+  BLOCKER below), so I've defined one for `useQueueSocket.ts` to implement
+  against: `{ type: "snapshot"|"patch"|"escalated", seq: number, entries:
+  QueueEntryOut[] }`. `seq` is a monotonically increasing counter; frames
+  with `seq <= last seen` are discarded so a duplicate or out-of-order frame
+  (retries, reordering on a flaky mobile connection) can't corrupt the
+  board. `entries` is always a full array (upsert/replace by id), not a
+  diff — simplest contract, and cheap enough at clinic-queue scale that a
+  diff format isn't worth the complexity. **API-BUGS (Ashwin, P1):** please
+  implement `/ws/queue/{clinic_id}` to this shape, or tell me here if a
+  different shape is already planned so I can adjust `useQueueSocket.ts`
+  before CP2 closes.
+- On socket `open` (including every reconnect), the client invalidates
+  `qk.queue(clinicId)` so a REST refetch backstops whatever the socket
+  missed while it was down — this is also what keeps the board correct
+  today, since the socket itself is inert (see BLOCKER).
+- "Call next" (`POST /queue/{id}/next`) is optimistic: the entry is removed
+  from the cached list immediately via `onMutate`, rolled back via the
+  snapshotted previous list in `onError`, and the query is invalidated in
+  `onSettled` either way so the server's view always wins eventually.
+  "Escalate" (`POST /queue/{id}/escalate`) follows the same
+  mutate/rollback/settle shape, optimistically flagging `emergency: true`
+  and `position: 1` so the row visually jumps to the head immediately
+  rather than waiting on the round trip.
+- `clinicId` needed a home: added `clinicId?: string` to `AuthUser`
+  (`src/store/auth.ts`), sourced from `DoctorProfile.clinic_id` via a new
+  shared `mapMeToAuthUser()` in `src/lib/api/endpoints/auth.ts`. Also fixed
+  a latent gap this surfaced: `LoginContainer.tsx` was only ever setting
+  `{id,email,role,name}` from the login response, so `doctorId`/`patientId`/
+  `clinicId`/`nmcRegNo` stayed `undefined` for a freshly logged-in session
+  until a full page reload triggered `AuthProvider`'s silent-refresh path
+  (which already called `me()`). `LoginContainer.onSuccess` now also awaits
+  `me()` and merges the full profile in, best-effort (a failure there still
+  leaves the base session usable). This was pre-existing and also affected
+  `useBooking.ts`'s reliance on `user.patientId` — not something introduced
+  by this checkpoint, but worth fixing since the queue board depends on the
+  same pattern.
+- Wired `QueueBoardContainer` onto `/doctor/queue`, replacing its
+  placeholder. `src/components/queue/{QueueRow.tsx,QueueStats.tsx}` hold the
+  container-side table row and stat-card widgets (in-scope per §2 — this
+  directory is mine, unlike the rest of `components/`).
+- **BLOCKER:** `backend/app/api/v1/ws.py`'s `/ws/queue/{clinic_id}` handler
+  accepts the connection and immediately closes it with code 1013 ("queue
+  stream lands in A3.5") — it's a stub, not a bug in my client. `WsClient`
+  handles this correctly (it's just a close-then-reconnect-with-backoff
+  loop, same as any dropped connection), so the board still works via the
+  `open`-triggered REST invalidation, but there is no actual push-based
+  live reorder yet, and the CP2 B2.3 verify requirement ("escalating via
+  API in one tab reorders the board in the other within 2s") cannot be
+  demonstrated until the backend implements this socket. Flagging for
+  Ashwin; re-verify `tests/e2e/queue.spec.ts` once it lands.
+- Unit tests: `src/lib/ws/__tests__/client.test.ts` (4 tests: message
+  delivery, growing backoff on unexpected close, no reconnect on
+  intentional close, heartbeat ping) and
+  `src/features/queue/__tests__/queue.test.tsx` (3 tests: renders seeded
+  entries, empty state, optimistic call-next with rollback on failure) —
+  7/7 passing. Full suite: 39/39 across 11 files. `tsc --noEmit` and
+  `npm run lint` both clean.
+- `tests/e2e/queue.spec.ts` added (escalate-reorders-the-board;
+  reconnect-resyncs-without-duplicates), seeding a walk-in via
+  `POST /queue/walk-in` against `scripts/seed.py`'s deterministic
+  clinic/doctor/patient ids since the seed script doesn't pre-populate the
+  queue. Both fail at the same pre-existing captcha/no-live-backend
+  environment blocker as every other e2e spec on this machine (see
+  2026-08-26 B2.1/B2.2 entries) — not a new regression, and separately
+  gated on the WS BLOCKER above once a backend is reachable.
+
+## 2026-08-26 — B2.2: doctor copilot panel container
+
+- Built `src/features/copilot/{CopilotContainer.tsx,useBrief.ts,useCitations.ts}`
+  and `src/lib/api/endpoints/copilot.ts` against the live `CopilotBrief`/
+  `Citation` schemas already present in the regenerated `types.ts`
+  (`POST /api/v1/copilot/brief {visit_id}` → `CopilotBrief`).
+- `useBrief` drives the panel via `useQuery` keyed on `qk.brief(visitId)`
+  (`retry: false`, `staleTime: Infinity` — invalidated explicitly per the
+  §4.2 table, not refetched on a timer) and layers a client-side stage label
+  (`skeleton` → `retrievingSources` → `composing`) over the single request
+  via timers, since the endpoint returns once, not progressively.
+- `[n]` markers in `summary`/`differentials` are bound to `onCitationClick`
+  (`useCitations.ts`, `splitCitationMarkers`) and open a drawer with the
+  matching `Citation`. **UI-BUGS (Abhishek, P2):** no `SourceCard`/
+  `EvidenceDrawer` component exists yet in `src/components/` — the drawer
+  content in `CopilotContainer` is a marked interim placeholder
+  (`TEMP-PLACEHOLDER: replace with <SourceCard>/<EvidenceDrawer>`) to be
+  swapped in once those ship.
+- `confidence < 0.4` renders a "Low confidence" badge without hiding the
+  panel; empty `citations[]` renders an extractive-fallback notice instead of
+  hiding the panel; `MODEL_UNAVAILABLE` (and any other `ApiError`) renders
+  `ErrorState` with a retry action wired to `refetch()`, never a crash. A
+  persistent decision-support banner (`copilot.decisionSupportBanner`,
+  en + hi) is mounted above every panel state per the Telemedicine Practice
+  Guidelines 2020 requirement in the project brief.
+- Wired `CopilotContainer` directly onto the existing `/doctor/visit/:id`
+  route (replacing its `PlaceholderPage`) so it's reachable for e2e —
+  B3.5's `VisitContainer` will own that route and compose the panel
+  alongside the stepper once it exists; noted inline in `router/index.tsx`.
+- Added `src/features/copilot/__tests__/copilot.test.tsx` (msw-backed: brief
+  render + citation click, extractive fallback, `MODEL_UNAVAILABLE` retry
+  action, low-confidence badge) — **6/6 passing**. Full suite now
+  **32/32 passing** across 9 files.
+- Added `tests/e2e/copilot.spec.ts` against the deterministic seeded visit
+  `00000000-0000-0000-0000-000000000301` from `scripts/seed.py`
+  (`doctor1@demo.example`) rather than routing through the queue board,
+  since B2.3 (live queue) isn't built yet. **Unverified on this dev
+  machine** — same environment blocker as CP1/B2.1 (no Python 3.12/Rust/
+  Docker locally, so the captcha challenge is unreachable and login never
+  completes); 1/2 passing here (the हिंदी untranslated-key check, which
+  doesn't need a live backend), consistent with the existing blocker, not a
+  new regression.
+- `npx tsc --noEmit` and `npm run lint`: both clean.
+
+## 2026-08-26 — B2.1: pull integrated main, regenerate, regress
+
+- `git pull --ff-only origin main` brought in `pratyaksh cp2` (rate limiting,
+  audit middleware) and `ashwin`'s kg/RAG work, plus a regenerated
+  `frontend/src/lib/types.ts` (commit `b8babdd`) — a teammate has a working
+  live-backend environment and committed a fresh `gen:api` output, so the
+  stale/hand-typed-interim situation logged in the CP1 B1.2 entry below is
+  resolved without me running `gen:api` myself.
+- **Environment blocker persists unchanged from CP1** (see "A1.1 dev
+  environment note" is a different issue; the actual blocker is the CP1
+  "B1.1-B1.5 kickoff" entry below): this machine still has Python 3.14 only
+  (no 3.12), no Rust/Cargo, no Docker, so the FastAPI app cannot be run
+  locally, `gen:api` cannot hit a live server here, and CP1's e2e specs
+  (`booking.spec.ts`, `triage.spec.ts`) fail at the captcha step
+  (`GET /captcha/challenge` unreachable → "Verification complete." never
+  renders → login never completes) — a `TimeoutError` in
+  `waitForCaptchaSolved`, not a regression in the containers themselves.
+- `npx tsc --noEmit` against the regenerated types: **zero errors** — no
+  contract-drift type breaks to fix this round, so nothing to send to
+  Abhishek as `UI-BUGS:` from this step.
+- `npm run test -- --run`: **26/26 passing** across 8 files (store, api
+  client, forms, chat, onboarding, a11y, router) — CP1 unit-test surface is
+  green on merged main.
+- `npx playwright test --project=chromium`: 1/3 passing (the one spec/branch
+  not gated behind login+captcha); the other 2 fail only at the captcha wait,
+  per the environment blocker above — not re-verifiable as green until run
+  against a live backend (CI or another dev's machine). Logging as
+  `BLOCKER:` per rule 6 rather than pushing past it: **CP2 work proceeds**
+  (per explicit instruction to continue through B2.1 on a new branch), but
+  the CP1 e2e gate cannot be re-confirmed green from this box.
+
 ## 2026-08-26 — CP2 P2.5 rate limiting & progressive lockout
 
 - `app/core/ratelimit.py`'s `limiter` (`slowapi.Limiter`, Redis-backed via
@@ -472,6 +917,182 @@
   interpreter has no `starlette`/`fastapi` installed -- not a real blocker,
   just this sandbox's known bare-interpreter limitation (see prior CP1
   entries on `pip install -r requirements.txt` not having been run here).
+
+## 2026-08-26 — niyati CP2: lab rules, emergency escalation, generic mapping
+
+N2.1-N2.5 implemented in full. Summary per sub-checkpoint, then the shared
+infra caveat and DRIFT notes.
+
+**N2.1 (triage -> queue wiring).** Confirmed `packs/triage_india.yaml`'s
+tier->colour mapping is the single source both `pq.py` (via
+`app.schemas.triage.colour_for_esi`) and the triage API already share --
+no fix needed there. The real gap: `POST /appointments` took a bare
+`severity_esi: int = 4` request-body field with no link to a finalized
+`TriageResult` at all, so a triaged RED patient booking an appointment would
+have silently enqueued at the tier-4 default. Fixed in
+`app/api/v1/appointments.py`: `AppointmentCreate` gained an additive optional
+`triage_session_id: UUID | None` field; when present, `create_appointment`
+fetches the finalized `TriageResult` via `app.rag.triage_rag.get_result` and
+lets its `severity_esi`/`specialty` override the request body's own values
+(a not-yet-finalized session degrades to the body defaults rather than
+failing the booking). `pq.enqueue`'s existing
+`emergency = severity_esi <= emergency_severity_max` check then does the
+rest -- a RED triage now reaches the queue as tier 2/emergency, not tier 4.
+Covered by `backend/tests/services/test_triage_wiring.py`.
+
+**N2.2 (lab rules).** `backend/app/services/rules/packs/lab_panels.yaml`: 36
+rules (35 real conditions + `general_baseline` fallback), covering every
+mandatory item in the spec (dengue/chikungunya, malaria, enteric fever,
+NTEP pulmonary TB + contact screening, anaemia (general + antenatal),
+NPCDCS diabetes/hypertension, thyroid, MoHFW ANC first-visit panel,
+leptospirosis, scrub typhus, hepatitis A/E, snakebite WBCT20, organophosphate
+poisoning, heat stroke, acute diarrhoeal disease/cholera, biomass-exposure
+COPD, RHD, CKD, stroke FAST, ACS, plus UTI/pneumonia/jaundice/seizure/SAM/
+neonatal sepsis/rabies/COVID-ILI/dermatophyte rules for realistic OPD
+coverage) -- verified with `python -c` row-count/coverage checks (36 rules,
+`general_baseline` present, all 7 gate substrings found in rule ids).
+`app/services/rules/lab_rules.py::recommend_labs` matches on
+`symptoms_any/symptoms_all/conditions_any/severity_max/season/region` per
+the frozen signature, **plus** `age`/`pregnant` as additive optional
+keyword-only parameters (the spec lists `age_max`/`pregnant` as supported
+match keys but the frozen `recommend_labs` signature in section 4.2 doesn't
+carry them -- adding optional-with-default kwargs is backward compatible,
+same reasoning as N1.3-N1.5's `DoctorRankedOut`/`QueueEntryOut` additive
+subclassing). `merge_with_rag` unions on normalized name,
+`both < rule < rag` source-rank sort, rule's own reason wins on a `both`.
+`app/services/rules/schemas.py::SuggestedLabOut` additively subclasses
+Ashwin's frozen `app.schemas.triage.SuggestedLab` to carry `cghs_code`/
+`pmjay_package`, same pattern as the CP1 `DoctorRankedOut` DRIFT note.
+`POST /lab-orders/recommend` derives symptoms from whatever free-text triage
+output exists (`TriageResult.red_flags` + `.rationale`, run through a new
+`extract_symptom_keywords()` that substring-matches the pack's own symptom
+vocabulary -- deterministic, rule-based, not an LLM call) and from
+`Patient.conditions`; season from `now`'s IST month (injected, never a
+wall-clock read); region from `Patient.state`. Always creates the `LabOrder`
+row as `status="draft", locked=False` -- never auto-approves.
+
+**N2.3 (emergency escalation).** `packs/emergency.yaml`: 93 red-flag phrase
+entries across 24 categories (verified: >=35 gate, all 7 required substrings
+present). `app/services/queueing/escalation.py::escalate_with_referral` wraps
+CP1's `pq.escalate` (unchanged re-key-to-head behaviour, so the existing
+`test_escalate_moves_entry_to_head`/`test_escalate_forces_red_and_moves_to_head`
+tests still pass) and adds the referral-ladder check: if the assigned
+clinic can't manage the matched red flag's `min_facility_type`, the nearest
+capable clinic is found and a transfer line ("Refer to X (FACILITY_TYPE),
+N.N km - Call 108 for transfer") is appended to `reasons`/`reasons_hi`.
+**Deliberately does not re-run `rank_doctors`** for the transfer search even
+though the spec's literal text says to -- `rank_doctors` is doctor-
+availability-driven (it hard-filters on which specialty's doctors are
+rostered where) and would wrongly suppress a valid transfer suggestion for a
+facility that is capable but simply doesn't have a matching-specialty doctor
+rostered that session, which is a facility-capability question, not a
+doctor-availability one. Added `repo.py::all_clinics()` (one batched query)
+instead and rank candidate clinics by `geopy` distance directly. `POST
+/queue/{id}/escalate` now calls `escalate_with_referral` instead of the bare
+`pq.escalate`.
+
+**Audit logging not wired -- Pratyaksh's audit middleware doesn't exist
+yet.** `app/api/v1/audit.py` is still a bare `not_implemented` 501 stub and
+`app/main.py` registers no audit middleware at all. Section 8 N2.3 says
+"Audit is automatic via Pratyaksh's middleware -- do not write your own," so
+per that instruction this checkpoint does **not** add a local audit-write
+TEMP-ADAPTER for escalation events; the CP2 gate's audit-entry curl check is
+simply not exercisable yet. DRIFT for Pratyaksh: ship the audit
+middleware/route; once it's there, every `/queue/{id}/escalate` call should
+already show up automatically with no change needed on this side.
+
+**N2.4 (generic mapping).**
+`backend/app/services/mapping/data/india_drugs.csv`: 332 rows across 173
+molecules/combinations (>=300 gate), 275 NLEM-listed (>=80 gate), 262 with a
+Jan Aushadhi code (>=100 gate), covering every named brand in the spec
+(Crocin/Dolo/Calpol -> paracetamol, Combiflam, Augmentin/Clavam, Azee/
+Azithral, Pan/Pantocid, Omez, Glycomet, Amlokind/Amlopres, Telma, Ecosprin,
+Atorva/Storvas, Thyronorm/Eltroxin, Zifi, Allegra, Montair-LC, Asthalin,
+Shelcal, Zincovit, Neurobion, Liv-52, Cetzine, Sinarest, Meftal-Spas, Rantac,
+Deriphyllin, Wysolone, Betnesol, Ciplox, Norflox, Metrogyl, ofloxacin+
+ornidazole combos, NTEP anti-TB FDCs (Akurit-4/Akurit) and ART FDCs
+(TLE/TLD)), plus ~60 additional common OPD brands (cough/cold, paediatric
+syrups, ophthalmology/ENT/dermatology topicals, additional cardio-metabolic
+and antibiotic molecules) to comfortably clear the row-count gate with real,
+individually-chosen brand->ingredient mappings rather than padding. Written
+via a one-off generation script (not committed -- the CSV output is the
+committed artifact) from a curated Python molecule table, so the row set is
+reviewable and reproducible rather than hand-typed line by line.
+`nppa_ceiling.csv` (184 rows) is a **deliberately modelled approximation**,
+not a scraped NPPA notification mirror: `ceiling = round(0.72 * min(branded
+MRP for that ingredient+strength), 2)`, restricted to NLEM-listed molecules.
+Flagged in `docs/RULES.md` rather than presented as verbatim sourced data --
+gives the right shape for the price-saving demo story without claiming false
+provenance. `app/services/mapping/india_drugs.py::to_generic` implements the
+full 4-step resolution chain (local CSV hit -> RxNav enrichment on miss with
+network up -> deterministic closest-ingredient suggestion on miss with
+network down, via `rapidfuzz.fuzz.ratio` over normalized generic names, ties
+broken alphabetically through the `(-ratio, name)` sort key). `rxnorm.py`'s
+`enrich()` never attaches an Indian MRP/Jan Aushadhi code to an RxNav-only
+product (those fields stay `None`), per the "never present a US/
+international product as Indian" rule, and implements the two-layer cache
+(`cachetools.TTLCache` 1h in-process + Redis `rxnorm:{key}` 7-day).
+`normalize_brand()` verified directly (outside pydantic, see infra caveat
+below) against `Dolo 650`/`Dolo-650`/`Pan-D`/`Pan 40mg`/`Asthalin Inhaler`
+and 6 other real brand strings -- all resolve to the intended catalogue
+entry.
+
+**N2.5 (wrap-up).** `test_cache.py` (in-process-cache-hit, zero-HTTP-calls-
+on-second-lookup), `test_offline.py` (all 5 listed endpoints --
+`/doctors`, `/appointments`, `/queue`, `/lab-orders/recommend`,
+`/medications/generic` -- return 2xx with every `httpx.AsyncClient`
+get/post monkeypatched to raise `ConnectError`), `test_pack_schemas.py`
+(every pack -- `triage_india`, `optimizer`, `queue`, `lab_panels`,
+`emergency` -- validated against a pydantic schema so a malformed pack fails
+CI; every `label_en`/`reason_en` in `triage_india.yaml` has a paired `_hi`
+string, both <= 60 chars) all written per spec. `docs/RULES.md` first draft
+written: every weight/threshold/rule-id/red-flag-category documented with
+its Indian-guideline source (MoHFW STG, NTEP, NPCDCS, NVBDCP, Anaemia Mukt
+Bharat, NRHM FRU criteria, NLEM 2022, PM-JAY/CGHS coverage codes where
+mapped).
+
+**Shared infra caveat, all of CP2.** Same underlying constraint as every
+prior checkpoint's entries below, compounded by one new issue: this machine
+has no Docker/Postgres/Redis (`make migrate`/`make test`/live `curl` against
+a running API are not runnable here), **and** its only Python is a
+MSYS2/mingw-w64 3.14 build (`cp314-mingw_x86_64_ucrt_gnu` platform tag) that
+has no matching `pydantic-core` wheel on PyPI and cannot build one from
+source either (`maturin`/Rust build fails against the mingw ABI, not just
+"Rust missing" -- installing Rust doesn't fix the platform-tag mismatch).
+That means **no module in this checkpoint that imports `pydantic` could be
+executed directly in this sandbox**, on top of the already-known no-DB/
+no-Redis blocker. What *was* verified without pydantic: every new/changed
+`.py` file byte-compiles cleanly (`python -m py_compile`); every YAML pack
+loads and structurally validates against its intended schema via plain
+dict/set assertions (row counts, required keys, no unexpected keys); the
+lab-rules matching algorithm and the escalation red-flag/facility-rank logic
+were each re-implemented standalone (no pydantic import) in a throwaway
+script and run against the real, committed YAML packs for the exact
+scenarios the real pytest files exercise (monsoon fever, snakebite,
+ANC-pregnant, baseline fallback, red-flag detection, `should_escalate`
+tiering) -- all passed; `normalize_brand`/`closest_ingredient_suggestion`
+were likewise verified standalone against the real, committed CSV for 12
+real brand strings including every deliberately-tricky suffix case
+(`Dolo 650` vs `Dolo-650`, `Pan-D` vs `Pan 40mg`, `Asthalin Inhaler`).
+Every actual `pytest`-collected test file (`test_lab_rules.py`,
+`test_escalation.py`, `test_rxnorm.py`, `test_cache.py`, `test_offline.py`,
+`test_pack_schemas.py`, `test_triage_wiring.py`) is written and reviewed
+per spec but **could not be executed end to end in this sandbox** -- needs a
+real `make up && make migrate` environment (or CI) to run for real. This
+mirrors exactly the caveat pattern already logged for P1.1-P1.5 and the
+"CP2 re-verify"/"V2.1 re-verify" entries below (a later session with MSVC
+installed got further on the ML side; this session's blocker is a Python
+build/ABI issue those entries didn't hit, since they were on CPython, not
+MSYS2 mingw Python).
+
+**Update after merging main:** `feat/pratyaksh/cp2` landed the real audit
+middleware (`app/core/middleware_audit.py`) in the same window this
+checkpoint's branch was in flight, which resolves the "audit logging not
+wired" gap noted above -- `/queue/{id}/escalate` should now be audited
+automatically with no change needed on this side, exactly as the original
+"do not write your own" instruction anticipated. Not re-verified with a live
+`curl` here (same infra caveat), but no code change is required for it to
+start working now that the middleware exists.
 
 ## 2026-08-26 — CP2 re-verify: MSVC installed, full `tests/ml`/`tests/integration` now green
 
@@ -1434,6 +2055,228 @@ ABHA IDs. Fixed UUIDs are unchanged, so anything already referencing patient
   no longer serves a stable `2012` snapshot). Individual MedlinePlus topic
   pages are reachable and used instead; bulk XML ingestion is not reinstated
   since the per-page approach already clears the chunk-count gate.
+
+## 2026-08-27 — CI pinned to Node 24
+
+CI failed on `frontend/src/features/documents/__tests__/upload.test.tsx` (all
+three tests) while the same file passed locally. It was not flakiness and not a
+timeout: locally the whole upload chain completes in 38 ms against a 1000 ms
+`findBy*` budget, so there was 26x headroom.
+
+Reproduced in containers and bisected by Node version:
+
+| Node    | XHR with a File in its FormData body | upload.test.tsx |
+|---------|--------------------------------------|-----------------|
+| 20.20.2 | hangs at `readyState 1`              | 3 failed        |
+| 22.23.2 | hangs at `readyState 1`              | 3 failed        |
+| 24.19.0 | completes normally                   | 3 passed        |
+
+A probe isolated it exactly: with a `File` in the `FormData`, the request does
+reach the msw handler and the handler returns a response, but the XHR never
+advances past `readyState 1` — no `load`, no `error`, no `loadend`, so
+`uploadFileWithProgress`'s promise never settles and the item sits on
+"Uploading…" forever. The same XHR with a text-only `FormData`, a string body,
+or no body completes normally on every version. Upgrading msw (2.7.0 -> 2.11.5)
+does not help, so this is the Node-level `FormData`/`Blob` stream handling that
+`@mswjs/interceptors` reads, not an msw bug. It affects tests only — a real
+browser XHR is unaffected.
+
+`node-version` in `.github/workflows/ci.yml` and `FROM node:20-alpine` in
+`infra/Dockerfile.frontend` both move to 24, and `frontend/package.json` gains
+`"engines": {"node": ">=24"}` so the requirement is explicit rather than
+folklore. Node 20 was end-of-life in April 2026 regardless, so this pin was
+overdue on its own terms; Node 22 is still supported but does not clear the bug,
+which is why 24 rather than 22.
+
+Verified by running the full CI job (`eslint --max-warnings 0`, `tsc --noEmit`,
+`vitest run`, `vite build`) inside a clean `node:24` container: lint clean, tsc
+clean, 22 files / 79 tests passing, build succeeds.
+
+## 2026-08-27 — CP3 cross-team test failures, resolved
+
+Twenty-one suite failures were outstanding across four owners at the CP3 gate.
+Rather than hand them back as `DRIFT:` notes, they were traced and fixed
+directly — they collapsed into five root causes, none of which needed the
+owning teammate's design knowledge.
+
+1. **Repo-root-relative pack paths (10 failures).**
+   `tests/services/{test_pack_schemas,test_escalation,test_lab_rules,test_rxnorm}.py`
+   resolved their YAML/CSV fixtures as `backend/app/...`, but `make test` runs
+   pytest with `backend/` as the working directory, so every one raised
+   `FileNotFoundError`. All four now resolve from `Path(__file__)`, the way
+   `app/rag/triage_rag.py` locates its own data dir. Owner: Niyati.
+
+2. **Three seeders fighting over one id space (4 failures, plus the
+   order-dependence behind several more).**
+   `tests/services/conftest.py`'s Chennai fixture reused `scripts/seed.py` and
+   `scripts/seed_users.py` ids for clinics, doctors and patients, so whichever
+   ran last won the shared rows. Two concrete breakages fell out of that:
+   `patient_id(i)` and `patient_user_id(i)` were the *same* expression
+   (`500 + i` — the seed scripts' patient-**user** space), so the fixture
+   attached a second Patient to a user `seed.py` had already given one, and
+   every `select(Patient).where(Patient.user_id == ...)` — `GET /auth/me`,
+   `GET /files/{id}` — raised `MultipleResultsFound`; and re-running a seed
+   script moved doctors `201`–`206` out of the Chennai clinics, emptying
+   `GET /api/v1/doctors`.
+
+   The fixture now owns a private namespace and shares nothing: clinics
+   `...-0002-...9NN`, doctors `...-0002-...2NN`, availability `...-0002-`,
+   patients `...-0002-...NN`, and all fixture users in `...-0003-`. Cleanup
+   fixtures can then scope safely, and the suite no longer depends on file
+   order. Stale rows from the old scheme were cleared from the dev database.
+   Owner: Niyati.
+
+   Related, same cause: `tests/services/test_lab_rules.py` and
+   `test_offline.py` each ran an unscoped `delete(Visit)`, destroying the
+   seeded demo visit and failing `tests/integration/test_visit_flow.py` on
+   whatever ran after them. Both are now scoped to the fixture's own patients.
+
+3. **Offline fixture severed the test client (5 failures).**
+   `tests/services/test_offline.py` unplugged the network by patching
+   `httpx.AsyncClient.get`/`post` — but the `client` fixture drives the app
+   in-process over `ASGITransport` and is an `httpx.AsyncClient` itself, so
+   every request failed inside the harness and no route under test ever ran.
+   Now patched at the transport layer (`AsyncHTTPTransport.handle_async_request`),
+   which leaves in-process ASGI traffic alone and blocks only real sockets.
+   Owner: Niyati.
+
+4. **Rate-limited upload route missing its `response` parameter (2 failures).**
+   `app/api/v1/files.py:upload_file` carried `@limiter.limit("10/minute")` but
+   no `response: Response` argument. With `headers_enabled=True` slowapi injects
+   the `X-RateLimit-*` headers after the handler returns and raises without one.
+   Added, matching the signature `auth.py`'s rate-limited routes already use.
+   Owner: Pratyaksh.
+
+5. **`ml/data/interactions.db` was never built (2 failures).**
+   It is a gitignored build artifact produced by `app.ml.kb_build` from the
+   bundled `interactions_seed.csv`, so a fresh clone has no interaction data and
+   `check_interactions` returns nothing. Built offline (1012 interactions, 245
+   India brands, 223 rxcui rows) and, so this is not a manual step again, added
+   a `make kb` target and a build-if-absent step to `scripts/smoke.sh`.
+   Owner: Virat.
+
+6. **OCR worker dropped every completion event (silent, no test).**
+   `app/workers/ocr_worker.py:_publish_document_done` called
+   `app.core.events.publish` — a coroutine — from a synchronous RQ worker
+   without awaiting it, so it only ever built a coroutine object that was
+   discarded (`RuntimeWarning: coroutine 'publish' was never awaited`). No
+   `/ws/visit/{id}` client was ever told a document had finished. Replaced with
+   the synchronous `redis.Redis.publish` that the same function already had as
+   its fallback branch, which is the correct primitive in a sync worker and
+   equivalent for a channel with no per-entity fan-out. Owner: Virat.
+
+7. **Rate-limit and lockout state bleeding between tests (1 failure,
+   intermittent).**
+   slowapi's counters and `app.core.ratelimit`'s per-email lockout keys both
+   live in the shared Redis, and the unauthenticated login budget (5/minute) is
+   keyed by IP — so every test in the same minute spent one collective budget
+   and later tests got a 429 instead of the 401 they asserted. Worse, a test
+   that deliberately fails a login left the account locked for the rest of the
+   lockout window, so the failure survived across runs.
+   `tests/conftest.py` now clears both before every test: `RedisStorage.reset()`
+   (limiter-prefixed keys only, so captcha and refresh-token state is untouched)
+   and a scan-and-delete of `auth:login:*`. Owner: shared fixture, mine.
+
+8. **Two more unscoped cleanup wipes.**
+   `tests/services/test_triage_wiring.py` ran `delete(TriageSession)` with no
+   WHERE, which failed outright on `visits_triage_session_id_fkey` because the
+   seeded demo visit still referenced one of the rows — erroring the whole
+   module. Scoped to the fixture's own patients, like the two above.
+   Owner: Niyati.
+
+Also fixed while resolving (2): `app/services/rules/lab_rules.py` assumed
+patient `conditions` were `list[str]` and called `.lower()` on each. Once the
+Chennai fixture stopped masking the seeded patient, it met the structured
+`{"name": ...}` JSONB form and raised `AttributeError`. `_as_set` and
+`extract_symptom_keywords` now accept both shapes, matching the tolerance
+`app.schemas.patient.ClinicalEntry` gained below. Owner: Niyati.
+
+- **Footprint cleanup (§1.2):** two tracked files referenced the internal
+  working-brief filename in prose comments, which `scripts/guard.sh` blocks.
+  Rewritten to "the project brief" in `docs/DECISIONS.md` (mine) and, as a
+  comment-only edit, in `frontend/src/lib/api/endpoints/notifications.ts`
+  (Divyanshi's) — no behaviour touched.
+
+- **Resolved in my own files:** `app/schemas/patient.py` typed `conditions`,
+  `allergies` and `medications` as `list[str]`, but `scripts/seed.py` (also
+  mine), `app/kg/ingest.py` and `app/rag/clinical_rag.py` all read and write the
+  structured `{"name", "since"/"severity"/"dose"/"rxcui"}` form the knowledge
+  graph needs, so `GET /api/v1/patients` 500'd on real seeded data. Introduced
+  `ClinicalEntry`, which coerces a bare string into `{"name": ...}` — no field
+  removed, both producers keep working, and every consumer now sees one shape.
+  Frontend note for Divyanshi: these three arrays are now arrays of objects;
+  read `.name` rather than the value itself. `types.ts` regenerated.
+
+## 2026-08-27 — CP3 (A3.1–A3.5)
+
+### A3.1 — integration of CP2
+- All four teammate `feat/*/cp2` branches (virat, pratyaksh, niyati, divyanshi)
+  were already merged into `main` when CP3 started; `feat/abhishek/cp2` does not
+  exist, matching `integrate.sh`'s SKIP-if-absent path. No further merge needed,
+  so `integrate.sh 2` was a no-op and `cp2-integrated` follows CP3's own gate.
+
+### A3.2 — patient chatbot
+- Patient retrieval reads two collections and only two: the patient's own
+  `patient_{patient_id}` and a new shared `lay` collection. `clinical` is
+  unreachable from the chat path by construction, not by filter — doctor-facing
+  drug-label and protocol text is not safe patient-facing reading. A test
+  asserts `clinical` is never queried.
+- Added the `lay` collection (MedlinePlus topic pages, plus 36 bundled
+  plain-language entries in `app/rag/data/lay_corpus.yaml` written in-house at
+  ~8th-standard reading level). The bundled entries are always upserted, so the
+  collection is never empty and the demo never depends on the network. Live
+  ingest measured 144 chunks.
+- A deterministic phrase check refuses dose/start/stop/prescribe questions
+  before any model call. The system prompt forbids them too, but the prompt is
+  advice and the check is a guarantee — it also holds when the extractive
+  fallback is answering because both Groq and Ollama are unreachable.
+- The whole answer is guarded before the first SSE token leaves, so nothing can
+  be streamed to a patient and then retracted.
+
+### A3.3 — guardrails
+- `faithfulness` squashes cross-encoder logits through a sigmoid before applying
+  the 0.35 floor, so the threshold means the same thing if `RERANK_MODEL`
+  changes. Sentences with no `[n]` marker (greetings, the "discuss with your
+  doctor" closer) are kept and excluded from the score rather than being scored
+  against nothing.
+- When the cross-encoder itself is unavailable, `filter_unfaithful` keeps the
+  text and returns the 0.35 floor rather than 1.0 — an unavailable scorer must
+  not read as high confidence.
+- `emergency_intercept` calls `app.services.queueing.escalation.escalate_with_referral`
+  in-process rather than issuing an HTTP `POST /api/v1/queue/{id}/escalate` to
+  itself. Same code path, no self-call deadlock under a single worker, and no
+  need to mint a service token. Escalation failure never suppresses the banner:
+  the patient still gets told to call 112/108.
+
+### A3.4 — visit orchestrator
+- The transition table is a single linear chain; anything else is 409 CONFLICT.
+  On top of it, three transitions carry a database precondition — LABS_APPROVED
+  needs a locked lab order, RESULTS_UPLOADED a completed document, PRESCRIBED a
+  locked prescription. A doctor cannot close a visit that has no signed
+  prescription behind it.
+- `force_guard=True` exists for internal callers that created the required row
+  in the same uncommitted transaction. It skips the precondition only — the
+  state table still applies.
+- Every accepted transition re-syncs both the knowledge graph and the patient's
+  plain-language chat corpus, so the chatbot can answer about a lab the moment
+  it lands. Both syncs are best-effort and logged: a Neo4j or Chroma outage must
+  not fail a clinical state change.
+
+### A3.5 — websockets
+- Both sockets take the access token from a `token` query parameter. Browsers
+  cannot set an `Authorization` header on a WebSocket handshake; a bad or
+  missing token closes with 1008.
+- Fan-out goes through Redis pub/sub rather than an in-process registry, so the
+  streams still work under the multi-worker gunicorn setup in
+  `docker-compose.prod.yml`. `publish` logs and swallows — a state transition
+  must never fail because Redis blinked.
+
+### Environment note (local only, no repo change)
+- Host port 5432 was held by an unrelated project's container that this session
+  could not stop, so CP3 verification ran Postgres on host port 5544 via a
+  scratch compose override outside the repo, with `DATABASE_URL` overridden per
+  command. `infra/docker-compose.yml` and `.env.example` still pin 5432 —
+  nothing in the repo was changed for this.
 
 ## 2026-08-25 — A1.1 dev environment note
 

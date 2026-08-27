@@ -91,3 +91,16 @@ class LabFlagInput(BaseModel):
 class LabFlagRequest(BaseModel):
     patient_id: UUID
     results: list[LabFlagInput]
+
+
+class SummaryRequest(BaseModel):
+    patient_id: UUID
+    visit_id: UUID
+
+
+class MedSuggestRequest(BaseModel):
+    conditions: list[str]
+    current_medications: list[str] = []
+    allergies: list[str] = []
+    renal_impairment: bool = False
+    hepatic_impairment: bool = False

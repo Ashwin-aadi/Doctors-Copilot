@@ -17,3 +17,11 @@ export async function loginAsPatient(page: Page, email = "patient1@demo.example"
   await waitForCaptchaSolved(page);
   await page.getByRole("button", { name: /log in/i }).click();
 }
+
+export async function loginAsDoctor(page: Page, email = "doctor1@demo.example"): Promise<void> {
+  await page.goto("/login");
+  await page.getByPlaceholder("you@clinic.in").fill(email);
+  await page.getByLabel(/password/i).first().fill(DEMO_PASSWORD);
+  await waitForCaptchaSolved(page);
+  await page.getByRole("button", { name: /log in/i }).click();
+}

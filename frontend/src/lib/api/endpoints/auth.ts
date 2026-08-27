@@ -84,3 +84,27 @@ export interface MeResponse extends UserProfile {
 export function me(): Promise<MeResponse> {
   return request<MeResponse>("/api/v1/auth/me");
 }
+
+export interface AuthUserFields {
+  id: string;
+  email: string;
+  role: "patient" | "doctor" | "staff" | "admin";
+  name: string | null;
+  patientId?: string;
+  doctorId?: string;
+  nmcRegNo?: string;
+  clinicId?: string;
+}
+
+export function mapMeToAuthUser(profile: MeResponse): AuthUserFields {
+  return {
+    id: profile.id,
+    email: profile.email,
+    role: profile.role,
+    name: profile.name,
+    patientId: profile.patient?.id,
+    doctorId: profile.doctor?.id,
+    nmcRegNo: profile.doctor?.nmc_reg_no ?? undefined,
+    clinicId: profile.doctor?.clinic_id,
+  };
+}

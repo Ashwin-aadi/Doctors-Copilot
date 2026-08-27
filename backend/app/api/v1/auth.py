@@ -8,8 +8,6 @@ nesting) don't match the existing stub schemas, and `app/schemas/` is off
 limits per the ownership rules. See docs/DECISIONS.md.
 """
 
-from __future__ import annotations
-
 import re
 import time
 import uuid
@@ -250,7 +248,7 @@ def _rate_limited_response(request: Request, retry_after: int, message: str) -> 
     return response
 
 
-@router.post("/auth/login", dependencies=[Depends(require_captcha)])
+@router.post("/auth/login", dependencies=[Depends(require_captcha)], response_model=None)
 @limiter.limit("5/minute")
 async def login(
     request: Request,

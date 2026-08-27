@@ -10,6 +10,7 @@ export interface AuthUser {
   patientId?: string;
   doctorId?: string;
   nmcRegNo?: string;
+  clinicId?: string;
 }
 
 export type AuthStatus = "idle" | "authenticated" | "anonymous";

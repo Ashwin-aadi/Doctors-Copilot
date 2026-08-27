@@ -1,0 +1,377 @@
+# Lab-order recommendation rules, weighted to India's actual OPD disease
+# burden (MoHFW Standard Treatment Guidelines, NTEP, NPCDCS, NVBDCP/NCVBDC,
+# NLEM 2022, MoHFW ANC guidelines). Each rule is `when` (match predicate) +
+# `specialty` (which requesting specialties this rule applies under) + `labs`
+# (deduped, unioned across every matching rule) + optional `cghs_code` /
+# `pmjay_package` for coverage display.
+#
+# `when` keys, all optional, all AND-ed together (an omitted key always
+# passes): symptoms_any, symptoms_all, conditions_any, severity_max, season
+# (list), region (list of state names), age_max, pregnant.
+#
+# `fallback: true` marks the one rule (`general_baseline`) used only when no
+# other rule matches at all -- never unioned in alongside a real match.
+
+- id: acute_febrile_illness_monsoon
+  when: {symptoms_any: [fever, chills, "body ache", headache, myalgia], severity_max: 3, season: [monsoon]}
+  specialty: [general_medicine, emergency_medicine, paediatrics, family_medicine]
+  labs:
+    - {name: "CBC with platelet count", loinc: "58410-2", reason: "Dengue - platelet trend"}
+    - {name: "Dengue NS1 antigen", loinc: "75695-3", reason: "Early dengue detection"}
+    - {name: "Malaria rapid test (Pf/Pv)", loinc: "70563-9", reason: "Rule out malaria"}
+    - {name: "Widal / TyphiDot", loinc: "22590-1", reason: "Enteric fever screen"}
+  cghs_code: "CG-PATH-014"
+  pmjay_package: null
+
+- id: dengue_chikungunya_suspected
+  when: {symptoms_any: [fever, "joint pain", rash, "retro-orbital pain", "eye pain"], severity_max: 4, season: [monsoon, summer]}
+  specialty: [general_medicine, emergency_medicine, paediatrics]
+  labs:
+    - {name: "CBC with platelet count", loinc: "58410-2", reason: "Dengue - platelet/haematocrit trend"}
+    - {name: "Dengue NS1 antigen", loinc: "75695-3", reason: "Early dengue antigen detection"}
+    - {name: "Dengue IgM/IgG serology", loinc: "35396-3", reason: "Dengue confirmation after day 5"}
+    - {name: "Chikungunya IgM", loinc: "68961-2", reason: "Chikungunya screen for arthralgia + fever"}
+  cghs_code: "CG-PATH-015"
+  pmjay_package: null
+
+- id: malaria_suspected
+  when: {symptoms_any: [fever, chills, "rigors", sweating, "cyclical fever"], severity_max: 4, region: ["Odisha", "Chhattisgarh", "Jharkhand", "Madhya Pradesh", "Tamil Nadu", "Assam"]}
+  specialty: [general_medicine, emergency_medicine, paediatrics]
+  labs:
+    - {name: "Malaria rapid test (Pf/Pv)", loinc: "70563-9", reason: "NVBDCP-recommended rapid antigen screen"}
+    - {name: "Peripheral smear for malaria parasite", loinc: "32207-3", reason: "Confirmatory microscopy, species ID"}
+    - {name: "CBC with platelet count", loinc: "58410-2", reason: "Thrombocytopenia common in falciparum malaria"}
+  cghs_code: "CG-PATH-016"
+  pmjay_package: null
+
+- id: enteric_fever_typhoid
+  when: {symptoms_any: [fever, "abdominal pain", "step-ladder fever", constipation, "relative bradycardia"], severity_max: 4}
+  specialty: [general_medicine, emergency_medicine, paediatrics]
+  labs:
+    - {name: "Widal / TyphiDot", loinc: "22590-1", reason: "Enteric fever serology"}
+    - {name: "Blood culture", loinc: "600-7", reason: "Gold standard for Salmonella typhi"}
+    - {name: "CBC", loinc: "58410-2", reason: "Leucopenia pattern in typhoid"}
+  cghs_code: "CG-PATH-017"
+  pmjay_package: null
+
+- id: pulmonary_tb_suspected
+  when: {symptoms_any: ["cough more than 2 weeks", "chronic cough", "productive cough", "night sweats", "weight loss", haemoptysis], severity_max: 4}
+  specialty: [general_medicine, pulmonology, tb_chest, emergency_medicine]
+  labs:
+    - {name: "Sputum AFB smear (2 samples)", loinc: "11529-5", reason: "NTEP first-line pulmonary TB test"}
+    - {name: "CBNAAT / Truenat (NAAT)", loinc: "94309-2", reason: "NTEP molecular test, detects rifampicin resistance"}
+    - {name: "Chest X-ray PA view", loinc: "36643-5", reason: "Radiological correlation for pulmonary TB"}
+  cghs_code: "CG-RAD-TB01"
+  pmjay_package: "HBP-TB-001"
+
+- id: tb_contact_household_screening
+  when: {conditions_any: ["tb contact", "household tb contact", "known tb exposure"], severity_max: 5}
+  specialty: [general_medicine, tb_chest, paediatrics]
+  labs:
+    - {name: "Sputum AFB smear (2 samples)", loinc: "11529-5", reason: "Active TB screen for household contact"}
+    - {name: "Chest X-ray PA view", loinc: "36643-5", reason: "Baseline film for contact tracing per NTEP"}
+    - {name: "Mantoux / TST", loinc: "18158-6", reason: "Latent TB infection screen in contacts under 6"}
+  cghs_code: null
+  pmjay_package: null
+
+- id: anaemia_screening
+  when: {symptoms_any: [fatigue, weakness, pallor, breathlessness, "easy fatigability"], severity_max: 5}
+  specialty: [general_medicine, obstetrics_gynaecology, paediatrics, family_medicine]
+  labs:
+    - {name: "Haemoglobin", loinc: "718-7", reason: "Anaemia screen -- very high India prevalence"}
+    - {name: "Peripheral smear", loinc: "32207-3", reason: "Morphology to classify anaemia type"}
+    - {name: "Serum ferritin", loinc: "2276-4", reason: "Iron-deficiency confirmation"}
+  cghs_code: "CG-PATH-004"
+  pmjay_package: null
+
+- id: anaemia_pregnancy
+  when: {conditions_any: [pregnant, pregnancy], pregnant: true, severity_max: 5}
+  specialty: [obstetrics_gynaecology, general_medicine]
+  labs:
+    - {name: "Haemoglobin", loinc: "718-7", reason: "Anaemia in pregnancy -- Anaemia Mukt Bharat screen"}
+    - {name: "Serum ferritin", loinc: "2276-4", reason: "Iron store assessment antenatally"}
+  cghs_code: "CG-PATH-004"
+  pmjay_package: null
+
+- id: diabetes_screening_npcdcs
+  when: {symptoms_any: ["excessive thirst", "polyuria", "polydipsia", "unexplained weight loss", "blurred vision"], severity_max: 5}
+  specialty: [general_medicine, family_medicine, endocrinology]
+  labs:
+    - {name: "Fasting blood sugar (FBS)", loinc: "1558-6", reason: "NPCDCS diabetes screen"}
+    - {name: "Post-prandial blood sugar (PPBS)", loinc: "1521-4", reason: "NPCDCS diabetes screen"}
+    - {name: "HbA1c", loinc: "4548-4", reason: "3-month glycaemic control marker"}
+  cghs_code: "CG-PATH-002"
+  pmjay_package: null
+
+- id: diabetes_known_followup
+  when: {conditions_any: [diabetes, "diabetes mellitus", "type 2 diabetes", t2dm], severity_max: 5}
+  specialty: [general_medicine, endocrinology, family_medicine]
+  labs:
+    - {name: "HbA1c", loinc: "4548-4", reason: "Quarterly glycaemic control review"}
+    - {name: "Fasting blood sugar (FBS)", loinc: "1558-6", reason: "Routine diabetic follow-up"}
+    - {name: "Urine microalbumin / ACR", loinc: "14959-1", reason: "Diabetic nephropathy screen"}
+  cghs_code: "CG-PATH-002"
+  pmjay_package: null
+
+- id: hypertension_screening_npcdcs
+  when: {symptoms_any: [headache, "high blood pressure", dizziness, "blurred vision"], conditions_any: [hypertension, "high bp"], severity_max: 5}
+  specialty: [general_medicine, cardiology, family_medicine]
+  labs:
+    - {name: "Serum creatinine", loinc: "2160-0", reason: "Renal function baseline, NPCDCS hypertension workup"}
+    - {name: "Urine routine", loinc: "5804-0", reason: "Proteinuria screen for hypertensive nephropathy"}
+    - {name: "Lipid profile", loinc: "57698-3", reason: "Cardiovascular risk stratification"}
+  cghs_code: "CG-PATH-006"
+  pmjay_package: null
+
+- id: thyroid_dysfunction
+  when: {symptoms_any: ["weight gain", "weight loss", "cold intolerance", "heat intolerance", palpitations, "neck swelling", fatigue], severity_max: 5}
+  specialty: [general_medicine, endocrinology]
+  labs:
+    - {name: "TSH", loinc: "3016-3", reason: "First-line thyroid function screen"}
+    - {name: "Free T4", loinc: "3024-7", reason: "Confirms overt thyroid dysfunction"}
+  cghs_code: "CG-PATH-009"
+  pmjay_package: null
+
+- id: anc_first_visit_panel
+  when: {conditions_any: [pregnant, pregnancy, "first anc visit", "antenatal registration"], pregnant: true}
+  specialty: [obstetrics_gynaecology, general_medicine]
+  labs:
+    - {name: "Haemoglobin", loinc: "718-7", reason: "MoHFW ANC first-visit panel"}
+    - {name: "Blood group and Rh typing", loinc: "883-9", reason: "Rh-negative identification for anti-D planning"}
+    - {name: "HIV screening", loinc: "75622-1", reason: "PPTCT programme first-visit mandatory test"}
+    - {name: "HBsAg", loinc: "5195-3", reason: "Hepatitis B screen, MoHFW ANC panel"}
+    - {name: "VDRL / RPR (syphilis)", loinc: "20507-0", reason: "Syphilis screen, MoHFW ANC panel"}
+    - {name: "Urine routine", loinc: "5804-0", reason: "Proteinuria / UTI screen antenatally"}
+    - {name: "Random blood sugar (RBS)", loinc: "2345-7", reason: "Gestational diabetes first-visit screen"}
+  cghs_code: "CG-PATH-ANC1"
+  pmjay_package: "HBP-OBG-001"
+
+- id: leptospirosis_suspected
+  when: {symptoms_any: [fever, "calf pain", "muscle pain", jaundice, "conjunctival suffusion"], severity_max: 3, season: [monsoon]}
+  specialty: [general_medicine, emergency_medicine]
+  labs:
+    - {name: "Leptospira IgM ELISA", loinc: "34573-8", reason: "Post-flooding fever with myalgia -- lepto screen"}
+    - {name: "Serum creatinine", loinc: "2160-0", reason: "Renal involvement (Weil's disease) check"}
+    - {name: "Liver function test (bilirubin, SGOT, SGPT)", loinc: "24325-3", reason: "Hepatic involvement check"}
+  cghs_code: null
+  pmjay_package: null
+
+- id: scrub_typhus_suspected
+  when: {symptoms_any: [fever, "eschar", rash, headache, "muscle pain"], severity_max: 3, season: [monsoon, winter]}
+  specialty: [general_medicine, emergency_medicine]
+  labs:
+    - {name: "Scrub typhus IgM ELISA", loinc: "68961-2", reason: "Eschar + fever -- rural/forest-fringe endemic screen"}
+    - {name: "CBC with platelet count", loinc: "58410-2", reason: "Thrombocytopenia common in scrub typhus"}
+    - {name: "Liver function test", loinc: "24325-3", reason: "Hepatic transaminitis common in scrub typhus"}
+  cghs_code: null
+  pmjay_package: null
+
+- id: hepatitis_a_e_suspected
+  when: {symptoms_any: [jaundice, "yellow eyes", "dark urine", nausea, "abdominal pain"], severity_max: 4}
+  specialty: [general_medicine, emergency_medicine, paediatrics]
+  labs:
+    - {name: "Liver function test", loinc: "24325-3", reason: "Hepatocellular injury pattern"}
+    - {name: "Hepatitis A IgM", loinc: "22314-6", reason: "Acute hepatitis A screen, common in water-borne outbreaks"}
+    - {name: "Hepatitis E IgM", loinc: "34602-5", reason: "Acute hepatitis E screen, common in monsoon outbreaks"}
+  cghs_code: "CG-PATH-011"
+  pmjay_package: null
+
+- id: snakebite_envenomation
+  when: {symptoms_any: ["snake bite", "snakebite", "bleeding gums", ptosis, "difficulty breathing after bite", "local swelling after bite"], severity_max: 2}
+  specialty: [general_medicine, emergency_medicine, general_surgery]
+  labs:
+    - {name: "20-minute whole blood clotting test (WBCT20)", loinc: "34714-0", reason: "Bedside coagulopathy screen for viper envenomation"}
+    - {name: "Coagulation profile (PT/aPTT/INR)", loinc: "34714-0", reason: "Confirms venom-induced consumption coagulopathy"}
+    - {name: "Serum creatinine", loinc: "2160-0", reason: "Acute kidney injury risk in snakebite"}
+    - {name: "CBC with platelet count", loinc: "58410-2", reason: "Thrombocytopenia / haemolysis check"}
+  cghs_code: "CG-PATH-SNK1"
+  pmjay_package: "HBP-EM-SNAKE"
+
+- id: organophosphate_poisoning
+  when: {symptoms_any: ["pesticide exposure", "insecticide ingestion", "excessive salivation", miosis, "muscle twitching", "cholinergic symptoms"], severity_max: 2}
+  specialty: [general_medicine, emergency_medicine]
+  labs:
+    - {name: "Serum pseudocholinesterase", loinc: "2668-2", reason: "Confirms and grades organophosphate poisoning"}
+    - {name: "Arterial blood gas", loinc: "24336-0", reason: "Respiratory failure risk in cholinergic crisis"}
+    - {name: "Serum electrolytes", loinc: "24323-8", reason: "Baseline before atropine/PAM therapy"}
+  cghs_code: "CG-PATH-OP01"
+  pmjay_package: null
+
+- id: heat_stroke_summer
+  when: {symptoms_any: ["high body temperature", "altered consciousness after sun exposure", "no sweating", confusion], severity_max: 2, season: [summer]}
+  specialty: [general_medicine, emergency_medicine]
+  labs:
+    - {name: "Serum creatinine", loinc: "2160-0", reason: "AKI risk in heat stroke"}
+    - {name: "Serum electrolytes", loinc: "24323-8", reason: "Electrolyte derangement from dehydration"}
+    - {name: "Creatine kinase (CPK)", loinc: "2157-6", reason: "Rhabdomyolysis screen"}
+    - {name: "Liver function test", loinc: "24325-3", reason: "Heat-related hepatic injury check"}
+  cghs_code: null
+  pmjay_package: null
+
+- id: acute_diarrhoeal_disease_cholera
+  when: {symptoms_any: ["watery diarrhoea", "rice water stools", vomiting, dehydration], severity_max: 3, season: [monsoon, summer]}
+  specialty: [general_medicine, paediatrics, emergency_medicine]
+  labs:
+    - {name: "Stool routine and microscopy", loinc: "5787-7", reason: "Ova/cyst and pus cell screen"}
+    - {name: "Stool culture (Vibrio cholerae)", loinc: "6463-4", reason: "Outbreak-pattern watery diarrhoea"}
+    - {name: "Serum electrolytes", loinc: "24323-8", reason: "Dehydration severity assessment"}
+  cghs_code: "CG-PATH-012"
+  pmjay_package: null
+
+- id: copd_biomass_exposure
+  when: {symptoms_any: ["chronic cough", breathlessness, wheeze, "chest tightness"], conditions_any: ["biomass fuel exposure", "chulha smoke exposure", smoker], severity_max: 4}
+  specialty: [general_medicine, pulmonology]
+  labs:
+    - {name: "Chest X-ray PA view", loinc: "36643-5", reason: "Hyperinflation / chronic changes on biomass-exposure COPD"}
+    - {name: "Spirometry", loinc: "19926-5", reason: "Confirms fixed airflow obstruction"}
+    - {name: "Pulse oximetry (SpO2)", loinc: "59408-5", reason: "Baseline oxygenation in COPD"}
+  cghs_code: "CG-PATH-COPD1"
+  pmjay_package: null
+
+- id: rheumatic_heart_disease
+  when: {symptoms_any: ["joint pain", "sore throat history", palpitations, breathlessness], conditions_any: ["recurrent sore throat", "rheumatic fever history"], severity_max: 4}
+  specialty: [general_medicine, cardiology, paediatrics]
+  labs:
+    - {name: "ASO titre (Anti-streptolysin O)", loinc: "5049-6", reason: "Recent streptococcal infection marker"}
+    - {name: "ESR", loinc: "4537-7", reason: "Inflammatory activity marker for rheumatic fever"}
+    - {name: "Echocardiogram referral", loinc: "34552-0", reason: "Valve involvement assessment -- refer to cardiology"}
+  cghs_code: "CG-CARD-RHD1"
+  pmjay_package: "HBP-CARD-001"
+
+- id: ckd_screening
+  when: {symptoms_any: [pedal edema, "swelling of legs", "reduced urine output", fatigue], conditions_any: [diabetes, hypertension, "chronic kidney disease"], severity_max: 4}
+  specialty: [general_medicine, nephrology]
+  labs:
+    - {name: "Serum creatinine", loinc: "2160-0", reason: "eGFR staging for CKD"}
+    - {name: "Urine albumin-creatinine ratio (ACR)", loinc: "14959-1", reason: "Early diabetic/hypertensive nephropathy marker"}
+    - {name: "Serum electrolytes", loinc: "24323-8", reason: "Electrolyte derangement in advanced CKD"}
+  cghs_code: "CG-PATH-CKD1"
+  pmjay_package: null
+
+- id: stroke_suspected_fast
+  when: {symptoms_any: ["facial droop", "arm weakness", "slurred speech", "sudden weakness one side", "sudden vision loss"], severity_max: 2}
+  specialty: [general_medicine, neurology, emergency_medicine]
+  labs:
+    - {name: "Random blood sugar (RBS)", loinc: "2345-7", reason: "Hypoglycaemia is a stroke mimic -- rule out first"}
+    - {name: "CBC with platelet count", loinc: "58410-2", reason: "Baseline before thrombolysis workup"}
+    - {name: "Coagulation profile (PT/aPTT/INR)", loinc: "34714-0", reason: "Thrombolysis eligibility check"}
+    - {name: "CT brain plain (emergency)", loinc: "24725-4", reason: "FAST-positive stroke needs urgent imaging"}
+  cghs_code: "CG-RAD-CT01"
+  pmjay_package: "HBP-NEURO-STROKE"
+
+- id: acs_chest_pain
+  when: {symptoms_any: ["chest pain", "chest heaviness", "chest pain with sweating", "left arm pain", "jaw pain with chest discomfort"], severity_max: 2}
+  specialty: [general_medicine, cardiology, emergency_medicine]
+  labs:
+    - {name: "Troponin I/T", loinc: "10839-9", reason: "Acute coronary syndrome biomarker"}
+    - {name: "ECG 12-lead", loinc: "11524-6", reason: "First-line ACS investigation"}
+    - {name: "Lipid profile", loinc: "57698-3", reason: "Cardiovascular risk stratification"}
+  cghs_code: "CG-CARD-ACS1"
+  pmjay_package: "HBP-CARD-002"
+
+- id: acute_severe_asthma
+  when: {symptoms_any: [wheeze, breathlessness, "cannot complete sentences", "chest tightness"], severity_max: 2}
+  specialty: [general_medicine, pulmonology, emergency_medicine, paediatrics]
+  labs:
+    - {name: "Pulse oximetry (SpO2)", loinc: "59408-5", reason: "Severity grading of acute asthma"}
+    - {name: "Arterial blood gas", loinc: "24336-0", reason: "CO2 retention in severe/life-threatening asthma"}
+    - {name: "Peak expiratory flow rate (PEFR)", loinc: "33452-4", reason: "Objective severity measure"}
+  cghs_code: null
+  pmjay_package: null
+
+- id: urinary_tract_infection
+  when: {symptoms_any: ["burning micturition", "frequent urination", "lower abdominal pain", "foul-smelling urine"], severity_max: 4}
+  specialty: [general_medicine, obstetrics_gynaecology, family_medicine]
+  labs:
+    - {name: "Urine routine", loinc: "5804-0", reason: "Pus cells / nitrites screen for UTI"}
+    - {name: "Urine culture and sensitivity", loinc: "630-4", reason: "Organism ID and antibiotic sensitivity"}
+  cghs_code: "CG-PATH-013"
+  pmjay_package: null
+
+- id: pneumonia_lower_respiratory
+  when: {symptoms_any: ["fever with cough", "productive cough", "chest pain on breathing", "fast breathing"], severity_max: 3}
+  specialty: [general_medicine, pulmonology, paediatrics, emergency_medicine]
+  labs:
+    - {name: "Chest X-ray PA view", loinc: "36643-5", reason: "Consolidation confirmation for pneumonia"}
+    - {name: "CBC with differential", loinc: "58410-2", reason: "Leucocytosis supports bacterial pneumonia"}
+    - {name: "Pulse oximetry (SpO2)", loinc: "59408-5", reason: "Hypoxia severity grading"}
+  cghs_code: "CG-RAD-CXR1"
+  pmjay_package: null
+
+- id: jaundice_hepatobiliary_workup
+  when: {symptoms_any: [jaundice, "yellowish discolouration of eyes", "clay-coloured stools", "dark urine"], severity_max: 3}
+  specialty: [general_medicine, gastroenterology]
+  labs:
+    - {name: "Liver function test", loinc: "24325-3", reason: "Hepatocellular vs obstructive pattern"}
+    - {name: "Ultrasound abdomen", loinc: "24869-0", reason: "Biliary obstruction / hepatomegaly assessment"}
+    - {name: "Hepatitis B and C screen", loinc: "5195-3", reason: "Viral hepatitis screen"}
+  cghs_code: "CG-PATH-011"
+  pmjay_package: null
+
+- id: seizure_disorder
+  when: {symptoms_any: [seizure, convulsion, "loss of consciousness with jerking", "tongue bite"], severity_max: 2}
+  specialty: [general_medicine, neurology, paediatrics, emergency_medicine]
+  labs:
+    - {name: "Random blood sugar (RBS)", loinc: "2345-7", reason: "Hypoglycaemic seizure must be excluded first"}
+    - {name: "Serum electrolytes", loinc: "24323-8", reason: "Electrolyte-driven seizure causes"}
+    - {name: "Serum calcium", loinc: "17861-6", reason: "Hypocalcaemic seizure screen, common in children"}
+  cghs_code: null
+  pmjay_package: null
+
+- id: severe_acute_malnutrition_child
+  when: {symptoms_any: [edema, "visible severe wasting", "poor weight gain"], conditions_any: ["severe acute malnutrition", sam], age_max: 5}
+  specialty: [paediatrics, general_medicine]
+  labs:
+    - {name: "Random blood sugar (RBS)", loinc: "2345-7", reason: "Hypoglycaemia common complication of SAM"}
+    - {name: "Haemoglobin", loinc: "718-7", reason: "Severe anaemia screen per NRC/CMAM protocol"}
+    - {name: "Serum electrolytes", loinc: "24323-8", reason: "Electrolyte imbalance in SAM with complications"}
+  cghs_code: null
+  pmjay_package: "HBP-PAED-SAM1"
+
+- id: neonatal_sepsis_screen
+  when: {symptoms_any: ["poor feeding", "not feeding", lethargy, "fast breathing in newborn", "temperature instability"], age_max: 0}
+  specialty: [paediatrics, general_medicine, emergency_medicine]
+  labs:
+    - {name: "CBC with differential", loinc: "58410-2", reason: "Sepsis screen -- total leucocyte count / I:T ratio"}
+    - {name: "C-reactive protein (CRP)", loinc: "1988-5", reason: "Sepsis marker in neonates"}
+    - {name: "Blood culture", loinc: "600-7", reason: "Confirmatory test before antibiotics per FBNC protocol"}
+  cghs_code: null
+  pmjay_package: "HBP-PAED-SEPSIS1"
+
+- id: rabies_category3_animal_bite
+  when: {symptoms_any: ["dog bite", "animal bite", "bite with bleeding", "multiple bites", "bite on face or hands"], severity_max: 3}
+  specialty: [general_medicine, emergency_medicine, general_surgery]
+  labs:
+    - {name: "Wound swab culture", loinc: "625-4", reason: "Secondary bacterial infection check for category III bite"}
+    - {name: "Baseline liver function test", loinc: "24325-3", reason: "Baseline before rabies immunoglobulin/ARV course"}
+  cghs_code: null
+  pmjay_package: null
+
+- id: covid_ili_screen
+  when: {symptoms_any: [fever, cough, "loss of smell", "loss of taste", "sore throat", breathlessness], severity_max: 4}
+  specialty: [general_medicine, pulmonology, family_medicine]
+  labs:
+    - {name: "RT-PCR SARS-CoV-2", loinc: "94500-6", reason: "ILI/SARI surveillance case definition test"}
+    - {name: "Pulse oximetry (SpO2)", loinc: "59408-5", reason: "Silent hypoxia screen"}
+    - {name: "CBC with differential", loinc: "58410-2", reason: "Lymphopenia pattern support"}
+  cghs_code: null
+  pmjay_package: null
+
+- id: dermatology_fungal_infection
+  when: {symptoms_any: ["itchy rash", "ring-shaped rash", "skin patches", "scaling skin"], severity_max: 5}
+  specialty: [dermatology, general_medicine]
+  labs:
+    - {name: "KOH mount for fungal hyphae", loinc: "18470-8", reason: "Confirms dermatophyte infection"}
+  cghs_code: null
+  pmjay_package: null
+
+- id: general_baseline
+  fallback: true
+  when: {}
+  specialty: []
+  labs:
+    - {name: "CBC", loinc: "58410-2", reason: "General baseline screen"}
+    - {name: "Random blood sugar (RBS)", loinc: "2345-7", reason: "General baseline screen"}
+    - {name: "Urine routine", loinc: "5804-0", reason: "General baseline screen"}
+  cghs_code: "CG-PATH-BASE1"
+  pmjay_package: null

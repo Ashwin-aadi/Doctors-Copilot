@@ -26,9 +26,11 @@ smoke:     ## run the smoke test harness
 	./scripts/smoke.sh
 seed:      ## seed the database with demo data
 	cd backend && python ../scripts/seed.py
+kb:        ## build ml/data/interactions.db from the bundled seed csv
+	cd backend && python -c "from app.ml.kb_build import build; print(build(use_network=False))"
 guard:     ## run the footprint guard
 	./scripts/guard.sh
 prod-up:   ## build and start the production stack
 	docker compose -f infra/docker-compose.prod.yml up -d --build
 
-.PHONY: up down logs install migrate revision api web worker test lint openapi smoke seed guard prod-up
+.PHONY: up down logs install migrate revision api web worker test lint openapi smoke seed kb guard prod-up

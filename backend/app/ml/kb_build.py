@@ -55,6 +55,16 @@ CREATE TABLE IF NOT EXISTS contraindications(rxcui TEXT, ingredient TEXT, condit
 CREATE INDEX IF NOT EXISTS ix_pair ON interactions(rxcui_a, rxcui_b);
 """
 
+# Populated separately after label_sections is filled -- an FTS5 virtual
+# table can't be created via executescript alongside regular DDL if FTS5
+# support is absent, so its creation is wrapped and best-effort (V3.3 BM25
+# retrieval over indications_and_usage falls back to a LIKE scan if this
+# doesn't exist).
+INDICATIONS_FTS_DDL = """
+DROP TABLE IF EXISTS indications_fts;
+CREATE VIRTUAL TABLE indications_fts USING fts5(ingredient, text);
+"""
+
 # ---------------------------------------------------------------------------
 # Pharmacology classes and class-pair interaction rules (authored).
 # Each rule expands into every (member_a, member_b) pair across the two
@@ -370,7 +380,7 @@ def fetch_openfda_labels(ingredients: list[str], client: httpx.Client | None) ->
                 continue
             label = results[0]
             url = f"https://api.fda.gov/drug/label.json?search=openfda.generic_name:{ingredient}"
-            for section in ("drug_interactions", "contraindications"):
+            for section in ("drug_interactions", "contraindications", "indications_and_usage", "warnings"):
                 text_list = label.get(section)
                 if text_list:
                     rows.append(
@@ -437,7 +447,17 @@ def build(*, use_network: bool = True) -> dict[str, int]:
 
     openfda_targets = sorted({"warfarin", "aspirin", "metformin", "digoxin", "lithium", "phenytoin",
                                "methotrexate", "simvastatin", "clopidogrel", "ibuprofen", "spironolactone",
-                               "amiodarone", "cyclosporine", "carbamazepine", "rifampicin"})
+                               "amiodarone", "cyclosporine", "carbamazepine", "rifampicin",
+                               # V3.3 medication-suggestion candidates: broadened so
+                               # `indications_and_usage`/`warnings` text exists for common
+                               # India-relevant conditions (diabetes, hypertension,
+                               # infection, pain/fever, asthma, GERD, allergy, TB, depression).
+                               "glimepiride", "glyburide", "insulin", "sitagliptin",
+                               "amlodipine", "losartan", "enalapril", "atenolol",
+                               "amoxicillin", "azithromycin", "ciprofloxacin", "doxycycline",
+                               "paracetamol", "diclofenac", "salbutamol", "budesonide",
+                               "omeprazole", "ranitidine", "cetirizine", "loratadine",
+                               "isoniazid", "sertraline", "fluoxetine", "atorvastatin"})
     label_rows = fetch_openfda_labels(openfda_targets, client)
 
     if client is not None:
@@ -494,6 +514,16 @@ def build(*, use_network: bool = True) -> dict[str, int]:
                 )
 
         conn.commit()
+
+        try:
+            conn.executescript(INDICATIONS_FTS_DDL)
+            conn.execute(
+                "INSERT INTO indications_fts(ingredient, text) "
+                "SELECT ingredient, text FROM label_sections WHERE section='indications_and_usage'"
+            )
+            conn.commit()
+        except sqlite3.OperationalError as exc:  # noqa: BLE001 -- FTS5 unavailable in this sqlite build
+            logger.warning("kb_build.fts5_unavailable", error=str(exc))
 
         counts = {
             "interactions": conn.execute("SELECT COUNT(*) FROM interactions").fetchone()[0],

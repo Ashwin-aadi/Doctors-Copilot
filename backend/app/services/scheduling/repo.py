@@ -210,3 +210,17 @@ async def clinics_by_ids(ids: list[UUID]) -> dict[UUID, ClinicRow]:
     async with SessionLocal() as session:
         result = await session.execute(stmt)
         return {c.id: _clinic_row(c) for c in result.scalars().all()}
+
+
+async def all_clinics() -> list[ClinicRow]:
+    """Every clinic, batched in one round trip. N2.3's referral-ladder check
+    needs to search by facility capability independent of which doctors
+    happen to be rostered today -- `rank_doctors` is doctor-availability
+    driven and would wrongly suppress a valid transfer suggestion for a
+    capable-but-understaffed facility, so escalation.py searches clinics
+    directly instead of going through the optimizer.
+    """
+    stmt = select(Clinic).order_by(Clinic.id)
+    async with SessionLocal() as session:
+        result = await session.execute(stmt)
+        return [_clinic_row(c) for c in result.scalars().all()]

@@ -7,11 +7,9 @@ themselves; `GET /files/{id}/raw` streams the actual content given a valid
 `app.services.storage.get_file_object_for_requester`.
 """
 
-from __future__ import annotations
-
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, File, Form, Request, UploadFile
+from fastapi import APIRouter, Depends, File, Form, Request, Response, UploadFile
 from fastapi.responses import StreamingResponse
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -59,6 +57,11 @@ async def _authorize_upload(db: AsyncSession, user: CurrentUser, patient_id: UUI
 @limiter.limit("10/minute")
 async def upload_file(
     request: Request,
+    # `@limiter.limit` is configured with headers_enabled=True, so slowapi
+    # injects the X-RateLimit-* headers into a `response` parameter after the
+    # handler returns and raises if the endpoint does not declare one -- the
+    # same signature `auth.py`'s rate-limited routes already carry.
+    response: Response,
     patient_id: UUID = Form(...),
     file: UploadFile = File(...),
     user: CurrentUser = Depends(get_current_user),

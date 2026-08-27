@@ -13,6 +13,10 @@ import { ResetPasswordContainer } from "../features/auth/ResetPasswordContainer"
 import { OnboardingContainer } from "../features/onboarding/OnboardingContainer";
 import { TriageContainer } from "../features/triage/TriageContainer";
 import { BookingContainer } from "../features/booking/BookingContainer";
+import { CopilotContainer } from "../features/copilot/CopilotContainer";
+import { QueueBoardContainer } from "../features/queue/QueueBoardContainer";
+import { UploadContainer } from "../features/documents/UploadContainer";
+import { LabOrderApprovalContainer } from "../features/approvals/LabOrderApprovalContainer";
 import { PreviewPage } from "../pages/preview/PreviewPage";
 
 const isDev = import.meta.env.DEV;
@@ -97,7 +101,11 @@ export function AppRouter() {
             path="/doctor/patient/:id"
             element={
               <ProtectedRoute roles={DOCTOR_STAFF_ROLES}>
-                <PlaceholderPage label="Patient chart" />
+                {/* Interim: UploadContainer wired directly here for CP2.
+                    A future PatientChartContainer will own this route and
+                    compose the upload pipeline alongside the rest of the
+                    patient chart. */}
+                <UploadContainer />
               </ProtectedRoute>
             }
           />
@@ -105,7 +113,10 @@ export function AppRouter() {
             path="/doctor/visit/:id"
             element={
               <ProtectedRoute roles={DOCTOR_STAFF_ROLES}>
-                <PlaceholderPage label="Doctor visit" />
+                {/* Interim: CopilotContainer wired directly here for CP2.
+                    B3.5's VisitContainer will own this route and compose the copilot
+                    panel alongside the stepper and other visit surfaces. */}
+                <CopilotContainer />
               </ProtectedRoute>
             }
           />
@@ -113,7 +124,7 @@ export function AppRouter() {
             path={ROUTES.doctorQueue}
             element={
               <ProtectedRoute roles={DOCTOR_STAFF_ROLES}>
-                <PlaceholderPage label="Queue" />
+                <QueueBoardContainer />
               </ProtectedRoute>
             }
           />
@@ -121,7 +132,7 @@ export function AppRouter() {
             path="/doctor/lab-order/:id"
             element={
               <ProtectedRoute roles={DOCTOR_STAFF_ROLES}>
-                <PlaceholderPage label="Lab order" />
+                <LabOrderApprovalContainer />
               </ProtectedRoute>
             }
           />

@@ -3,7 +3,7 @@ import { useMutation } from "@tanstack/react-query";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { LoginPage, type LoginValues } from "../../pages/auth/LoginPage";
-import { login } from "../../lib/api/endpoints/auth";
+import { login, me, mapMeToAuthUser } from "../../lib/api/endpoints/auth";
 import { ApiError } from "../../lib/api/errors";
 import { useAuthStore } from "../../store/auth";
 import { useCaptcha } from "../../hooks/useCaptcha";
@@ -28,7 +28,7 @@ export function LoginContainer() {
       if (!captcha.token) throw new Error("captcha token missing");
       return login(values, captcha.token);
     },
-    onSuccess: (res) => {
+    onSuccess: async (res) => {
       setSession(
         {
           id: res.user.id,
@@ -38,6 +38,12 @@ export function LoginContainer() {
         },
         res.access_token,
       );
+      try {
+        const profile = await me();
+        setSession(mapMeToAuthUser(profile), res.access_token);
+      } catch {
+        // best-effort profile hydration; base session from login still stands
+      }
       const next = params.get("next");
       navigate(next && next.startsWith("/") ? next : homeForRole(res.user.role), { replace: true });
     },

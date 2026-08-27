@@ -6,6 +6,8 @@ import { useTheme } from "../hooks/useTheme";
 import { changeLanguage, type SupportedLanguage } from "../lib/i18n";
 import { Button } from "../components/ui/Button";
 import { ErrorBoundary } from "./ErrorBoundary";
+import { Nav } from "./Nav";
+import { NotificationsContainer } from "../features/notifications/NotificationsContainer";
 
 export function RootLayout() {
   const { t, i18n } = useTranslation();
@@ -24,11 +26,13 @@ export function RootLayout() {
           <Stethoscope className="h-5 w-5 text-primary" aria-hidden="true" />
           {t("app.name")}
         </Link>
+        {isAuthenticated && user && <Nav />}
         <div className="flex items-center gap-3 text-sm">
           <span className="hidden text-fg-muted sm:inline">{t("nav.emergency")}</span>
           <Button variant="ghost" size="sm" leftIcon={<Globe className="h-4 w-4" />} onClick={toggleLanguage}>
             {i18n.language === "hi" ? "EN" : "हि"}
           </Button>
+          {isAuthenticated && user && <NotificationsContainer />}
           {isAuthenticated && user && (
             <Button variant="ghost" size="sm" onClick={logout}>
               {t("nav.logout")}

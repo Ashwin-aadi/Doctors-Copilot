@@ -250,6 +250,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/files/{file_id}/raw": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get File Raw */
+        get: operations["get_file_raw_api_v1_files__file_id__raw_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/approvals/lab-order/{lab_order_id}": {
         parameters: {
             query?: never;
@@ -448,8 +465,8 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Patient Chat */
-        post: operations["patient_chat_api_v1_chat_patient_post"];
+        /** Patient Chat Route */
+        post: operations["patient_chat_route_api_v1_chat_patient_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -860,6 +877,33 @@ export interface paths {
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        /** AdvanceIn */
+        AdvanceIn: {
+            target?: components["schemas"]["VisitState"] | null;
+        };
+        /** AllergenEntity */
+        AllergenEntity: {
+            /** Text */
+            text: string;
+            /** Start */
+            start: number;
+            /** End */
+            end: number;
+            /** Generic Name */
+            generic_name: string;
+            /** Rxcui */
+            rxcui?: string | null;
+            /**
+             * Negated
+             * @default false
+             */
+            negated: boolean;
+            /**
+             * Confidence
+             * @default 0.8
+             */
+            confidence: number;
+        };
         /** AllergyConflict */
         AllergyConflict: {
             /** Allergen */
@@ -899,6 +943,8 @@ export interface components {
              * @default 4
              */
             severity_esi: number;
+            /** Triage Session Id */
+            triage_session_id?: string | null;
         };
         /** AppointmentPatch */
         AppointmentPatch: {
@@ -908,6 +954,19 @@ export interface components {
             slot_start?: string | null;
             /** Slot End */
             slot_end?: string | null;
+        };
+        /** Body_upload_file_api_v1_files_post */
+        Body_upload_file_api_v1_files_post: {
+            /**
+             * Patient Id
+             * Format: uuid
+             */
+            patient_id: string;
+            /**
+             * File
+             * Format: binary
+             */
+            file: string;
         };
         /** BriefIn */
         BriefIn: {
@@ -931,6 +990,64 @@ export interface components {
             snippet: string;
             /** Published */
             published?: string | null;
+        };
+        /**
+         * ClinicalEntry
+         * @description One condition, allergy or medication on a patient record.
+         *
+         *     Stored as JSONB, so both shapes exist in the wild: the flat `"penicillin"`
+         *     an intake form produces, and the structured `{"name": "penicillin",
+         *     "severity": "moderate"}` the knowledge graph and the copilot brief need. A
+         *     bare string is coerced into `{"name": ...}` on the way in, so neither
+         *     producer breaks and every consumer sees one shape.
+         */
+        ClinicalEntry: {
+            /** Name */
+            name: string;
+            /**
+             * Since
+             * @description ISO date the condition was recorded
+             */
+            since?: string | null;
+            /**
+             * Severity
+             * @description Allergy severity, when known
+             */
+            severity?: string | null;
+            /**
+             * Dose
+             * @description e.g. '500mg BD'
+             */
+            dose?: string | null;
+            /**
+             * Rxcui
+             * @description RxNorm concept id, when mapped
+             */
+            rxcui?: string | null;
+        };
+        /** ConditionEntity */
+        ConditionEntity: {
+            /** Text */
+            text: string;
+            /** Start */
+            start: number;
+            /** End */
+            end: number;
+            /**
+             * Negated
+             * @default false
+             */
+            negated: boolean;
+            /**
+             * Historical
+             * @default false
+             */
+            historical: boolean;
+            /**
+             * Confidence
+             * @default 0.8
+             */
+            confidence: number;
         };
         /** ConsentOut */
         ConsentOut: {
@@ -1129,6 +1246,72 @@ export interface components {
             /** Error */
             error?: string | null;
         };
+        /** DoseInfo */
+        DoseInfo: {
+            /** Amount */
+            amount?: number | null;
+            /** Unit */
+            unit?: string | null;
+            /** Frequency */
+            frequency?: string | null;
+        };
+        /** DrugEntity */
+        DrugEntity: {
+            /** Text */
+            text: string;
+            /** Start */
+            start: number;
+            /** End */
+            end: number;
+            /** Generic Name */
+            generic_name: string;
+            /** Rxcui */
+            rxcui?: string | null;
+            dose?: components["schemas"]["DoseInfo"] | null;
+            /**
+             * Negated
+             * @default false
+             */
+            negated: boolean;
+            /**
+             * Historical
+             * @default false
+             */
+            historical: boolean;
+            /**
+             * Confidence
+             * @default 0.8
+             */
+            confidence: number;
+        };
+        /** EntityBundle */
+        EntityBundle: {
+            /**
+             * Drugs
+             * @default []
+             */
+            drugs: components["schemas"]["DrugEntity"][];
+            /**
+             * Conditions
+             * @default []
+             */
+            conditions: components["schemas"]["ConditionEntity"][];
+            /**
+             * Allergens
+             * @default []
+             */
+            allergens: components["schemas"]["AllergenEntity"][];
+            /**
+             * Ner Tier
+             * @default unavailable
+             */
+            ner_tier: string;
+        };
+        /** EntityRequest */
+        EntityRequest: {
+            /** Text */
+            text: string;
+        };
         /** EscalateBody */
         EscalateBody: {
             /** Reason */
@@ -1174,6 +1357,96 @@ export interface components {
              * Format: date-time
              */
             generated_at: string;
+        };
+        /** InteractionRequest */
+        InteractionRequest: {
+            /**
+             * Medications
+             * @default []
+             */
+            medications: string[];
+            /**
+             * Allergies
+             * @default []
+             */
+            allergies: string[];
+            /**
+             * Conditions
+             * @default []
+             */
+            conditions: string[];
+        };
+        /** LabFlagInput */
+        LabFlagInput: {
+            /** Test Name */
+            test_name: string;
+            /** Normalized Name */
+            normalized_name: string;
+            /** Value */
+            value: number | string;
+            /** Unit */
+            unit?: string | null;
+            /** Ref Low */
+            ref_low?: number | null;
+            /** Ref High */
+            ref_high?: number | null;
+            /**
+             * Confidence
+             * @default 1
+             */
+            confidence: number;
+            /**
+             * Page
+             * @default 1
+             */
+            page: number;
+            /** Observed At */
+            observed_at?: string | null;
+        };
+        /** LabFlagRequest */
+        LabFlagRequest: {
+            /**
+             * Patient Id
+             * Format: uuid
+             */
+            patient_id: string;
+            /** Results */
+            results: components["schemas"]["LabFlagInput"][];
+        };
+        /**
+         * LabResultExtended
+         * @description Additive subclass -- do not fold fields back into Ashwin's LabResultOut.
+         */
+        LabResultExtended: {
+            /** Test Name */
+            test_name: string;
+            /** Normalized Name */
+            normalized_name: string;
+            /** Value */
+            value: number | string;
+            /** Unit */
+            unit?: string | null;
+            /** Ref Low */
+            ref_low?: number | null;
+            /** Ref High */
+            ref_high?: number | null;
+            /**
+             * Flag
+             * @default unknown
+             * @enum {string}
+             */
+            flag: "critical" | "high" | "low" | "normal" | "unknown";
+            /** Confidence */
+            confidence: number;
+            /**
+             * Page
+             * @default 1
+             */
+            page: number;
+            /** Bbox */
+            bbox?: number[] | null;
+            /** Trend */
+            trend?: ("rising" | "falling" | "stable") | null;
         };
         /** LabResultOut */
         LabResultOut: {
@@ -1249,6 +1522,18 @@ export interface components {
              */
             mrp_inr?: number | null;
         };
+        /** PatientChatIn */
+        PatientChatIn: {
+            /** Message */
+            message: string;
+            /** Patient Id */
+            patient_id?: string | null;
+            /**
+             * History
+             * @default []
+             */
+            history: Record<string, never>[];
+        };
         /** PatientIn */
         PatientIn: {
             /** Name */
@@ -1282,17 +1567,17 @@ export interface components {
              * Conditions
              * @default []
              */
-            conditions: string[];
+            conditions: components["schemas"]["ClinicalEntry"][];
             /**
              * Allergies
              * @default []
              */
-            allergies: string[];
+            allergies: components["schemas"]["ClinicalEntry"][];
             /**
              * Medications
              * @default []
              */
-            medications: string[];
+            medications: components["schemas"]["ClinicalEntry"][];
         };
         /** PatientOut */
         PatientOut: {
@@ -1322,19 +1607,27 @@ export interface components {
              * Conditions
              * @default []
              */
-            conditions: string[];
+            conditions: components["schemas"]["ClinicalEntry"][];
             /**
              * Allergies
              * @default []
              */
-            allergies: string[];
+            allergies: components["schemas"]["ClinicalEntry"][];
             /**
              * Medications
              * @default []
              */
-            medications: string[];
+            medications: components["schemas"]["ClinicalEntry"][];
             /** Consent At */
             consent_at?: string | null;
+        };
+        /** RecommendIn */
+        RecommendIn: {
+            /**
+             * Visit Id
+             * Format: uuid
+             */
+            visit_id: string;
         };
         /** RegisterRequest */
         RegisterRequest: {
@@ -1733,7 +2026,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["TokenResponse"];
+                    "application/json": unknown;
                 };
             };
             /** @description Validation Error */
@@ -2155,11 +2448,18 @@ export interface operations {
     upload_file_api_v1_files_post: {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                "x-captcha-token"?: string | null;
+                authorization?: string | null;
+            };
             path?: never;
             cookie?: never;
         };
-        requestBody?: never;
+        requestBody: {
+            content: {
+                "multipart/form-data": components["schemas"]["Body_upload_file_api_v1_files_post"];
+            };
+        };
         responses: {
             /** @description Successful Response */
             200: {
@@ -2170,12 +2470,23 @@ export interface operations {
                     "application/json": Record<string, never>;
                 };
             };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
         };
     };
     get_file_api_v1_files__file_id__get: {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                authorization?: string | null;
+            };
             path: {
                 file_id: string;
             };
@@ -2203,10 +2514,48 @@ export interface operations {
             };
         };
     };
+    get_file_raw_api_v1_files__file_id__raw_get: {
+        parameters: {
+            query: {
+                sig: string;
+            };
+            header?: {
+                authorization?: string | null;
+            };
+            path: {
+                file_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     approve_lab_order_api_v1_approvals_lab_order__lab_order_id__post: {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                authorization?: string | null;
+                "x-captcha-token"?: string | null;
+            };
             path: {
                 lab_order_id: string;
             };
@@ -2237,7 +2586,10 @@ export interface operations {
     approve_prescription_api_v1_approvals_prescription__prescription_id__post: {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                authorization?: string | null;
+                "x-captcha-token"?: string | null;
+            };
             path: {
                 prescription_id: string;
             };
@@ -2267,8 +2619,18 @@ export interface operations {
     };
     list_audit_api_v1_audit_get: {
         parameters: {
-            query?: never;
-            header?: never;
+            query?: {
+                entity?: string | null;
+                entity_id?: string | null;
+                actor_id?: string | null;
+                from?: string | null;
+                to?: string | null;
+                limit?: number;
+                offset?: number;
+            };
+            header?: {
+                authorization?: string | null;
+            };
             path?: never;
             cookie?: never;
         };
@@ -2280,7 +2642,16 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": unknown[];
+                    "application/json": Record<string, never>[];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };
@@ -2556,14 +2927,20 @@ export interface operations {
             };
         };
     };
-    patient_chat_api_v1_chat_patient_post: {
+    patient_chat_route_api_v1_chat_patient_post: {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                authorization?: string | null;
+            };
             path?: never;
             cookie?: never;
         };
-        requestBody?: never;
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PatientChatIn"];
+            };
+        };
         responses: {
             /** @description Successful Response */
             200: {
@@ -2572,6 +2949,15 @@ export interface operations {
                 };
                 content: {
                     "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };
@@ -2680,7 +3066,9 @@ export interface operations {
     get_visit_api_v1_visits__visit_id__get: {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                authorization?: string | null;
+            };
             path: {
                 visit_id: string;
             };
@@ -2711,13 +3099,19 @@ export interface operations {
     advance_visit_api_v1_visits__visit_id__advance_post: {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                authorization?: string | null;
+            };
             path: {
                 visit_id: string;
             };
             cookie?: never;
         };
-        requestBody?: never;
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["AdvanceIn"] | null;
+            };
+        };
         responses: {
             /** @description Successful Response */
             200: {
@@ -2806,11 +3200,17 @@ export interface operations {
     extract_entities_api_v1_ml_entities_post: {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                authorization?: string | null;
+            };
             path?: never;
             cookie?: never;
         };
-        requestBody?: never;
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["EntityRequest"];
+            };
+        };
         responses: {
             /** @description Successful Response */
             200: {
@@ -2818,7 +3218,16 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": Record<string, never>;
+                    "application/json": components["schemas"]["EntityBundle"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };
@@ -2826,11 +3235,17 @@ export interface operations {
     check_interactions_api_v1_ml_interactions_post: {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                authorization?: string | null;
+            };
             path?: never;
             cookie?: never;
         };
-        requestBody?: never;
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["InteractionRequest"];
+            };
+        };
         responses: {
             /** @description Successful Response */
             200: {
@@ -2841,16 +3256,31 @@ export interface operations {
                     "application/json": components["schemas"]["InteractionReport"];
                 };
             };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
         };
     };
     flag_labs_api_v1_ml_labs_flag_post: {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                authorization?: string | null;
+            };
             path?: never;
             cookie?: never;
         };
-        requestBody?: never;
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["LabFlagRequest"];
+            };
+        };
         responses: {
             /** @description Successful Response */
             200: {
@@ -2858,7 +3288,16 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": unknown[];
+                    "application/json": components["schemas"]["LabResultExtended"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };
@@ -3209,11 +3648,17 @@ export interface operations {
     recommend_lab_order_api_v1_lab_orders_recommend_post: {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                authorization?: string | null;
+            };
             path?: never;
             cookie?: never;
         };
-        requestBody?: never;
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RecommendIn"];
+            };
+        };
         responses: {
             /** @description Successful Response */
             200: {
@@ -3224,12 +3669,23 @@ export interface operations {
                     "application/json": Record<string, never>;
                 };
             };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
         };
     };
     get_lab_order_api_v1_lab_orders__lab_order_id__get: {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                authorization?: string | null;
+            };
             path: {
                 lab_order_id: string;
             };
@@ -3260,9 +3716,13 @@ export interface operations {
     generic_lookup_api_v1_medications_generic_get: {
         parameters: {
             query?: {
+                name?: string | null;
+                rxcui?: string | null;
                 brand?: string | null;
             };
-            header?: never;
+            header?: {
+                authorization?: string | null;
+            };
             path?: never;
             cookie?: never;
         };

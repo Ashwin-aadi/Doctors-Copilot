@@ -29,6 +29,17 @@ async def main():
 asyncio.run(main())
 " 2>&1 | tail -5
 
+echo "=== smoke: interaction kb (skips if already built) ==="
+python -c "
+from app.ml.kb_build import build
+from app.ml.safety import DB_PATH
+
+if not DB_PATH.exists():
+    print(build(use_network=False))
+else:
+    print('interactions.db already built')
+" 2>&1 | tail -3
+
 echo "=== smoke: triage flow ==="
 SID=$(curl -sf -XPOST "$BASE/api/v1/triage/session" -H 'Content-Type: application/json' -d '{}' | jq -r .session_id)
 curl -sf -XPOST "$BASE/api/v1/triage/$SID/message" -H 'Content-Type: application/json' \
