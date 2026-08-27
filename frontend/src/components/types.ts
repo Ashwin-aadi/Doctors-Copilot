@@ -155,3 +155,98 @@ export interface LabResultRow extends LabResultOut {
   rawValue?: string | number | null;
   rawRange?: string | null;
 }
+
+export type Contraindication = components["schemas"]["Contraindication"];
+export type MedCandidate = components["schemas"]["MedCandidate"];
+
+/**
+ * CDSCO drug schedules that carry a statutory dispensing warning. Schedule H
+ * and H1 are prescription-only; H1 additionally requires the pharmacist to
+ * keep a register. X is the narcotic/psychotropic tier.
+ */
+export type DrugSchedule = "H" | "H1" | "X";
+
+/**
+ * One option in the generic-substitution comparison, exactly as
+ * `GET /api/v1/medications/substitutions` returns it (camel-cased at the API
+ * client boundary). `janAushadhiCode` being non-null is what makes a product a
+ * Jan Aushadhi Kendra line -- there is no separate boolean.
+ */
+export interface GenericOption {
+  name: string;
+  rxcui: string | null;
+  form: string | null;
+  strength: string | null;
+  janAushadhiCode: string | null;
+  mrpInr: number | null;
+  priceInr: number | null;
+  nppaCeilingInr: number | null;
+  savingsPct: number | null;
+}
+
+/**
+ * Why a cheaper equivalent may NOT be swapped in. The backend severity
+ * vocabulary is clinical (`allergy`, `contraindication`, `schedule_h1`,
+ * `not_equivalent`) and overlaps the interaction vocabulary at `major`; accept
+ * both so the component works against either producer.
+ */
+export type BlockedSubstitutionSeverity =
+  | "allergy"
+  | "contraindication"
+  | "schedule_h1"
+  | "not_equivalent"
+  | "major"
+  | "moderate"
+  | "minor";
+
+/**
+ * A prescription line as an Indian prescription actually reads: generic name
+ * first, brand in brackets, dosing written `1-0-1 after food × 5 days`.
+ * Extends the base item rather than replacing it so already-built screens keep
+ * compiling.
+ */
+export interface PrescriptionLine extends PrescriptionItem {
+  genericName?: string;
+  brandName?: string | null;
+  timing?: string | null;
+  nlemListed?: boolean;
+  janAushadhiAvailable?: boolean;
+  mrpInr?: number | null;
+  schedule?: DrugSchedule | null;
+}
+
+/** One entry on the patient portal's vertical history timeline. */
+export interface TimelineEntry {
+  id: string;
+  kind: "encounter" | "report" | "prescription" | "appointment";
+  title: string;
+  subtitle?: string;
+  occurredAt: string;
+  triageColour?: TriageColour;
+  severityEsi?: number;
+  detail?: string;
+}
+
+/** A historical value for a single test, used by the trend sparkline. */
+export interface LabTrendPoint {
+  observedAt: string;
+  value: number;
+}
+
+/** Portal appointment card data: doctor, clinic, fee, live queue position. */
+export interface PortalAppointment {
+  id: string;
+  doctorName: string;
+  nmcRegNo: string;
+  specialty: string;
+  clinicName: string;
+  area: string;
+  city: string;
+  slotStart: string;
+  feeInr: number;
+  pmjayEligible?: boolean;
+  queuePosition?: number | null;
+  estimatedWaitMinutes?: number | null;
+  triageColour?: TriageColour;
+  severityEsi?: number;
+}
