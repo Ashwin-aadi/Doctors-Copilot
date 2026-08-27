@@ -1,5 +1,5 @@
 from datetime import UTC, datetime
-from uuid import UUID, uuid4
+from uuid import UUID
 
 from fastapi import APIRouter, Depends
 from pydantic import BaseModel
@@ -10,8 +10,9 @@ from app.core.errors import ApiError
 from app.db.models.scheduling import Doctor, QueueEntry
 from app.db.session import SessionLocal
 from app.services.queueing.escalation import escalate_with_referral
-from app.services.queueing.pq import enqueue, pop_next, snapshot
+from app.services.queueing.pq import pop_next, snapshot
 from app.services.queueing.schemas import QueueEntryOut
+from app.services.scheduling import lifecycle
 
 router = APIRouter(prefix="/queue", tags=["queue"])
 
@@ -21,6 +22,9 @@ class WalkInCreate(BaseModel):
     patient_id: UUID
     doctor_id: UUID | None = None
     severity_esi: int = 4
+    # Statutory priority group (triage_india.yaml), e.g. a third-trimester
+    # ANC patient or a senior citizen presenting at the registration counter.
+    priority_group: str | None = None
 
 
 class EscalateBody(BaseModel):
@@ -59,18 +63,17 @@ async def walk_in(
 ) -> QueueEntryOut:
     now = datetime.now(UTC)
     doctor_id = body.doctor_id or await _least_loaded_doctor(body.clinic_id)
-    entry = QueueEntry(
-        id=uuid4(),
-        appointment_id=None,
+    # N3.2: goes through lifecycle rather than pq.enqueue directly, so the
+    # OPD display board is republished for a walk-in exactly as it is for a
+    # cancellation or a reschedule.
+    return await lifecycle.walk_in(
+        clinic_id=body.clinic_id,
         patient_id=body.patient_id,
         doctor_id=doctor_id,
-        clinic_id=body.clinic_id,
         severity_esi=body.severity_esi,
-        emergency=False,
-        enqueued_at=now,
-        status="waiting",
+        priority_group=body.priority_group,
+        now=now,
     )
-    return await enqueue(entry, now=now)
 
 
 @router.post("/{queue_entry_id}/next", response_model=QueueEntryOut | None)

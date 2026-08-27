@@ -172,3 +172,133 @@ something stocked at a Jan Aushadhi Kendra. Two-layer cache: in-process
 Not yet run -- section 8 N5.2 (CP5) sweeps `optimizer.yaml`'s weight vector
 against the full clinic simulation and records the before/after table here.
 This draft only documents the CP1/CP2 defaults above.
+
+---
+
+# CP3 additions (N3.2 – N3.5)
+
+## `packs/optimizer.yaml` — travel bands (N3.3)
+
+Distance is scored through a band table, not a raw-kilometre curve. Eight
+kilometres across Chennai during OPD hours is most of an hour on a bus; eight
+kilometres on a rural road is a short ride. The CP1 curve `1/(1 + km/5)`
+scored both identically, which systematically over-rated distant urban
+clinics and under-rated reachable rural ones.
+
+Bands are half-open on the upper bound (`[lower, upper)`); the last band has
+`to: null` and is open-ended, so every distance lands in exactly one band.
+
+| Band (urban) | Score | Band (rural) | Score |
+|---|---|---|---|
+| 0–3 km | 1.00 | 0–5 km | 1.00 |
+| 3–8 km | 0.75 | 5–15 km | 0.80 |
+| 8–15 km | 0.45 | 15–30 km | 0.55 |
+| 15–25 km | 0.20 | 30–60 km | 0.30 |
+| 25 km+ | 0.05 | 60 km+ | 0.10 |
+
+`urban_facility_types: [dh, medical_college, private_hospital, private_clinic]`
+selects the curve. A PHC or CHC catchment is rural by definition. The rural
+curve is the fallback for an unknown facility type — under-rewarding a nearby
+urban clinic is a far smaller error than telling a rural patient a 25 km trip
+is nothing.
+
+**Source:** band boundaries follow the travel-time assumptions in NHM
+service-delivery norms for PHC/CHC catchment radii; the urban curve is
+calibrated to metro OPD-hour transit rather than to distance.
+
+## `packs/optimizer.yaml` — fairness and load sharing (N3.3)
+
+| Parameter | Value | Meaning | Tuning effect | Source |
+|---|---|---|---|---|
+| `max_patients_per_doctor_per_session` | 50 | hard filter: a doctor at this count is removed from the candidate set | lowering it spreads load sooner but can empty the candidate set on a busy day | ~6 min/patient across a 4-hour Indian OPD session is ~40 consults; 50 is the ceiling before consultation quality collapses |
+| `fairness_soft_threshold` | 0.8 | utilisation at which the soft penalty starts | lowering it spreads earlier at the cost of specialty/language/distance match | keeps the last fifth of a session spread rather than piled on one doctor |
+| `weights_fairness` | 0.06 | weight of the fairness term | raising it prioritises even load over match quality | project design |
+| `weights_load_sharing` | 0.05 | weight of the public-facility load-sharing term | raising it pushes cases from an over-subscribed DH toward a nearby CHC | referral-ladder policy: a DH should not absorb what a CHC can manage |
+| `load_sharing_facility_types` | phc, chc, sdh, dh | which facilities are balanced | private capacity is excluded — it is not a public resource to balance | — |
+
+The fairness curve is flat at 1.0 up to the soft threshold, then falls
+linearly to 0 at the hard cap. It is deliberately flat below the threshold:
+spreading load across equally idle doctors would trade away specialty,
+distance and language match for no benefit to anyone.
+
+## `packs/queue.yaml` — statutory priority is a real tier bonus (N3.5)
+
+`triage_india.yaml` declares `bonus: 1` for each statutory group, capped by
+`priority_group_max_bonus: 1`. Until CP3 that bonus was applied only as a
+same-tier tie-break, on the reasoning that at tier 3 the RED floor makes it a
+no-op. That is true at tier 3 — but it meant a pregnant or infant patient at
+tier 4 or 5 received no tier movement at all, which is not what the pack
+says. `pq._effective_severity` now subtracts the capped bonus and keeps the
+RED floor, so a statutory tier-4 patient becomes effective tier 3. The
+tie-break remains and is what still separates a statutory tier-3 patient from
+a plain one.
+
+**Source:** ANC priority under MoHFW/NHM norms; senior-citizen and Divyangjan
+priority under the respective statutory entitlements.
+
+## Simulation results — `scripts/simulate_clinic.py --seed 42` (N3.5)
+
+One district-hospital OPD day: 400 patients, two IST sessions, 70% walk-ins,
+12% no-shows on the booked share, a monsoon fever surge, and three injected
+emergencies (obstetric, polytrauma, snakebite).
+
+**Wait is measured as hall time** — time inside an open OPD session,
+excluding the 13:00–17:00 IST break. When the morning session closes the
+counter shuts and the patient goes home with their token; charging them those
+four hours reported ~400-minute waits for people who waited about 90 minutes,
+and turned the tier-4/5 threshold into a measure of the lunch break.
+
+### Staffing sweep, 65% morning surge, `aging_max_bonus: 2`
+
+| Doctors | Patients/doctor | YELLOW p95 | Tier-4/5 max | RED max | Utilisation stddev |
+|---|---|---|---|---|---|
+| 6 | 66.7 | 147.8 min | 162.2 min | 4.5 min | 0.004 |
+| 7 | 57.1 | 105.3 min | 113.6 min | 4.5 min | 0.015 |
+| **8** | **50.0** | **69.3 min** | **93.5 min** | **1.8 min** | **0.020** |
+| 9 | 44.4 | 8.4 min | 92.0 min | 1.3 min | 0.026 |
+
+400 patients across 6 doctors is 67 each — above this project's own
+`max_patients_per_doctor_per_session: 50`, which `rank_doctors` enforces as a
+hard filter. A 6-doctor 400-patient day is one the scheduler would refuse to
+book. Eight doctors is the staffing that cap implies, and is the configuration
+the CP3 thresholds are asserted at.
+
+### Aging trade-off, 8 doctors
+
+| `aging_max_bonus` | YELLOW p95 | Tier-4/5 max |
+|---|---|---|
+| 2 (chosen) | 69.3 min | **93.5 min** |
+| 1 | **57.2 min** | 168.6 min |
+
+The two thresholds trade directly against each other. `aging_max_bonus: 2`
+lets a long-waiting green reach effective tier 3, where the `-waited` term
+places it ahead of a freshly arrived yellow — which is precisely the CP1
+starvation requirement ("a GREEN waiting 100 minutes must outrank a
+just-arrived YELLOW"). Reducing the bonus fixes YELLOW p95 and breaks the
+tier-4/5 ceiling instead.
+
+**Chosen: `aging_max_bonus: 2`.** Protecting the longest-waiting patients is
+the stronger obligation, and a 69-minute YELLOW p95 against a 60-minute
+target is a smaller harm than a 169-minute tier-4/5 tail.
+
+### Thresholds against the CP3 gate
+
+| Threshold | Target | Measured (8 doctors) | |
+|---|---|---|---|
+| Double bookings | 0 | 0 | met |
+| Every RED seen within | 10 min | 1.8 min | met |
+| Tier-4/5 max wait | ≤ 150 min | 93.5 min | met |
+| Doctor utilisation stddev | < 0.15 | 0.020 | met |
+| Same seed reproduces the run | identical | identical | met |
+| Statutory patients above comparable median | small tail | 5 of 104 (4.8%) | met |
+| YELLOW p95 | < 60 min | 69.3 min | **not met** |
+
+The YELLOW figure is bounded at 75 min by
+`test_simulation.py::test_yellow_p95_regression_bound` so the gap cannot widen
+unnoticed. Nine doctors clears it outright.
+
+Statutory fairness is asserted as a rate, not as zero breaches: roughly half
+of any group sits above the median of its comparison set by construction, so
+a zero-breach target would only be satisfiable by a priority rule strong
+enough to starve everyone else. What is asserted is that each group's mean
+wait beats the ordinary-green mean and the above-median tail stays under 15%.

@@ -105,14 +105,36 @@ async def _facility_type(session: AsyncSession, clinic_id: UUID) -> str:
     return facility_type
 
 
-def _effective_severity(entry: QueueEntry, waited_minutes: float) -> int:
-    """Aging-only severity adjustment. The statutory priority-group bonus is
-    *not* folded in here -- at tier 3 (one step above RED) any numeric bonus
-    would either be a no-op after the RED-floor clamp below or, without the
-    clamp, illegally promote a non-emergency patient into RED. It is instead
-    a same-tier tie-break in `_sort_key`, which is what "a bounded bonus,
-    never above RED" actually cashes out to for a tier this close to the
-    boundary.
+def _statutory_bonus(priority_group: str | None) -> int:
+    """The pack's `bonus` for this group, capped at `priority_group_max_bonus`.
+
+    Zero for an unrecognised or absent group, so an unknown string can never
+    silently promote a patient.
+    """
+    if priority_group not in _PRIORITY_GROUP_IDS:
+        return 0
+    pack = _triage_pack()
+    cap = pack.get("priority_group_max_bonus", 1)
+    for group in pack.get("priority_groups", []):
+        if group["id"] == priority_group:
+            return min(int(group.get("bonus", 0)), int(cap))
+    return 0
+
+
+def _effective_severity(
+    entry: QueueEntry, waited_minutes: float, priority_group: str | None = None
+) -> int:
+    """Severity after aging and the statutory priority bonus, floored so that
+    neither can push a non-emergency patient into a RED tier.
+
+    Both bonuses are real tier improvements, not tie-breaks. The statutory
+    bonus used to be applied only as a same-tier tie-break in `_sort_key`,
+    on the reasoning that at tier 3 the RED floor makes it a no-op -- which
+    is true at tier 3, but meant a pregnant or infant patient at tier 4 or 5
+    got no tier movement at all, even though the pack declares `bonus: 1` for
+    them. At those tiers the bonus is meaningful and unclamped, so it is
+    applied here. The tie-break in `_sort_key` stays, and is what still
+    separates a statutory tier-3 patient from a plain tier-3 one.
     """
     pack = _queue_pack()
     aging_minutes = pack.get("aging_minutes", 45)
@@ -120,9 +142,10 @@ def _effective_severity(entry: QueueEntry, waited_minutes: float) -> int:
     emergency_max = pack.get("emergency_severity_max", 2)
 
     aging_bonus = min(aging_max_bonus, int(waited_minutes // aging_minutes)) if waited_minutes > 0 else 0
-    effective = entry.severity_esi - aging_bonus
+    effective = entry.severity_esi - aging_bonus - _statutory_bonus(priority_group)
     if not entry.emergency:
-        # aging may never push a non-emergency patient into RED
+        # neither aging nor statutory priority may push a non-emergency
+        # patient into RED
         effective = max(effective, emergency_max + 1)
     return max(1, effective)
 
@@ -231,7 +254,7 @@ async def snapshot(clinic_id: UUID, *, now: dt.datetime) -> list[QueueEntryOut]:
     for entry in entries:
         waited_minutes = max(0.0, (now - entry.enqueued_at).total_seconds() / 60)
         _token, priority_group = await _read_meta(entry.id)
-        effective_severity = _effective_severity(entry, waited_minutes)
+        effective_severity = _effective_severity(entry, waited_minutes, priority_group)
         scheduled_time = scheduled_by_appt.get(entry.appointment_id) if entry.appointment_id else None
         key = _sort_key(entry, waited_minutes, effective_severity, priority_group, scheduled_time)
         scored.append((key, entry, waited_minutes, effective_severity, priority_group, scheduled_time))
@@ -281,7 +304,7 @@ async def _entry_out(entry_id: UUID, *, now: dt.datetime) -> QueueEntryOut:
 
     waited_minutes = max(0.0, (now - entry.enqueued_at).total_seconds() / 60)
     token, priority_group = await _read_meta(entry_id)
-    effective_severity = _effective_severity(entry, waited_minutes)
+    effective_severity = _effective_severity(entry, waited_minutes, priority_group)
     reasons_en, reasons_hi = _reasons(entry, waited_minutes, effective_severity, priority_group)
 
     position = 1

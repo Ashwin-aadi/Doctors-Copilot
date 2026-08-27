@@ -27,3 +27,44 @@ max_distance_km: 40
 max_distance_km_rural: 60
 horizon_days: 7
 holidays_pack: queue.yaml
+
+# --- N3.3 optimizer v2 ------------------------------------------------------
+
+# Travel bands, not raw kilometres. 8 km across Chennai in OPD-hour traffic is
+# most of an hour on a bus; 8 km on a rural road is a short ride. Scoring the
+# same distance identically in both settings is what the CP1 `1/(1+km/5)`
+# curve got wrong. Bands are half-open `[lower, upper)` on the geodesic
+# distance in km; the last band is open-ended.
+travel_bands_urban:
+  - {to: 3,    score: 1.0,  label_en: "Very close by",       label_hi: "बहुत पास"}
+  - {to: 8,    score: 0.75, label_en: "Short trip",          label_hi: "थोड़ी दूर"}
+  - {to: 15,   score: 0.45, label_en: "Across the city",     label_hi: "शहर के पार"}
+  - {to: 25,   score: 0.2,  label_en: "Long trip",           label_hi: "लंबी यात्रा"}
+  - {to: null, score: 0.05, label_en: "Far away",            label_hi: "बहुत दूर"}
+travel_bands_rural:
+  - {to: 5,    score: 1.0,  label_en: "Very close by",       label_hi: "बहुत पास"}
+  - {to: 15,   score: 0.8,  label_en: "Short trip",          label_hi: "थोड़ी दूर"}
+  - {to: 30,   score: 0.55, label_en: "Nearby town",         label_hi: "पास का कस्बा"}
+  - {to: 60,   score: 0.3,  label_en: "Long trip",           label_hi: "लंबी यात्रा"}
+  - {to: null, score: 0.1,  label_en: "Far away",            label_hi: "बहुत दूर"}
+
+# Which curve applies. Urban facility types sit in dense cities; a PHC/CHC
+# catchment is rural by definition, and so is the rural distance cutoff.
+urban_facility_types: [dh, medical_college, private_hospital, private_clinic]
+
+# Fairness. A four-hour Indian OPD session at ~6 minutes a patient is about
+# 40 consults; 50 is the realistic hard ceiling before quality collapses, and
+# it is a hard filter -- a doctor at capacity is removed from the candidate
+# set, not merely penalised. The soft penalty starts biting at 80% so the
+# last few slots are spread rather than dumped on one doctor.
+max_patients_per_doctor_per_session: 50
+fairness_soft_threshold: 0.8
+weights_fairness: 0.06
+
+# Public-facility load sharing. An over-subscribed district hospital should
+# not absorb cases a nearby CHC can manage, so a facility carrying more than
+# its share of the candidate set's queue load is penalised in proportion.
+# Only applies to public facilities -- private capacity is not a public
+# resource to balance.
+load_sharing_facility_types: [phc, chc, sdh, dh]
+weights_load_sharing: 0.05

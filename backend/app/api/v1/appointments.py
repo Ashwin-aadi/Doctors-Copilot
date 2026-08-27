@@ -7,11 +7,12 @@ from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 
 from app.core.deps import CurrentUser, get_current_user, require_captcha
-from app.core.errors import ApiError, not_implemented
+from app.core.errors import ApiError
 from app.db.models.scheduling import Appointment, QueueEntry
 from app.db.session import SessionLocal
 from app.services.queueing.pq import enqueue
 from app.services.queueing.schemas import QueueEntryOut
+from app.services.scheduling import lifecycle
 from app.services.scheduling.optimizer import rank_doctors
 from app.services.scheduling.repo import booked_slots as repo_booked_slots
 from app.services.scheduling.schemas import DoctorRankedOut
@@ -42,6 +43,26 @@ class AppointmentPatch(BaseModel):
     status: str | None = None
     slot_start: datetime | None = None
     slot_end: datetime | None = None
+    # N3.2 referral-out payload; only read when `status == "referred"`.
+    target_facility_type: str | None = None
+    target_clinic_id: UUID | None = None
+    reason: str | None = None
+
+
+class SimulateRequest(BaseModel):
+    """`POST /appointments/simulate` -- the same inputs as a booking, minus
+    the patient. Returns the top alternatives so the UI can offer a choice
+    instead of silently forcing rank #1 on the patient.
+    """
+
+    specialty: str
+    lat: float | None = None
+    lng: float | None = None
+    preferred_from: datetime | None = None
+    max_fee: float | None = None
+    language: str | None = None
+    scheme: str | None = None
+    limit: int = 5
 
 
 def _appointment_dict(a: Appointment) -> dict:
@@ -159,23 +180,85 @@ async def create_appointment(
     return {"appointment": _appointment_dict(appt), "doctor": chosen, "queue": queue_out}
 
 
-@router.post("/simulate")
-async def simulate_appointment() -> dict:
-    raise not_implemented("appointment simulation lands in CP3 (N3.3)")
+@router.post("/simulate", response_model=list[DoctorRankedOut])
+async def simulate_appointment(
+    body: SimulateRequest, user: CurrentUser = Depends(get_current_user)
+) -> list[DoctorRankedOut]:
+    """N3.3: dry-run the optimizer and hand back the top `limit` doctors with
+    full bilingual `reasons`. Books nothing and mutates nothing, so it is
+    safe to call on every keystroke of a specialty picker.
+    """
+    now = datetime.now(UTC)
+    date_from = body.preferred_from or now
+    if date_from.tzinfo is None:
+        date_from = date_from.replace(tzinfo=UTC)
+
+    ranked = await rank_doctors(
+        specialty=body.specialty,
+        lat=body.lat,
+        lng=body.lng,
+        date_from=date_from,
+        max_fee=body.max_fee,
+        language=body.language,
+        scheme=body.scheme,
+        now=now,
+    )
+    return ranked[: max(1, body.limit)]
+
+
+@router.get("/{appointment_id}")
+async def get_appointment(
+    appointment_id: UUID, user: CurrentUser = Depends(get_current_user)
+) -> dict:
+    async with SessionLocal() as session:
+        appt = await session.get(Appointment, appointment_id)
+        if appt is None:
+            raise ApiError("NOT_FOUND", "appointment not found", status_code=404)
+        return _appointment_dict(appt)
 
 
 @router.patch("/{appointment_id}")
 async def update_appointment(
     appointment_id: UUID, body: AppointmentPatch, user: CurrentUser = Depends(get_current_user)
 ) -> dict:
+    """N3.2 lifecycle transitions. A status change routes into
+    `app.services.scheduling.lifecycle`, which frees the slot, re-keys the
+    queue, notifies the patient and republishes the OPD board -- none of
+    which the CP1 straight-column-write did. A slot move with no status
+    change is a reschedule.
+    """
+    now = datetime.now(UTC)
+
+    if body.status == "cancelled":
+        return await lifecycle.cancel(appointment_id, now=now, reason=body.reason)
+    if body.status == "no_show":
+        return await lifecycle.mark_no_show(appointment_id, now=now)
+    if body.status == "referred":
+        if not body.target_facility_type:
+            raise ApiError(
+                "VALIDATION_FAILED",
+                "target_facility_type is required to refer a patient out",
+                status_code=422,
+            )
+        return await lifecycle.refer_out(
+            appointment_id,
+            target_facility_type=body.target_facility_type,
+            target_clinic_id=body.target_clinic_id,
+            reason=body.reason or "referred by treating doctor",
+            now=now,
+        )
+    if body.slot_start is not None:
+        return await lifecycle.reschedule(appointment_id, body.slot_start, now=now)
+    if body.status is not None:
+        raise ApiError(
+            "VALIDATION_FAILED",
+            f"unsupported appointment status '{body.status}'",
+            status_code=422,
+            details={"allowed": ["cancelled", "no_show", "referred"]},
+        )
+
     async with SessionLocal() as session:
         appt = await session.get(Appointment, appointment_id)
         if appt is None:
             raise ApiError("NOT_FOUND", "appointment not found", status_code=404)
-        if body.status is not None:
-            appt.status = body.status
-        if body.slot_start is not None and body.slot_end is not None:
-            appt.slot_start = body.slot_start
-            appt.slot_end = body.slot_end
-        await session.commit()
         return _appointment_dict(appt)
