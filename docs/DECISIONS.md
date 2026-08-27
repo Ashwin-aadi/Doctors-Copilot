@@ -1,5 +1,52 @@
 # Decisions Log
 
+## 2026-08-27 — CP3 P3.3 PDF export
+
+- `app/services/pdf.py::render(kind, entity_id, *, locale="en", db=None) ->
+  bytes` extends the frozen §4.2 signature with `locale` and an optional
+  trailing `db` (same extension pattern P2.2's `save_file`/`open_file`
+  already established, for the same reason: none of this can run without a
+  session). WeasyPrint renders plain-substitution HTML templates
+  (`{{TOKEN}}`, replaced in Python -- no Jinja2 dependency added, since
+  nothing here needs loops/conditionals inside the template itself; the
+  drug/test item rows are built in Python and injected as one `{{ITEM_ROWS}}`
+  block) to A4 PDF bytes.
+- `doctors.registration_council`/`registration_year` and `clinics.
+  facility_type` (added in this checkpoint's migration, `d4a1f6e29c88`) are
+  read through the same local Core `Table` pattern as `app/services/
+  notify.py`.
+- **Jan Aushadhi generic column, TEMP-ADAPTER**: Niyati's `GET
+  /medications/generic` (`app/api/v1/medications.py`) is still
+  `not_implemented`. Rather than leave the column permanently empty,
+  `_generic_alternative()` queries the existing `medications` table
+  directly (ingredient match -> another row with `is_generic=true`) -- a
+  real lookup, just not through her eventual service. Remove this local
+  query and call her endpoint once it ships (comment left in the function
+  itself).
+- **Consultation mode has no data field.** Neither `Visit` nor `Appointment`
+  records whether a visit was in-person or a teleconsultation. Rendered as
+  a static "Teleconsultation" (English) / "टेलीकंसल्टेशन" (Hindi) label
+  since Doctor's Copilot is a telemedicine-first platform end to end --
+  flagging rather than fabricating a per-visit distinction that doesn't
+  exist in the data. **DRIFT for Ashwin**: add a `mode` column to `Visit`
+  or `Appointment` (`in_person | teleconsultation`) if a real distinction
+  is needed for a future checkpoint.
+- **`Clinic` has no street address** (`app/db/models/scheduling.py`) --
+  only `state`/`pin_code`/`lat`/`lng`. `_clinic_address()` renders
+  `"{state}, {pin_code}"`, the most specific string the existing schema
+  supports; not fabricating a `line1`/`city` that doesn't exist in the DB.
+- `format_inr()` (babel, `en_IN` locale) is used for the doctor's
+  consultation fee shown on the prescription meta block -- the only ₹
+  amount either template currently carries; verified it renders lakh
+  grouping (`₹1,25,000`, not `₹125,000`).
+- `docs/DECISIONS.md`'s standing infra-gap note applies here too: WeasyPrint
+  needs `libpango-1.0-0`/`libpangoft2-1.0-0` on the target image (already
+  noted to Ashwin for `Dockerfile.backend` per the P3.3 spec, added the
+  pinned dependency comment to `requirements.txt` directly this time rather
+  than only in this log). Rendering was reviewed against WeasyPrint's
+  documented `HTML(string=...).write_pdf()` API, not executed locally (no
+  `pip install` in this sandbox).
+
 ## 2026-08-27 — CP3 P3.1 pull + P3.2 notifications
 
 - Branched `feat/pratyaksh/cp3` off latest `main` (carrying CP2 for

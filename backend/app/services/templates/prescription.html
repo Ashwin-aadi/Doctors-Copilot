@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="en-IN">
+<head>
+<meta charset="utf-8">
+<style>
+  @page { size: A4; margin: 2cm; }
+  body { font-family: "DejaVu Sans", "Noto Sans", sans-serif; font-size: 11pt; color: #1a1a1a; }
+  .clinic { text-align: center; margin-bottom: 1em; border-bottom: 2px solid #0f6b5c; padding-bottom: 0.5em; }
+  .clinic h1 { font-size: 16pt; margin: 0; color: #0f6b5c; }
+  .clinic .addr { font-size: 9pt; color: #555; }
+  .banner { text-align: center; font-weight: bold; padding: 6px; margin-bottom: 1em; }
+  .banner.draft { color: #b00020; border: 2px dashed #b00020; }
+  .banner.approved { color: #0f6b5c; border: 2px solid #0f6b5c; }
+  .meta { display: flex; justify-content: space-between; margin-bottom: 1em; font-size: 10pt; }
+  table { width: 100%; border-collapse: collapse; margin-top: 1em; }
+  th, td { border: 1px solid #999; padding: 6px 8px; text-align: left; font-size: 10pt; vertical-align: top; }
+  th { background: #eef6f4; }
+  .generic { font-weight: bold; display: block; }
+  .brand { color: #555; font-size: 9pt; display: block; }
+  .watermark { position: fixed; top: 38%; left: 12%; font-size: 46pt; color: rgba(15, 107, 92, 0.14);
+               transform: rotate(-25deg); z-index: -1; }
+  .footer { margin-top: 2em; font-size: 9pt; border-top: 1px solid #999; padding-top: 0.5em; }
+  .footer .approval { margin-top: 0.5em; color: #0f6b5c; }
+</style>
+</head>
+<body>
+{{WATERMARK}}
+<div class="clinic">
+  <h1>{{CLINIC_NAME}}</h1>
+  <div class="addr">{{CLINIC_ADDRESS}}</div>
+</div>
+{{STATUS_BANNER}}
+<div class="meta">
+  <div>
+    <strong>Patient:</strong> {{PATIENT_NAME}}<br>
+    Age / Sex: {{PATIENT_AGE}} / {{PATIENT_SEX}}<br>
+    ABHA: {{PATIENT_ABHA}}
+  </div>
+  <div>
+    <strong>Date:</strong> {{DATE_IST}}<br>
+    Consultation mode: {{CONSULT_MODE}}<br>
+    Consultation fee: {{CONSULT_FEE}}
+  </div>
+</div>
+<table>
+  <thead><tr><th>Drug (generic first)</th><th>Dose</th><th>Frequency</th><th>Duration</th></tr></thead>
+  <tbody>
+{{ITEM_ROWS}}
+  </tbody>
+</table>
+<div class="footer">
+  <strong>Dr. {{DOCTOR_NAME}}</strong>, {{DOCTOR_QUALIFICATIONS}}<br>
+  {{DOCTOR_SPECIALTY}}<br>
+  Registration No.: {{DOCTOR_REG_NO}} ({{DOCTOR_REG_COUNCIL}})
+  {{APPROVAL_FOOTER}}
+</div>
+</body>
+</html>
