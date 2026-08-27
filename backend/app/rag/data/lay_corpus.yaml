@@ -1,0 +1,412 @@
+# Plain-language health explanations for the patient chatbot.
+#
+# Written in-house at roughly an 8th-standard English reading level for an
+# Indian patient. Every entry is educational, never prescriptive: none of them
+# tells a patient to start, stop or change a medicine. Loaded into the "lay"
+# collection by app/rag/ingest_patient.py and retrieved alongside the patient's
+# own records. The "clinical" collection is never exposed to a patient.
+#
+# MedlinePlus pages under `sources` are fetched when the network is reachable;
+# these bundled entries are the offline fallback, so the lay collection is
+# never empty.
+
+sources:
+  - url: https://medlineplus.gov/lab-tests/complete-blood-count-cbc/
+    title: Complete Blood Count (CBC)
+  - url: https://medlineplus.gov/lab-tests/hemoglobin-a1c-hba1c-test/
+    title: Hemoglobin A1C Test
+  - url: https://medlineplus.gov/lab-tests/creatinine-test/
+    title: Creatinine Test
+  - url: https://medlineplus.gov/lab-tests/liver-function-tests/
+    title: Liver Function Tests
+  - url: https://medlineplus.gov/lab-tests/thyroid-tests/
+    title: Thyroid Tests
+  - url: https://medlineplus.gov/lab-tests/urinalysis/
+    title: Urinalysis
+  - url: https://medlineplus.gov/lab-tests/cholesterol-levels/
+    title: Cholesterol Levels
+  - url: https://medlineplus.gov/lab-tests/platelet-tests/
+    title: Platelet Tests
+  - url: https://medlineplus.gov/diabetes.html
+    title: Diabetes
+  - url: https://medlineplus.gov/highbloodpressure.html
+    title: High Blood Pressure
+  - url: https://medlineplus.gov/anemia.html
+    title: Anemia
+  - url: https://medlineplus.gov/tuberculosis.html
+    title: Tuberculosis
+  - url: https://medlineplus.gov/dengue.html
+    title: Dengue
+  - url: https://medlineplus.gov/malaria.html
+    title: Malaria
+  - url: https://medlineplus.gov/typhoidfever.html
+    title: Typhoid Fever
+  - url: https://medlineplus.gov/dehydration.html
+    title: Dehydration
+  - url: https://medlineplus.gov/antibiotics.html
+    title: Antibiotics
+  - url: https://medlineplus.gov/heatillness.html
+    title: Heat Illness
+  - url: https://medlineplus.gov/chestpain.html
+    title: Chest Pain
+  - url: https://medlineplus.gov/genericdrugs.html
+    title: Generic Drugs
+
+entries:
+  - title: What a complete blood count tells you
+    topic: cbc
+    text: >-
+      A complete blood count, usually written as CBC, is one of the most common
+      blood tests done in India. It counts the three main kinds of cells in your
+      blood. Red cells carry oxygen around the body. White cells fight infection.
+      Platelets help blood to clot when you are cut. The report puts your number
+      next to a normal range. A value slightly outside the range is common and
+      often means nothing on its own. Your doctor reads the whole picture along
+      with how you are feeling.
+
+  - title: What haemoglobin means on your report
+    topic: haemoglobin
+    text: >-
+      Haemoglobin is the part of a red blood cell that carries oxygen. It is
+      written as Hb and measured in grams per decilitre. A low haemoglobin is
+      called anaemia. Anaemia is very common in India, especially in women and in
+      pregnancy, and low dietary iron is the usual reason. Feeling tired, getting
+      breathless on stairs, or looking pale can all come from a low haemoglobin.
+      Your doctor will look for the cause before deciding what to do.
+
+  - title: What a low platelet count means
+    topic: platelets
+    text: >-
+      Platelets are tiny cells that stop bleeding by forming a clot. The platelet
+      count is part of the CBC. Counts drop for many reasons, and in India a fall
+      during a fever often makes a doctor think of dengue. A low count on its own
+      is not an emergency, but bleeding from the gums or nose, black stools, or a
+      lot of new red spots on the skin need to be seen the same day. Call 112, or
+      108 for an ambulance, if bleeding does not stop.
+
+  - title: What white blood cells on your report mean
+    topic: wbc
+    text: >-
+      White blood cells are the body's defence against infection. The report
+      calls them WBC, or TLC for total leucocyte count. The number often rises in
+      a bacterial infection and can fall in some viral illnesses such as dengue.
+      The differential count below it splits the total into types such as
+      neutrophils and lymphocytes, which helps your doctor judge what kind of
+      infection it might be.
+
+  - title: What HbA1c means if you have diabetes
+    topic: hba1c
+    text: >-
+      HbA1c is a blood test that shows your average sugar level over the last two
+      to three months. It is reported as a percentage. Because it covers months,
+      one heavy meal or one day of fasting will not change it. Doctors in India
+      use it both to diagnose diabetes and to see how well treatment is working.
+      A number that keeps rising across reports usually means the plan needs a
+      review, and only your doctor can decide what should change.
+
+  - title: What fasting and post-meal sugar reports mean
+    topic: blood_sugar
+    text: >-
+      A fasting blood sugar is taken after roughly eight hours without food. A
+      post-prandial sugar is taken two hours after a meal. Together they show how
+      your body handles sugar at rest and after eating. Sugar levels move around
+      during illness, fever and stress, so a single high value is not the same as
+      a diagnosis. Your doctor compares several readings along with your HbA1c.
+
+  - title: What creatinine and eGFR mean
+    topic: creatinine
+    text: >-
+      Creatinine is a waste product your muscles make every day. Healthy kidneys
+      filter it out into the urine, so the level left in your blood is a way of
+      checking how well the kidneys are working. A high creatinine can mean the
+      kidneys are not filtering well, but it also rises with dehydration, after
+      heavy exercise, and in people with more muscle. eGFR is a number calculated
+      from the same test that estimates kidney filtering speed. A doctor usually
+      repeats the test before drawing any conclusion.
+
+  - title: What liver function tests mean
+    topic: lft
+    text: >-
+      Liver function tests, or LFT, measure enzymes and proteins that show how
+      your liver is doing. SGPT, also called ALT, and SGOT, also called AST, rise
+      when liver cells are irritated. Bilirubin rises when the liver cannot clear
+      it, which is what makes the eyes and skin look yellow in jaundice. In India
+      these tests are often done for viral hepatitis A and E, which spread
+      through unsafe water and food, and to watch the liver during tuberculosis
+      treatment.
+
+  - title: What a thyroid report means
+    topic: thyroid
+    text: >-
+      The thyroid is a small gland in the neck that sets the speed of the body.
+      TSH is the main test. A high TSH usually means the gland is underactive,
+      which can cause tiredness, weight gain, dry skin and feeling cold. A low
+      TSH usually means it is overactive, which can cause weight loss, a fast
+      heartbeat and feeling hot. Thyroid problems are common and are usually
+      followed with repeat blood tests.
+
+  - title: What a urine routine report means
+    topic: urine
+    text: >-
+      A urine routine test looks at your urine under a microscope and with a
+      chemical strip. Pus cells suggest a urinary infection. Protein may point to
+      the kidneys. Sugar can appear in the urine when blood sugar is high. Blood
+      in the urine always needs to be discussed with a doctor. Drinking too
+      little water in hot weather makes urine concentrated and can shift several
+      values.
+
+  - title: What a lipid profile means
+    topic: lipids
+    text: >-
+      A lipid profile measures fats in the blood. LDL is often called the bad
+      cholesterol because it collects inside blood vessels. HDL is called the
+      good cholesterol because it helps carry fat away. Triglycerides are another
+      fat that rises with sweets, refined carbohydrates and alcohol. These
+      numbers help your doctor judge your long-term risk of heart disease and
+      stroke, which on average starts about ten years earlier in South Asians.
+
+  - title: What a dengue NS1 or serology report means
+    topic: dengue_test
+    text: >-
+      NS1 is a dengue protein that shows up in the blood in the first few days of
+      fever. IgM and IgG antibodies appear later, as the body responds. So the
+      right test depends on which day of fever you are on. A positive result
+      confirms dengue but does not by itself say how severe it will be. What
+      matters most is how you feel around day four to day six, when the fever
+      settles.
+
+  - title: Dengue warning signs to act on
+    topic: dengue_warning
+    text: >-
+      Most dengue gets better with rest and fluids at home. But some people get
+      worse just as the fever comes down. Go to a hospital the same day if there
+      is severe stomach pain, vomiting again and again, bleeding from the gums or
+      nose, black stools, extreme restlessness or sleepiness, cold clammy skin,
+      or if very little urine is being passed. Call 112, or 108 for an ambulance,
+      if the person is drowsy or cannot drink.
+
+  - title: What a malaria test report means
+    topic: malaria_test
+    text: >-
+      Malaria is diagnosed either with a rapid card test or by looking at a blood
+      smear under a microscope. The smear can also say which type of parasite it
+      is, which matters for treatment. A negative test during a fever does not
+      always rule malaria out, so your doctor may repeat it. Malaria spreads
+      through mosquito bites, so nets and clearing standing water protect the
+      whole family.
+
+  - title: What a blood culture for typhoid means
+    topic: typhoid
+    text: >-
+      Enteric fever, often called typhoid, comes from bacteria in unsafe food and
+      water. A blood culture grows the bacteria from a blood sample and is the
+      most reliable test, though it takes a few days. The older Widal test is
+      much less reliable and is often positive for other reasons. Typhoid fever
+      usually builds up over a week rather than starting suddenly.
+
+  - title: Understanding tuberculosis tests and treatment
+    topic: tuberculosis
+    text: >-
+      Tuberculosis, or TB, is tested with a sputum sample, a chest X-ray, and a
+      molecular test such as CBNAAT that can also check for drug resistance. TB
+      treatment under India's national programme runs for at least six months and
+      is provided free at government centres. Finishing the full course matters,
+      because stopping early is the main reason TB returns in a harder-to-treat
+      form. Never stop TB medicine without telling your doctor, even if you feel
+      completely well.
+
+  - title: Why blood pressure has two numbers
+    topic: blood_pressure
+    text: >-
+      A blood pressure reading has an upper number and a lower number, for
+      example 130 over 85. The upper number is the pressure when the heart pushes
+      blood out. The lower number is the pressure between beats. One high reading
+      in a clinic is not enough to say you have high blood pressure, because
+      being rushed or anxious raises it. Doctors look at several readings taken
+      on different days.
+
+  - title: Living with high blood pressure
+    topic: hypertension
+    text: >-
+      High blood pressure usually causes no symptoms at all, which is why it is
+      normally found on a routine check. Over years it quietly damages the heart,
+      kidneys, eyes and brain. Cutting down on salt, pickles and packaged
+      namkeen, walking most days, losing some weight, and stopping tobacco all
+      help. If you have been given medicine for it, keep taking it exactly as
+      prescribed and ask your doctor before any change.
+
+  - title: Living with type 2 diabetes
+    topic: diabetes
+    text: >-
+      Type 2 diabetes means blood sugar stays higher than it should because the
+      body cannot use insulin properly. India has one of the largest numbers of
+      people with diabetes in the world, and it often begins younger here.
+      Regular meals with more vegetables and dal and less white rice, sugar and
+      fried food, daily walking, and regular checks of sugar, HbA1c, kidney
+      function, eyes and feet keep the risks low. Report any wound on the foot
+      early.
+
+  - title: Taking care of your feet with diabetes
+    topic: diabetic_foot
+    text: >-
+      High sugar over years can reduce feeling in the feet, so a small cut or
+      blister can go unnoticed and turn into a deep infection. Look at both feet
+      every day, including between the toes and under the sole using a mirror. Do
+      not walk barefoot, even at home or in the temple. Wash and dry the feet
+      well. Show your doctor any cut, colour change, swelling or smell without
+      waiting.
+
+  - title: Understanding anaemia in pregnancy
+    topic: anaemia_pregnancy
+    text: >-
+      Anaemia during pregnancy is common in India and is checked at every
+      antenatal visit. A low haemoglobin can make you very tired and raises risks
+      for both mother and baby. Iron and folic acid are given free through
+      government health centres as part of routine antenatal care. Taking iron
+      along with vitamin C, such as with lemon or amla, helps the body absorb it,
+      while tea and coffee taken with the tablet reduce absorption.
+
+  - title: How to read a medicine label
+    topic: medicine_label
+    text: >-
+      An Indian medicine strip shows the brand name in large letters and the
+      generic, or salt, name in smaller letters below it, along with the
+      strength, for example paracetamol 500 mg. Two different brands with the
+      same salt and the same strength are the same medicine. The strip also shows
+      a batch number, a manufacturing date, an expiry date and the maximum retail
+      price in rupees. Never use a strip after its expiry date.
+
+  - title: Generic medicines and Jan Aushadhi stores
+    topic: generics
+    text: >-
+      A generic medicine has the same active ingredient and strength as the
+      branded one and works the same way, but usually costs much less. Pradhan
+      Mantri Bhartiya Janaushadhi Kendras sell quality-tested generics at low
+      prices across India. If cost is making it hard for you to continue a
+      medicine, say so plainly to your doctor, because there is very often a
+      cheaper equivalent they can prescribe instead.
+
+  - title: Why finishing a course of antibiotics matters
+    topic: antibiotics
+    text: >-
+      Antibiotics work against bacteria, not against viruses, so they do not help
+      an ordinary cold or most sore throats. Taking them when they are not
+      needed, or stopping them early, helps bacteria learn to survive them. That
+      is called antibiotic resistance and it is a serious and growing problem in
+      India. Take an antibiotic only when a doctor prescribes one, and take the
+      full course as instructed.
+
+  - title: Safe use of paracetamol
+    topic: paracetamol
+    text: >-
+      Paracetamol, sold under many Indian brand names, is used for fever and
+      pain. It is safe for most people at the dose written on the prescription.
+      The main risk is taking too much, which can harm the liver. This usually
+      happens by accident, when someone takes a fever tablet and also a cold and
+      cough combination that already contains paracetamol. Read the salt names on
+      every strip you take, and ask a pharmacist if you are unsure.
+
+  - title: What to do when a fever will not settle
+    topic: fever
+    text: >-
+      Most fevers get better on their own with rest and plenty of fluids. See a
+      doctor if the fever lasts more than three days, comes with chills and
+      rigors, or comes with a rash, severe body pain or reduced urine. Fevers in
+      the monsoon and just after it are often dengue, malaria, typhoid,
+      chikungunya, scrub typhus or leptospirosis, and a blood test is the only
+      way to tell them apart.
+
+  - title: Preventing mosquito-borne illness at home
+    topic: mosquito
+    text: >-
+      Dengue and chikungunya mosquitoes breed in clean standing water and bite
+      during the day, while malaria mosquitoes bite mainly at night. Empty and
+      scrub coolers, flower pot trays, tyres and water drums once a week. Keep
+      overhead and ground tanks covered. Use a mosquito net at night, especially
+      for children, older people and pregnant women.
+
+  - title: Preventing illness from water and food
+    topic: water_safety
+    text: >-
+      Typhoid, hepatitis A and E, cholera and most loose motions spread through
+      water and food. Drink water that has been boiled or properly filtered,
+      especially during the monsoon. Wash hands with soap before eating and after
+      using the toilet. Be careful with cut fruit, sugarcane juice and roadside
+      chutneys when there is an outbreak in your area.
+
+  - title: Treating dehydration with ORS
+    topic: ors
+    text: >-
+      Loose motions and vomiting make the body lose water and salts. Oral
+      rehydration solution, ORS, replaces both and is sold cheaply at every
+      chemist and given free at government centres. Mix one full sachet in
+      exactly one litre of clean water, not less, and sip it through the day.
+      Take a child to a doctor at once if there are no tears when crying, the
+      eyes look sunken, there is very little urine, or the child is very sleepy.
+
+  - title: What to do about a snakebite
+    topic: snakebite
+    text: >-
+      A snakebite is always a hospital emergency in India, even if it does not
+      look serious at first. Do not cut the wound, do not suck out the venom, do
+      not tie a tight tourniquet and do not go to a traditional healer first.
+      Keep the person calm and still, keep the bitten limb below heart level, and
+      reach a hospital that stocks anti-snake venom as fast as possible. Call 108
+      for an ambulance.
+
+  - title: Recognising heat stroke
+    topic: heat_stroke
+    text: >-
+      During an Indian summer, working or walking in the sun can push the body
+      temperature dangerously high. The warning signs are a very hot body with
+      dry skin, confusion, fainting, and having stopped sweating. This is an
+      emergency. Move the person into shade, remove extra clothing, cool them
+      with water and fanning, and call 108 at once. Drink water regularly and
+      avoid the sun between noon and four in the afternoon.
+
+  - title: Chest pain you should never wait on
+    topic: chest_pain
+    text: >-
+      Heavy pressure or squeezing in the middle of the chest, especially with
+      sweating, breathlessness, or pain spreading to the left arm, jaw or back,
+      can be a heart attack. Do not drive yourself and do not wait to see if it
+      passes. Call 112, or 108 for an ambulance, and go to the nearest hospital
+      with a casualty department. Reaching hospital in the first hour makes the
+      biggest difference.
+
+  - title: Why follow-up appointments matter
+    topic: follow_up
+    text: >-
+      A follow-up visit lets your doctor see whether a treatment is working and
+      catch side effects early. Bring all your old reports and every medicine
+      strip you are taking, including anything from another doctor and any
+      ayurvedic, homeopathic or over-the-counter medicines. Write your questions
+      down before you go, because it is easy to forget them in a busy OPD.
+
+  - title: Understanding your consent and your records
+    topic: consent
+    text: >-
+      Your health records belong to you. Under India's Digital Personal Data
+      Protection Act, 2023, your information can only be used for the purpose you
+      agreed to, and you can ask for it to be corrected or erased. You can link
+      your records to an ABHA health account if you want them available across
+      hospitals. You can withdraw consent at any time, and refusing consent will
+      not stop you from getting care.
+
+  - title: What a discharge or visit summary contains
+    topic: visit_summary
+    text: >-
+      A visit summary records why you came, what the doctor found, what tests
+      were done, and what was advised. Keep it with your old reports and bring it
+      to the next visit, especially if you see a different doctor. If any line in
+      it does not match what you remember being told, point that out at your next
+      visit so the record can be corrected.
+
+  - title: Questions worth asking about a new medicine
+    topic: new_medicine
+    text: >-
+      When a doctor starts you on something new, it is fair to ask what it is
+      for, how long you need it, what side effects to watch for, whether it
+      clashes with anything you already take, and what it will cost each month.
+      Write the answers down. If a side effect appears after you start, tell the
+      doctor rather than stopping on your own.
