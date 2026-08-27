@@ -1,5 +1,49 @@
 # Decisions Log
 
+## 2026-08-27 — Frontend CP2: doctor workspace & Indian lab report review
+
+- Built the presentational component set for the doctor workspace checkpoint:
+  `pages/doctor/{DoctorDashboardPage,PatientListPanel,PatientHeaderCard,
+  QueueSummaryCard,LabOrderApprovalPage,LabOrderItemRow,LockedRecordBanner}.tsx`
+  and `components/upload/{Dropzone,FileRow,OcrReview,LabTableEditor,
+  ConfidenceLegend,uploadTypes}.tsx`, plus new `components/ui/TriageColourBadge.tsx`
+  and `components/ui/states/{ListSkeleton,CardSkeleton,TableSkeleton}.tsx`.
+  All are pure (props in, JSX out) -- no fetch/store/router hooks.
+- `LabOrder*` types aren't in `lib/types.ts` yet (neither `/lab-orders/*` nor
+  `/approvals/lab-order/*` carries a Pydantic `response_model`, so
+  openapi-typescript only ever saw `Record<string, never>` -- same situation
+  Pratyaksh already documented for `lib/api/endpoints/approvals.ts`). Rather
+  than re-typing them, `components/types.ts` re-exports the hand-typed
+  `LabOrderItem`/`LabOrderOut`/`LabOrderApproved` from that file, and adds a
+  few doctor-dashboard-only extensions (`PatientListItem`, `QueueSummary`,
+  `LabCatalogItem`, `PageImage`, `LabResultRow`) via `Pick<>`/`&` rather than
+  inventing a fake API shape.
+- `LabOrderOut` only stores `approved_by` as a user id, not a display name or
+  NMC number -- `LabOrderApprovalPage` and `LockedRecordBanner` take
+  `approverName`/`approverNmc` as separate props for the (future) container
+  to join in from the doctor profile. Similarly, the GET lab-order response
+  has no `content_hash` (only the approve-mutation response does), so
+  `LabOrderApprovalPage` accepts an optional `contentHash` prop and falls
+  back to the order id until a container wires the real hash through.
+- Read `features/approvals/LabOrderApprovalContainer.tsx` and
+  `features/documents/UploadContainer.tsx` before building (per the CP2
+  brief) -- both already have `TEMP-PLACEHOLDER` comments marking exactly
+  where these new presentational components should slot in. Left both files
+  untouched; wiring them up is their owner's next step, not this pass's.
+- Casualty-colour tone mapping reuses the existing `SeverityPill` convention
+  (ESI 1-2 -> critical/red, 3 -> high/yellow, 4-5 -> normal/green) so the new
+  `TriageColourBadge` stays visually consistent with the severity pill
+  already in the design system, rather than inventing a fourth tone scale.
+- Playwright/visual-regression browser tests are out of scope for this pass:
+  `@playwright/test` is a devDependency but no browsers are installed in this
+  environment and installing them was not attempted (network-heavy, out of
+  scope for a presentational-component pass). Only Vitest + Testing Library
+  coverage was added, per the CP2 brief's explicit allowance to skip
+  browser-automation checks and note it here.
+- `lib/errorCopy.ts` and the `upload.*` / new `components/types.ts` additions
+  are the only touches outside the strictly-owned directory list, and both
+  are files the CP2 brief names explicitly.
+
 ## 2026-08-27 — B2.5: approval flow, role nav, notifications (CP2 close)
 
 - Pulled `origin/main` (5 commits ahead: Niyati's CP2 lab rules/queue

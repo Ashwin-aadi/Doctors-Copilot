@@ -136,5 +136,39 @@
     "title": "Notifications",
     "bell": "Notifications, {{count}} unread",
     "empty": "You're all caught up."
+  },
+  "upload": {
+    "dropLabel": "Drag reports here, or tap to choose photos / PDFs",
+    "hint": "Hold the report flat, fill the frame, avoid shadows.",
+    "choose": "Choose files",
+    "camera": "Take a photo",
+    "cancel": "Cancel upload",
+    "retry": "Retry",
+    "resume": "Resume",
+    "stalled": "This is taking longer than usual. Your file is still uploading.",
+    "status": {
+      "queued": "Queued",
+      "uploading": "Uploading…",
+      "done": "Uploaded",
+      "error": "Failed",
+      "cancelled": "Cancelled"
+    },
+    "legendLow": "Amber border — OCR confidence below 75%, please verify",
+    "legendOk": "No border — reviewed and confirmed by the pipeline",
+    "test": "Test",
+    "rawValue": "Printed value",
+    "rawUnit": "Printed unit",
+    "normalisedValue": "Normalised",
+    "range": "Range",
+    "confidence": "Confidence",
+    "lowConfidence": "Please verify",
+    "edited": "Edited",
+    "noLabs": "No lab values were found on this page.",
+    "confirmCorrections": "Save corrections",
+    "dirtyCount": "{{count}} row(s) changed",
+    "reviewError": "We couldn't load this report for review.",
+    "noDocument": "No document selected.",
+    "pageAlt": "Scanned page {{page}}",
+    "noPageImage": "Page image unavailable."
   }
 }
