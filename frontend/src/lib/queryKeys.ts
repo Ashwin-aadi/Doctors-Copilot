@@ -21,5 +21,8 @@ export const qk = {
   brief: (visitId: string) => ["brief", visitId] as const,
   interactions: (visitId: string) => ["interactions", visitId] as const,
   generics: (name: string) => ["generics", name] as const,
+  substitutions: (visitOrPrescriptionId: string) =>
+    ["substitutions", visitOrPrescriptionId] as const,
+  prescription: (id: string) => ["prescription", id] as const,
   notifications: () => ["notifications"] as const,
 } as const;

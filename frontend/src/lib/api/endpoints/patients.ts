@@ -55,3 +55,7 @@ export function postConsent(patientId: string, payload: ConsentPayload): Promise
 export function getConsent(patientId: string): Promise<ConsentOut | null> {
   return request<ConsentOut | null>(`/api/v1/patients/${patientId}/consent`);
 }
+
+export function getPatient(patientId: string): Promise<PatientOut> {
+  return request<PatientOut>(`/api/v1/patients/${patientId}`);
+}

@@ -7,6 +7,13 @@ export const ROUTES = {
   resetPassword: "/reset-password",
   onboarding: "/onboarding",
   chat: "/chat",
+  /**
+   * `/chat` is pre-assessment triage (a scripted, finite interview). The
+   * chatbot that explains a patient's own results and medicines is a different
+   * conversation with different guardrails, so it gets its own route rather
+   * than a mode flag -- see docs/DECISIONS.md, B3.2.
+   */
+  assistant: "/chat/assistant",
   booking: "/booking",
   portal: "/portal",
   visit: (id: string) => `/visit/${id}`,
