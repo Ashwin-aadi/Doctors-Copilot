@@ -2400,3 +2400,81 @@ Running log of architectural decisions, drift notes, and offline-fallback trigge
 - Started CP1 scaffold: monorepo layout, docker-compose services (postgres/redis/neo4j), Makefile, guard/integrate/smoke scripts, CI workflow.
 - Backend targets Python 3.12, FastAPI 0.115.6 stack per pinned requirements.
 - Frontend bootstrapped with Vite 6 + React 18 + TS 5.7, Tailwind 3.4.
+
+## 2026-08-27 — B3.1–B3.5 (frontend CP3)
+
+**Shared checkout.** CP3 for the backend (Niyati), the presentational layer
+(Abhishek) and the containers (this entry) were built in one working tree on
+`feat/niyati/cp3`. Path ownership was agreed up front and held: backend/** ·
+src/{styles,components,pages,mocks} · src/{features,lib,store,router,providers,
+hooks,app,components/queue} + frontend/tests. `docs/DECISIONS.md` and
+`src/locales/*` were treated as append-only by all three. No branch was switched
+or stashed in the shared tree; merges to `main` were done from throwaway
+worktrees. The CP3 locale keys added here (`chat`, `safety`, `prescription`,
+`visit`, en + hi) were swept into commit 0a4add4 rather than this one, since the
+files were staged together.
+
+**B3.1 — integration.** The usual `git checkout main && npm ci` regression pass
+was replaced by an in-place verification (tsc, eslint, vitest, vite build) for
+the reason above.
+
+**B3.2 — patient chatbot.**
+- `/chat` stays pre-assessment triage; the record-explaining chatbot is a
+  separate route, `/chat/assistant`. Two conversations with different guardrails
+  and different corpora should not share one surface behind a mode flag.
+- `src/lib/sse.ts` reads the stream with `fetch` + `ReadableStream` rather than
+  `EventSource`, which can neither POST nor carry an `Authorization` header.
+  Frames split across network chunks are reassembled; a trailing frame with no
+  terminating blank line is still emitted.
+- The abort signal is deliberately **not** passed to `fetch`. jsdom's
+  `AbortSignal` is a different class from the one the runtime's fetch accepts,
+  so passing it makes every streamed call throw under test while working in the
+  browser. Aborting cancels the body reader instead, which closes the connection
+  just as effectively.
+- `[[EMERGENCY]]` and `SCOPE_REFUSAL` arrive inside the answer text, not as
+  their own SSE frames (see `app/rag/guardrails.py`). The hook strips both
+  markers and raises them as UI state, so neither can ever reach the screen.
+
+**B3.3 — safety.** One `qk.interactions(visitId)` key backs every surface, so
+the report is fetched once and each alert rendered once. Acknowledgement of a
+major interaction is intentionally **not** persisted across a reload: after a
+refresh the doctor is shown the alerts again, which is the safe direction to
+fail.
+
+**B3.4 — prescription.**
+- `blocked[].severity` is the safety reason a substitute was rejected
+  (`allergy | contraindication | schedule_h1 | not_equivalent | major`), not an
+  interaction grade — the two vocabularies overlap only at `major`. Unrecognised
+  values fall back to `major`, the most cautious label.
+- `total_savings_inr` is nullable and passed through as `null` rather than
+  coerced to `0`: "₹0 saved" where the price is simply unknown would be a lie.
+- Schedule warnings claim **H** only. `GET /medications/generic` returns a bare
+  `schedule_h` boolean that cannot distinguish H from H1, and Schedule X is not
+  modelled at all; the reliable H1 signal is a blocked option with severity
+  `schedule_h1`.
+
+**API-BUGS: (Pratyaksh)** `POST /api/v1/approvals/prescription/{id}` declares no
+request body, so the `acknowledged_interactions` array the client sends with a
+lock is silently discarded and never reaches the audit log. B3.3 requires the
+acknowledgement to be recorded. The client already sends it; reading it is a
+one-line change on the route.
+
+**DRIFT: (Ashwin)** There is no `GET` or `POST` prescription route anywhere in
+the backend, and `VisitOut` carries `lab_order_id` but no `prescription_id`, so
+a visit surface cannot learn the id it needs to lock or export a prescription.
+Worked around for CP3 by having `GET /medications/substitutions` echo the
+resolved `prescription_id` on every row (Niyati, b5d383b). The durable fix is an
+additive `prescription_id` on `VisitOut`.
+
+**B3.5 — visit orchestration.** `GET /visits/{id}` drives every surface and the
+actions available at each stage are derived from `visit.state` in one place
+(`actionsFor`), never hardcoded per page. `/ws/visit/{id}` carries no sequence
+number (unlike the queue channel), so out-of-order frames are rejected on
+`updated_at` instead. A `409 CONFLICT` on advance is treated as a lost race —
+refetch and show where the visit actually is — not as an error page.
+
+**Verification note.** `npx tsc --noEmit` does **not** typecheck `src` in this
+repo; `tsc -b` (what `npm run build` runs) does. Use the build, not the bare
+`--noEmit`, as the type gate. Playwright specs for CP3 are written but unrun on
+this machine: they need the live seeded backend, which does not come up here
+(same limitation recorded for B2.x on 2026-08-26).

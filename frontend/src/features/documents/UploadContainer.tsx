@@ -190,10 +190,18 @@ function DocumentPanel({ documentId }: { documentId: string }) {
   );
 }
 
-export function UploadContainer() {
+export interface UploadContainerProps {
+  /**
+   * Explicit patient. Needed wherever the route param is not a patient id --
+   * on `/visit/:id` it is the visit's -- so the visit surface passes it in.
+   */
+  patientId?: string;
+}
+
+export function UploadContainer({ patientId: patientIdProp }: UploadContainerProps = {}) {
   const { t } = useTranslation();
   const params = useParams<{ id: string }>();
-  const patientId = params.id ?? null;
+  const patientId = patientIdProp ?? params.id ?? null;
   const { items, addFiles, cancelUpload } = useUpload(patientId);
   const inputRef = useRef<HTMLInputElement>(null);
 

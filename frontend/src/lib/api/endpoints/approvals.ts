@@ -46,3 +46,30 @@ export function approveLabOrder(labOrderId: string, captchaToken: string): Promi
     captchaToken,
   });
 }
+
+export interface PrescriptionApproved {
+  id: string;
+  locked: boolean;
+  approved_by: string;
+  approved_at: string;
+  content_hash: string;
+}
+
+/**
+ * `acknowledged_interactions` carries the major-severity pairs the doctor
+ * explicitly acknowledged before locking, so the audit trail records what they
+ * were shown. The route currently declares no request body and therefore
+ * ignores it (logged as an API-BUG for Pratyaksh in docs/DECISIONS.md); sending
+ * it now means the client needs no change when he reads it.
+ */
+export function approvePrescription(
+  prescriptionId: string,
+  captchaToken: string,
+  acknowledgedInteractions: string[] = [],
+): Promise<PrescriptionApproved> {
+  return request<PrescriptionApproved>(`/api/v1/approvals/prescription/${prescriptionId}`, {
+    method: "POST",
+    captchaToken,
+    body: JSON.stringify({ acknowledged_interactions: acknowledgedInteractions }),
+  });
+}
