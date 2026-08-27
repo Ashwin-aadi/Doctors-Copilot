@@ -7,6 +7,7 @@ calls the real route.
 from __future__ import annotations
 
 import datetime as dt
+from pathlib import Path
 from uuid import uuid4
 
 import pytest
@@ -20,7 +21,11 @@ from app.schemas.triage import SuggestedLab
 from app.services.rules.lab_rules import extract_symptom_keywords, merge_with_rag, recommend_labs
 from tests.services.conftest import patient_id
 
-_PACK_PATH = "backend/app/services/rules/packs/lab_panels.yaml"
+# Resolved from this file, not the working directory: `make test` runs
+# pytest with `backend/` as cwd, so a repo-root-relative path never
+# resolves. Mirrors how app/rag/triage_rag.py locates its own data dir.
+_BACKEND = Path(__file__).resolve().parents[2]
+_PACK_PATH = _BACKEND / "app/services/rules/packs/lab_panels.yaml"
 
 
 def test_pack_has_at_least_30_rules_and_mandatory_coverage():
@@ -110,10 +115,23 @@ def test_extract_symptom_keywords_finds_pack_vocabulary_in_free_text():
 
 @pytest_asyncio.fixture
 async def _clean_lab_orders():
+    """Clear only the queue/lab-order/visit rows this module's fixture
+    patients own.
+
+    These wipes were unscoped (`delete(Visit)` with no WHERE), so running the
+    full suite destroyed the seeded demo visit and every other module's
+    fixtures along with them -- `tests/integration/test_visit_flow.py` failed
+    on whatever ran after this file and passed on its own. Scoping to the
+    Chennai fixture patients keeps the clean slate this module needs without
+    reaching into anyone else's rows.
+    """
+
+    ours = [patient_id(i) for i in range(1, 9)]
+
     async def _wipe() -> None:
         async with SessionLocal() as session:
-            await session.execute(delete(LabOrder))
-            await session.execute(delete(Visit))
+            await session.execute(delete(LabOrder).where(LabOrder.patient_id.in_(ours)))
+            await session.execute(delete(Visit).where(Visit.patient_id.in_(ours)))
             await session.commit()
 
     await _wipe()

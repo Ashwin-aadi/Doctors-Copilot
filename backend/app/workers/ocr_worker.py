@@ -36,19 +36,20 @@ def _get_session_factory() -> sessionmaker:
 
 
 def _publish_document_done(document_id: UUID, status: str) -> None:
-    payload = json.dumps({"document_id": str(document_id), "status": status})
-    try:
-        from app.core import events as core_events
+    """Announce a finished OCR job on the `document.done` channel.
 
-        publish = getattr(core_events, "publish", None)
-        if publish is not None:
-            publish("document.done", payload)
-            return
-    except ImportError:
-        pass
+    This worker is synchronous (RQ, `create_engine`/`sessionmaker`), while
+    `app.core.events.publish` is a coroutine -- calling it from here only built
+    a coroutine object that was never awaited, so the event was silently
+    dropped and no `/ws/visit/{id}` client ever heard about a completed
+    document. A plain synchronous Redis publish is the correct primitive in a
+    sync worker, and is exactly what the async helper does for a channel with
+    no per-entity fan-out.
+    """
 
     from redis import Redis
 
+    payload = json.dumps({"document_id": str(document_id), "status": status})
     Redis.from_url(get_settings().redis_url).publish("document.done", payload)
 
 

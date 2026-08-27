@@ -37,8 +37,10 @@ def _normalize(name: str) -> str:
     return re.sub(r"[^a-z0-9]+", " ", name.lower()).strip()
 
 
-def _as_set(values: list[str] | None) -> set[str]:
-    return {v.strip().lower() for v in (values or []) if v and v.strip()}
+def _as_set(values: list | None) -> set[str]:
+    # Same dual-shape tolerance as `_as_text` below: callers pass patient
+    # `conditions` straight through, and those are JSONB.
+    return {text for v in (values or []) if (text := _as_text(v).strip().lower())}
 
 
 def _rule_matches(
@@ -115,13 +117,24 @@ def _symptom_vocabulary() -> tuple[str, ...]:
     return tuple(sorted(vocab, key=lambda s: (-len(s), s)))
 
 
-def extract_symptom_keywords(*texts: str) -> list[str]:
+def _as_text(value: object) -> str:
+    """Patient `conditions`/`allergies`/`medications` are JSONB and arrive in
+    either shape -- the flat `"diabetes"` an intake form writes, or the
+    structured `{"name": "diabetes", "since": ...}` the knowledge graph needs
+    (see `app.schemas.patient.ClinicalEntry`). Accept both."""
+
+    if isinstance(value, dict):
+        return str(value.get("name") or "")
+    return str(value or "")
+
+
+def extract_symptom_keywords(*texts: object) -> list[str]:
     """Deterministic, rule-based (no LLM) keyword extraction: returns every
     pack-vocabulary symptom phrase that appears as a substring anywhere in
     `texts`. Used to turn free-text triage output (red flags, rationale) into
     the discrete `symptoms` list `recommend_labs` expects.
     """
-    blob = " ".join(t.lower() for t in texts if t)
+    blob = " ".join(text.lower() for text in map(_as_text, texts) if text)
     return [phrase for phrase in _symptom_vocabulary() if phrase in blob]
 
 

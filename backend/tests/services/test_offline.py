@@ -25,11 +25,24 @@ from tests.services.conftest import CLINIC_PHC, patient_id
 
 @pytest_asyncio.fixture(autouse=True)
 async def _clean_tables():
+    """Clear only the queue/lab-order/visit rows this module's fixture
+    patients own.
+
+    These wipes were unscoped (`delete(Visit)` with no WHERE), so running the
+    full suite destroyed the seeded demo visit and every other module's
+    fixtures along with them -- `tests/integration/test_visit_flow.py` failed
+    on whatever ran after this file and passed on its own. Scoping to the
+    Chennai fixture patients keeps the clean slate this module needs without
+    reaching into anyone else's rows.
+    """
+
+    ours = [patient_id(i) for i in range(1, 9)]
+
     async def _wipe() -> None:
         async with SessionLocal() as session:
-            await session.execute(delete(QueueEntry))
-            await session.execute(delete(LabOrder))
-            await session.execute(delete(Visit))
+            await session.execute(delete(QueueEntry).where(QueueEntry.patient_id.in_(ours)))
+            await session.execute(delete(LabOrder).where(LabOrder.patient_id.in_(ours)))
+            await session.execute(delete(Visit).where(Visit.patient_id.in_(ours)))
             await session.commit()
 
     await _wipe()
@@ -39,11 +52,21 @@ async def _clean_tables():
 
 @pytest.fixture(autouse=True)
 def _block_all_outbound_http(monkeypatch):
-    async def _blocked(self, *args, **kwargs):  # noqa: ANN001, ARG001
+    """Unplug the real network, and only the real network.
+
+    Patching `httpx.AsyncClient.get`/`post` also severed the `client` fixture,
+    which drives the app in-process over `ASGITransport` and is an
+    `httpx.AsyncClient` itself -- so every request failed in the test harness
+    and no route under test ever ran. Blocking at the transport layer instead
+    leaves ASGITransport (in-process, no socket) working while any genuine
+    outbound call raises.
+    """
+
+    async def _blocked(self, request, *args, **kwargs):  # noqa: ANN001, ARG001
         raise httpx.ConnectError("network unplugged for offline test")
 
-    monkeypatch.setattr(httpx.AsyncClient, "get", _blocked)
-    monkeypatch.setattr(httpx.AsyncClient, "post", _blocked)
+    monkeypatch.setattr(httpx.AsyncHTTPTransport, "handle_async_request", _blocked)
+    monkeypatch.setattr(httpx.HTTPTransport, "handle_request", _blocked)
 
 
 @pytest.mark.asyncio

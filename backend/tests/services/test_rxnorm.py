@@ -6,6 +6,7 @@ pure (no DB, no network). The API tests need a reachable Postgres + Redis
 from __future__ import annotations
 
 import csv
+from pathlib import Path
 
 import httpx
 import pytest
@@ -17,7 +18,11 @@ from app.services.mapping.india_drugs import (
     to_generic,
 )
 
-_CSV_PATH = "backend/app/services/mapping/data/india_drugs.csv"
+# Resolved from this file, not the working directory: `make test` runs
+# pytest with `backend/` as cwd, so a repo-root-relative path never
+# resolves. Mirrors how app/rag/triage_rag.py locates its own data dir.
+_BACKEND = Path(__file__).resolve().parents[2]
+_CSV_PATH = _BACKEND / "app/services/mapping/data/india_drugs.csv"
 
 
 def test_india_drugs_csv_has_at_least_300_rows_and_named_brands():

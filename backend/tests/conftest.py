@@ -21,6 +21,8 @@ from httpx import ASGITransport, AsyncClient
 
 import app.core.redis_client as _redis_module
 import app.kg.client as _kg_client_module
+from app.core.config import get_settings
+from app.core.ratelimit import limiter
 from app.core.security import create_access_token
 from app.db.session import SessionLocal, engine
 from app.main import app
@@ -55,6 +57,38 @@ async def _dispose_engine_after_test() -> AsyncIterator[None]:
     if _kg_client_module._driver.cache_info().currsize:
         await _kg_client_module.close_driver()
     _kg_client_module._driver.cache_clear()
+
+
+@pytest.fixture(autouse=True)
+def _reset_rate_limiter():
+    """Clear slowapi's counters before every test.
+
+    The limiter is backed by the shared Redis and keyed by user-or-IP, so an
+    unauthenticated route's budget (login is 5/minute) is spent collectively by
+    every test in the same minute -- later tests then got a 429 instead of the
+    401/201 they asserted, depending purely on how many ran before them.
+    `RedisStorage.reset()` deletes only keys under the limiter's own prefix, so
+    captcha challenges and refresh-token bookkeeping in the same database are
+    untouched.
+    """
+
+    try:
+        limiter._storage.reset()  # noqa: SLF001
+
+        # The per-email lockout counters in `app.core.ratelimit` are separate
+        # keys with their own prefix and a lockout-window TTL, so a test that
+        # deliberately fails a login leaves the account locked for every later
+        # test -- and across runs. Clear those too.
+        from redis import Redis
+
+        sync_redis = Redis.from_url(get_settings().redis_url)
+        stale = list(sync_redis.scan_iter(match="auth:login:*"))
+        if stale:
+            sync_redis.delete(*stale)
+        sync_redis.close()
+    except Exception:  # noqa: BLE001 - no Redis in a unit-only run is fine
+        pass
+    yield
 
 
 @pytest_asyncio.fixture

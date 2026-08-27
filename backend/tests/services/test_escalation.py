@@ -6,6 +6,7 @@ Redis (same infra caveat as the rest of `tests/services/`).
 from __future__ import annotations
 
 import datetime as dt
+from pathlib import Path
 
 import pytest
 import pytest_asyncio
@@ -22,7 +23,11 @@ from app.services.queueing.escalation import (
 from app.services.queueing.pq import enqueue
 from tests.services.conftest import CLINIC_PHC, doctor_id, patient_id
 
-_PACK_PATH = "backend/app/services/rules/packs/emergency.yaml"
+# Resolved from this file, not the working directory: `make test` runs
+# pytest with `backend/` as cwd, so a repo-root-relative path never
+# resolves. Mirrors how app/rag/triage_rag.py locates its own data dir.
+_BACKEND = Path(__file__).resolve().parents[2]
+_PACK_PATH = _BACKEND / "app/services/rules/packs/emergency.yaml"
 
 NOW = dt.datetime(2026, 1, 12, 10, tzinfo=dt.UTC)  # 15:30 IST, Monday
 

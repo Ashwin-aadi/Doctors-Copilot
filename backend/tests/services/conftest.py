@@ -28,9 +28,21 @@ from app.db.session import SessionLocal
 NOW = dt.datetime(2026, 1, 12, 9, 0, tzinfo=dt.UTC)  # 14:30 IST, Monday
 OPD_WEEKDAY = 0  # Monday, per date.weekday()
 
-CLINIC_PHC = UUID("00000000-0000-0000-0000-000000000001")
-CLINIC_CHC = UUID("00000000-0000-0000-0000-000000000002")
-CLINIC_DH = UUID("00000000-0000-0000-0000-000000000003")
+# The Chennai fixture below owns an id space of its own -- the `...-0002-` and
+# `...-0003-` groups -- and shares nothing with scripts/seed.py or
+# scripts/seed_users.py.
+#
+# It used to reuse those scripts' clinic, doctor and patient ids, so all three
+# seeders fought over the same rows and whichever ran last won. That made the
+# suite order-dependent: `patient_id(i)` and `patient_user_id(i)` were the same
+# expression, which attached a second Patient to an already-seeded user and
+# made `select(Patient).where(Patient.user_id == ...)` raise
+# MultipleResultsFound in GET /auth/me and GET /files/{id}; and re-running the
+# seed scripts moved these doctors out of the Chennai clinics, emptying
+# GET /api/v1/doctors. A private namespace removes the contention entirely.
+CLINIC_PHC = UUID("00000000-0000-0000-0002-000000000901")
+CLINIC_CHC = UUID("00000000-0000-0000-0002-000000000902")
+CLINIC_DH = UUID("00000000-0000-0000-0002-000000000903")
 
 _CLINICS = [
     {
@@ -85,26 +97,23 @@ OPD_SESSIONS = [
 
 
 def doctor_id(i: int) -> UUID:
-    return UUID(f"00000000-0000-0000-0000-{200 + i:012d}")
+    return UUID(f"00000000-0000-0000-0002-{200 + i:012d}")
 
 
 def doctor_user_id(i: int) -> UUID:
-    return UUID(f"00000000-0000-0000-0000-{_DOCTOR_USER_BASE + i:012d}")
+    return UUID(f"00000000-0000-0000-0003-{_DOCTOR_USER_BASE + i:012d}")
 
 
 def availability_id(doctor_i: int, session_i: int) -> UUID:
-    return UUID(f"00000000-0000-0000-0001-{doctor_i:04d}{session_i:08d}")
-
-
-_PATIENT_USER_BASE = 500
+    return UUID(f"00000000-0000-0000-0002-{doctor_i:04d}{session_i:08d}")
 
 
 def patient_id(i: int) -> UUID:
-    return UUID(f"00000000-0000-0000-0000-{500 + i:012d}")
+    return UUID(f"00000000-0000-0000-0002-{i:012d}")
 
 
 def patient_user_id(i: int) -> UUID:
-    return UUID(f"00000000-0000-0000-0000-{_PATIENT_USER_BASE + i:012d}")
+    return UUID(f"00000000-0000-0000-0003-{i:012d}")
 
 
 _PATIENTS = [
