@@ -1,0 +1,1 @@
+Your lab results are ready to view in the app. Document reference: {document_id}.

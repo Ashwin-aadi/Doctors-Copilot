@@ -55,3 +55,13 @@ cachetools==5.5.0
 # Dockerfile.backend).
 python-magic==0.4.27
 itsdangerous==2.2.0
+
+# P3.2-P3.5: email/SMS notifications, PDF export, TOTP scaffolding for a
+# future MFA path. weasyprint needs libpango-1.0-0/libpangoft2-1.0-0 on the
+# target image (apt-get install -y libpango-1.0-0 libpangoft2-1.0-0 -- noted
+# to Ashwin for Dockerfile.backend, alongside the libmagic1 note above).
+email-validator==2.2.0
+weasyprint==63.1
+aiosmtplib==3.0.2
+pyotp==2.9.0
+babel==2.16.0

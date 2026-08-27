@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="hi-IN">
+<head>
+<meta charset="utf-8">
+<style>
+  @page { size: A4; margin: 2cm; }
+  body { font-family: "Noto Sans Devanagari", "DejaVu Sans", sans-serif; font-size: 11pt; color: #1a1a1a; }
+  .clinic { text-align: center; margin-bottom: 1em; border-bottom: 2px solid #0f6b5c; padding-bottom: 0.5em; }
+  .clinic h1 { font-size: 16pt; margin: 0; color: #0f6b5c; }
+  .meta { display: flex; justify-content: space-between; margin-bottom: 1em; font-size: 10pt; }
+  h2 { font-size: 12pt; color: #0f6b5c; border-bottom: 1px solid #ccc; padding-bottom: 2px; }
+  ul { margin: 0.2em 0 1em 1.2em; }
+  .footer { margin-top: 2em; font-size: 9pt; border-top: 1px solid #999; padding-top: 0.5em; }
+</style>
+</head>
+<body>
+<div class="clinic"><h1>रोगी नैदानिक सारांश</h1></div>
+<div class="meta">
+  <div>
+    <strong>रोगी:</strong> {{PATIENT_NAME}}<br>
+    आयु / लिंग: {{PATIENT_AGE}} / {{PATIENT_SEX}}<br>
+    ABHA: {{PATIENT_ABHA}}
+  </div>
+  <div><strong>तैयार किया गया:</strong> {{DATE_IST}}</div>
+</div>
+<h2>स्थितियाँ</h2>
+<ul>{{CONDITIONS}}</ul>
+<h2>एलर्जी</h2>
+<ul>{{ALLERGIES}}</ul>
+<h2>वर्तमान दवाएँ</h2>
+<ul>{{MEDICATIONS}}</ul>
+<h2>नवीनतम विज़िट</h2>
+<div>स्थिति: {{VISIT_STATE}} &middot; {{VISIT_DATE}}</div>
+<div class="footer">Doctor's Copilot द्वारा तैयार, केवल नैदानिक संदर्भ हेतु -- प्रत्यक्ष जाँच का विकल्प नहीं।</div>
+</body>
+</html>

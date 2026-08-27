@@ -11,11 +11,13 @@ lineage, not just the one presented.
 
 from __future__ import annotations
 
+import json
 import time
 import uuid
 from pathlib import Path
 
 import bcrypt
+from itsdangerous import BadSignature, SignatureExpired, URLSafeTimedSerializer
 from jose import JWTError, jwt
 
 from app.core.config import get_settings
@@ -30,6 +32,12 @@ _COMMON_PASSWORDS_PATH = Path(__file__).parent / "data" / "common_passwords.txt"
 _DENYLIST_PREFIX = "auth:denylist:"
 _REFRESH_ACTIVE_PREFIX = "auth:refresh:active:"
 _REFRESH_FAMILY_PREFIX = "auth:refresh:family:"
+_USER_SESSIONS_PREFIX = "auth:sessions:"
+_SESSION_META_PREFIX = "auth:session:meta:"
+_RESET_TOKEN_USED_PREFIX = "auth:reset:used:"
+
+_RESET_TOKEN_SALT = "pratyaksh.auth.password-reset.v1"
+_RESET_TOKEN_MAX_AGE = 30 * 60
 
 
 def _load_common_passwords() -> frozenset[str]:
@@ -132,27 +140,47 @@ def create_refresh_token(user_id: uuid.UUID, role: str, family: str | None = Non
     )
 
 
-async def _register_refresh(claims: dict) -> None:
+async def _register_refresh(
+    claims: dict, *, ip: str | None = None, user_agent: str | None = None
+) -> None:
     ttl = max(int(claims["exp"] - time.time()), 1)
     jti, fam, sub = claims["jti"], claims["fam"], claims["sub"]
     await redis_client.set(f"{_REFRESH_ACTIVE_PREFIX}{jti}", f"{sub}:{fam}", ex=ttl)
     await redis_client.sadd(f"{_REFRESH_FAMILY_PREFIX}{fam}", jti)
     await redis_client.expire(f"{_REFRESH_FAMILY_PREFIX}{fam}", ttl)
 
+    # Session bookkeeping for GET /auth/sessions (P3.5): a per-user set of
+    # active jtis, plus ip/ua/issued_at metadata per jti. Both share the
+    # refresh token's own TTL so they never outlive it.
+    await redis_client.sadd(f"{_USER_SESSIONS_PREFIX}{sub}", jti)
+    await redis_client.expire(f"{_USER_SESSIONS_PREFIX}{sub}", ttl)
+    meta = json.dumps({"ip": ip, "user_agent": user_agent, "issued_at": int(claims["iat"])})
+    await redis_client.set(f"{_SESSION_META_PREFIX}{jti}", meta, ex=ttl)
+
 
 async def issue_token_pair(
-    user_id: uuid.UUID, role: str, family: str | None = None
+    user_id: uuid.UUID,
+    role: str,
+    family: str | None = None,
+    *,
+    ip: str | None = None,
+    user_agent: str | None = None,
 ) -> tuple[str, str]:
     access = create_access_token(user_id, role)
     refresh = create_refresh_token(user_id, role, family)
-    await _register_refresh(decode_token(refresh))
+    await _register_refresh(decode_token(refresh), ip=ip, user_agent=user_agent)
     return access, refresh
 
 
 async def revoke(jti: str, ttl: int) -> None:
+    active = await redis_client.get(f"{_REFRESH_ACTIVE_PREFIX}{jti}")
+    if active:
+        sub = active.split(":", 1)[0]
+        await redis_client.srem(f"{_USER_SESSIONS_PREFIX}{sub}", jti)
     if ttl > 0:
         await redis_client.set(f"{_DENYLIST_PREFIX}{jti}", "1", ex=ttl)
     await redis_client.delete(f"{_REFRESH_ACTIVE_PREFIX}{jti}")
+    await redis_client.delete(f"{_SESSION_META_PREFIX}{jti}")
 
 
 async def is_denylisted(jti: str) -> bool:
@@ -172,7 +200,9 @@ async def _revoke_family(fam: str) -> None:
     await redis_client.delete(key)
 
 
-async def rotate_refresh(token: str) -> tuple[str, str]:
+async def rotate_refresh(
+    token: str, *, ip: str | None = None, user_agent: str | None = None
+) -> tuple[str, str]:
     claims = decode_token(token)
     if claims.get("typ") != "refresh":
         raise ApiError("AUTH_INVALID_CREDENTIALS", "not a refresh token", status_code=401)
@@ -192,6 +222,16 @@ async def rotate_refresh(token: str) -> tuple[str, str]:
             "AUTH_INVALID_CREDENTIALS", "refresh token is not active", status_code=401
         )
 
+    # Carry the previous session's ip/ua forward if the caller didn't supply
+    # fresh ones, so a rotation from an automated refresh (no request
+    # context) doesn't blank out `GET /auth/sessions`'s display.
+    if ip is None or user_agent is None:
+        prev_meta_raw = await redis_client.get(f"{_SESSION_META_PREFIX}{jti}")
+        if prev_meta_raw:
+            prev_meta = json.loads(prev_meta_raw)
+            ip = ip or prev_meta.get("ip")
+            user_agent = user_agent or prev_meta.get("user_agent")
+
     remaining = max(int(claims["exp"] - time.time()), 1)
     await revoke(jti, remaining)
 
@@ -199,5 +239,72 @@ async def rotate_refresh(token: str) -> tuple[str, str]:
     role = claims["role"]
     access = create_access_token(user_id, role)
     refresh = create_refresh_token(user_id, role, family=fam)
-    await _register_refresh(decode_token(refresh))
+    await _register_refresh(decode_token(refresh), ip=ip, user_agent=user_agent)
     return access, refresh
+
+
+async def list_sessions(user_id: uuid.UUID) -> list[dict]:
+    jtis = await redis_client.smembers(f"{_USER_SESSIONS_PREFIX}{user_id}")
+    sessions = []
+    for jti in jtis:
+        meta_raw = await redis_client.get(f"{_SESSION_META_PREFIX}{jti}")
+        if meta_raw is None:
+            # Expired/revoked but not yet reaped from the set; skip it
+            # rather than showing a session with no metadata.
+            await redis_client.srem(f"{_USER_SESSIONS_PREFIX}{user_id}", jti)
+            continue
+        meta = json.loads(meta_raw)
+        sessions.append({"jti": jti, **meta})
+    sessions.sort(key=lambda s: s.get("issued_at") or 0, reverse=True)
+    return sessions
+
+
+async def revoke_session(user_id: uuid.UUID, jti: str) -> bool:
+    """Revoke one session, only if it belongs to `user_id`. Returns False if
+    it doesn't (or doesn't exist) -- never distinguishes the two to the
+    caller, same as every other ownership check in this codebase."""
+    active = await redis_client.get(f"{_REFRESH_ACTIVE_PREFIX}{jti}")
+    if active is None or active.split(":", 1)[0] != str(user_id):
+        return False
+    await revoke(jti, _refresh_ttl_seconds())
+    return True
+
+
+async def revoke_all_sessions(user_id: uuid.UUID, *, except_jti: str | None = None) -> None:
+    """Revoke every active refresh session for a user -- used by
+    password-change (revokes all *other* sessions) and by role-change/
+    deactivation (revokes every session immediately, `except_jti=None`)."""
+    jtis = await redis_client.smembers(f"{_USER_SESSIONS_PREFIX}{user_id}")
+    ttl = _refresh_ttl_seconds()
+    for jti in jtis:
+        if jti == except_jti:
+            continue
+        await revoke(jti, ttl)
+
+
+def create_reset_token(user_id: uuid.UUID) -> str:
+    settings = get_settings()
+    serializer = URLSafeTimedSerializer(settings.secret_key, salt=_RESET_TOKEN_SALT)
+    return serializer.dumps({"sub": str(user_id), "jti": uuid.uuid4().hex})
+
+
+async def consume_reset_token(token: str) -> uuid.UUID:
+    """Validates a password-reset token: correct signature, <=30 minutes
+    old, and not already used. Marks it used on success so it can never be
+    replayed, even within its validity window."""
+    settings = get_settings()
+    serializer = URLSafeTimedSerializer(settings.secret_key, salt=_RESET_TOKEN_SALT)
+    try:
+        payload = serializer.loads(token, max_age=_RESET_TOKEN_MAX_AGE)
+    except (BadSignature, SignatureExpired) as exc:
+        raise ApiError(
+            "AUTH_INVALID_CREDENTIALS", "reset link is invalid or has expired", status_code=401
+        ) from exc
+
+    jti = payload["jti"]
+    if await redis_client.exists(f"{_RESET_TOKEN_USED_PREFIX}{jti}"):
+        raise ApiError(
+            "AUTH_INVALID_CREDENTIALS", "reset link has already been used", status_code=401
+        )
+    await redis_client.set(f"{_RESET_TOKEN_USED_PREFIX}{jti}", "1", ex=_RESET_TOKEN_MAX_AGE)
+    return uuid.UUID(payload["sub"])

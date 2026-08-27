@@ -1,0 +1,1 @@
+डॉ. {doctor_name} के साथ {clinic_name} पर आपका अपॉइंटमेंट {slot_time_ist} (IST) पर पुनर्निर्धारित कर दिया गया है।

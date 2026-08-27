@@ -1,0 +1,1 @@
+Your appointment with Dr. {doctor_name} at {clinic_name} has been rescheduled to {slot_time_ist} (IST).

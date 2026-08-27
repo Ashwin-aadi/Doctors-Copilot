@@ -1,5 +1,250 @@
 # Decisions Log
 
+## 2026-08-27 — CP3 post-merge: switch PDF generic lookup to Niyati's real service
+
+- Merged `main` into `feat/pratyaksh/cp3` (Ashwin's and Virat's CP3 work,
+  already integrated upstream). Only conflict was `docs/DECISIONS.md`
+  itself (both branches appended entries) -- resolved by keeping both
+  logs' entries in full, newest-first. No other file conflicted.
+- The merge brought in Niyati's real `GET /medications/generic`
+  (`app/services/mapping/india_drugs.py::to_generic`, offline-first NLEM/
+  Jan Aushadhi CSV lookup with RxNav enrichment on a miss). `app/services/
+  pdf.py::_generic_alternative()` was written against a local
+  `medications`-table TEMP-ADAPTER since her service didn't exist yet at
+  P3.3 -- switched it over to call `to_generic()` directly now that it has
+  shipped, per rule 3 ("remove when owner ships"). Verified live: `Crocin`
+  -> `Paracetamol` through the real CSV-backed resolver; an unresolvable
+  brand name degrades to `None` (empty generic column) even with Redis
+  unreachable, since `to_generic()`'s own RxNav-enrichment fallback path is
+  wrapped in the same try/except this function already had.
+
+## 2026-08-27 — CP3 P3.5 session management, CP3 wrap
+
+- `app/core/security.py` gains per-user session tracking: `_register_refresh`
+  now also writes `auth:sessions:{user_id}` (a Redis set of active jtis) and
+  `auth:session:meta:{jti}` (`{ip, user_agent, issued_at}`, same TTL as the
+  refresh token itself), populated from `issue_token_pair`/`rotate_refresh`'s
+  new optional `ip`/`user_agent` kwargs (both call sites in `auth.py` pass
+  `request.client.host`/`request.headers.get("user-agent")`). `revoke()`
+  now also removes the jti from its user's session set, so a revoked session
+  disappears from `GET /auth/sessions` immediately rather than lingering
+  until its metadata key expires.
+- `list_sessions`/`revoke_session`/`revoke_all_sessions` are the new
+  primitives `GET /auth/sessions`, `DELETE /auth/sessions/{jti}`,
+  `POST /auth/password/change` and (via `app/api/v1/users.py`, new this
+  checkpoint) role-change/deactivation all build on. `revoke_session`
+  never distinguishes "not yours" from "doesn't exist" (returns `False`
+  either way -> the route raises a bare 403), same pattern as every other
+  ownership check in this codebase.
+- **Password reset** (`create_reset_token`/`consume_reset_token`) uses
+  `itsdangerous.URLSafeTimedSerializer` (already a dependency, P2.2) rather
+  than a DB table: the token carries its own `jti` and a 30-minute
+  `max_age` baked into the signature check; `consume_reset_token` marks
+  that `jti` used in Redis (`auth:reset:used:{jti}`, TTL 30 min) so it can
+  never be replayed even inside its validity window. `POST
+  /auth/password/forgot` always returns `200 {"status":"ok"}` regardless of
+  whether the email exists or the mail send succeeds -- no account-
+  enumeration signal from this endpoint, matching the same uniform-
+  response principle CP1's login timing already established.
+- `POST /auth/password/change` revokes every *other* session for the
+  caller (decodes both the presented access-token jti's refresh cookie, if
+  present, and excludes it via `except_jti`) -- the session making the
+  change survives, matching "revokes all other sessions" literally rather
+  than logging the caller out of their own request.
+- **New file, `app/api/v1/users.py`** (was an empty stub router with no
+  routes): `PATCH /users/{id}/status` (admin-only) is the one user-
+  management mutation this checkpoint's spec actually needs -- "role
+  change or deactivation revokes every session immediately." Deliberately
+  minimal (no full user CRUD/list), since nothing else in P3.5's spec asks
+  for one and this checkpoint's owned-file list only grants `users.py` for
+  auth-adjacent concerns, not a general admin panel.
+- `docs/AUTH_FLOWS.md` ships the four required Mermaid sequence diagrams
+  (login, captcha, refresh rotation, approval-lock) -- the approval-lock
+  diagram folds in this checkpoint's P3.2 `notify()` call
+  (`app/api/v1/approvals.py`) so it reflects the code as it now stands, not
+  just the CP2 version.
+- **CP3 wrap, re-verified with real dependencies**: unlike every prior
+  checkpoint's sandbox condition, this session was able to `pip install`
+  the exact pinned `fastapi==0.115.6`/`pydantic==2.10.4` (plus
+  `sqlalchemy`, `weasyprint`, `babel`, `itsdangerous`, `python-jose`,
+  `bcrypt`, `phonenumbers`, `email-validator`, `redis`, `geopy`) and ran
+  every P3.1-P3.5 module for real, not just byte-compiled:
+  - All 28 new pure-logic assertions across `test_notify.py`,
+    `test_pdf.py`, `test_profiles.py`, `test_sessions.py` executed
+    directly (no pytest fixtures needed) and **passed** -- template
+    loading/rendering, IST formatting, DLT template coverage, NMC/PIN
+    regex, India lat/lng bounding box, time parsing, availability
+    self-editable-field set, itsdangerous reset-token roundtrip and
+    tamper rejection, and every new router's registered path set.
+  - Every new/modified router (`notify`, `exports`, `doctors_profile`,
+    `auth`, `users`, `approvals`) constructs cleanly under the real,
+    pinned FastAPI -- this **caught a real bug**: `pdf.py::_status_banner`
+    only rendered the Hindi half of the DRAFT/DOCTOR-APPROVED watermark
+    when `locale != "en"`, but the spec requires the DRAFT stamp to always
+    be bilingual regardless of which language the rest of the document
+    renders in. Fixed to always emit both languages for both banner
+    states; the fix is in this same commit, not a follow-up.
+  - Re-ran the **pre-existing** `tests/security/*` suite the same
+    fixture-free way as a regression check: every failure was either a
+    `ConnectionError` (no Redis running in this sandbox -- expected) or a
+    `TypeError` from a test needing pytest's `client`/`auth_headers`/
+    `monkeypatch`/parametrize injection (expected when called directly,
+    not a real failure) -- no import-time or logic breakage from anything
+    this checkpoint touched.
+  - Postgres is still not available in this sandbox, so the full
+    DB-backed round trips (every `POST`/`PATCH`/`GET` against a live
+    table) and `make migrate` remain deferred to CI, same as every prior
+    checkpoint -- but the verification bar cleared this time is
+    meaningfully higher than "reviewed but not executed."
+
+## 2026-08-27 — CP3 P3.4 doctor & clinic profile management
+
+- `app/api/v1/doctors_profile.py` implements admin-only CRUD for `Doctor`
+  and `Clinic`, weekly `Availability` CRUD, and a new leave/blackout
+  calendar (`availability_blackouts`, this checkpoint's migration). A
+  doctor may `PATCH /doctors-profile/{their_own_id}` but only
+  `{name, specialties, qualifications}` (`_SELF_EDITABLE_FIELDS`) --
+  attempting `nmc_reg_no`/`registration_council`/`registration_year`/`fee`/
+  `rating`/`clinic_id` on their own record is a flat `403 AUTH_FORBIDDEN`,
+  even though an admin can set all of them.
+- **This resolves the standing DRIFT note from Niyati's N1.1 entry above**:
+  she'd asked for `doctors.registration_council`/`clinics.facility_type`
+  (plus `languages`/`schemes`, which are out of this checkpoint's scope) via
+  additive migration since she can't touch `app/db/models/` either. This
+  checkpoint's migration adds `registration_council`/`registration_year`
+  (doctors) and `facility_type` (clinics) for exactly that reason -- but per
+  the same ownership rule, the ORM columns still don't exist, so her
+  `repo.py` TEMP-ADAPTER override dicts should switch to reading the real
+  columns (now present in the DB) once the ORM mapping catches up; noting
+  here rather than editing her file.
+- Availability validation, in order: `weekday` 0-6; `start_time <
+  end_time` (an overnight/wraparound window is rejected, matching the
+  spec's own curl example: `18:00`->`09:00` -> 422); `slot_minutes` in
+  `{10,15,20,30}`; `valid_from <= valid_to` (defaults to today ->
+  today+1y when omitted, since the spec's curl example doesn't send
+  either); no overlapping window for the same doctor+weekday (half-open
+  interval check against every other row for that doctor/weekday, self
+  excluded on update).
+- `availability_blackouts.doctor_id`/`.clinic_id` are both nullable and
+  `OR`-ed with the filter in `GET /blackouts` (a row with `doctor_id=NULL`
+  applies to every doctor, same for `clinic_id`) -- how the three seeded
+  2026 national holidays (26 Jan, 15 Aug, 2 Oct) apply platform-wide without
+  needing one row per doctor. A per-doctor/per-clinic personal leave day is
+  a normal row with the specific id set.
+- NMC registration number format is validated with a permissive regex
+  (`^[A-Z0-9][A-Z0-9/-]{3,31}$`, 4-32 chars) rather than a real per-state
+  medical council format spec, since no single canonical NMC/SMC number
+  format is publicly documented across all 28 state councils -- uniqueness
+  is enforced at the DB query level regardless of the exact format matched.
+- Clinic lat/lng validated against a rough India bounding box (`6.5-37.6°N,
+  68.0-97.5°E`, mainland + islands) -- rejects an obviously wrong
+  coordinate (e.g. a US address) without needing a real reverse-geocoding
+  call.
+
+## 2026-08-27 — CP3 P3.3 PDF export
+
+- `app/services/pdf.py::render(kind, entity_id, *, locale="en", db=None) ->
+  bytes` extends the frozen §4.2 signature with `locale` and an optional
+  trailing `db` (same extension pattern P2.2's `save_file`/`open_file`
+  already established, for the same reason: none of this can run without a
+  session). WeasyPrint renders plain-substitution HTML templates
+  (`{{TOKEN}}`, replaced in Python -- no Jinja2 dependency added, since
+  nothing here needs loops/conditionals inside the template itself; the
+  drug/test item rows are built in Python and injected as one `{{ITEM_ROWS}}`
+  block) to A4 PDF bytes.
+- `doctors.registration_council`/`registration_year` and `clinics.
+  facility_type` (added in this checkpoint's migration, `d4a1f6e29c88`) are
+  read through the same local Core `Table` pattern as `app/services/
+  notify.py`.
+- **Jan Aushadhi generic column, TEMP-ADAPTER**: Niyati's `GET
+  /medications/generic` (`app/api/v1/medications.py`) is still
+  `not_implemented`. Rather than leave the column permanently empty,
+  `_generic_alternative()` queries the existing `medications` table
+  directly (ingredient match -> another row with `is_generic=true`) -- a
+  real lookup, just not through her eventual service. Remove this local
+  query and call her endpoint once it ships (comment left in the function
+  itself).
+- **Consultation mode has no data field.** Neither `Visit` nor `Appointment`
+  records whether a visit was in-person or a teleconsultation. Rendered as
+  a static "Teleconsultation" (English) / "टेलीकंसल्टेशन" (Hindi) label
+  since Doctor's Copilot is a telemedicine-first platform end to end --
+  flagging rather than fabricating a per-visit distinction that doesn't
+  exist in the data. **DRIFT for Ashwin**: add a `mode` column to `Visit`
+  or `Appointment` (`in_person | teleconsultation`) if a real distinction
+  is needed for a future checkpoint.
+- **`Clinic` has no street address** (`app/db/models/scheduling.py`) --
+  only `state`/`pin_code`/`lat`/`lng`. `_clinic_address()` renders
+  `"{state}, {pin_code}"`, the most specific string the existing schema
+  supports; not fabricating a `line1`/`city` that doesn't exist in the DB.
+- `format_inr()` (babel, `en_IN` locale) is used for the doctor's
+  consultation fee shown on the prescription meta block -- the only ₹
+  amount either template currently carries; verified it renders lakh
+  grouping (`₹1,25,000`, not `₹125,000`).
+- `docs/DECISIONS.md`'s standing infra-gap note applies here too: WeasyPrint
+  needs `libpango-1.0-0`/`libpangoft2-1.0-0` on the target image (already
+  noted to Ashwin for `Dockerfile.backend` per the P3.3 spec, added the
+  pinned dependency comment to `requirements.txt` directly this time rather
+  than only in this log). Rendering was reviewed against WeasyPrint's
+  documented `HTML(string=...).write_pdf()` API, not executed locally (no
+  `pip install` in this sandbox).
+
+## 2026-08-27 — CP3 P3.1 pull + P3.2 notifications
+
+- Branched `feat/pratyaksh/cp3` off latest `main` (carrying CP2 for
+  everyone). This sandbox still has no Docker/Postgres/Redis and no
+  installed `fastapi`/`sqlalchemy` (unchanged from every prior checkpoint's
+  noted condition), so `make migrate && make test` cannot run here; wrote
+  and reviewed every module against the existing codebase's actual classes
+  (not guessed shapes), byte-compiled everything, and ran the pure-logic
+  test subset that needs no infra. Full execution deferred to CI as in every
+  prior checkpoint.
+- `alembic/versions/d4a1f6e29c88_cp3_notify_pdf_profile_fields.py`
+  (additive, `down_revision=c7e2a9f01b3d`) adds `users.preferred_language`,
+  `doctors.registration_council`/`registration_year`, `clinics.
+  facility_type`, and a new `availability_blackouts` table (seeded with the
+  three 2026 national holidays P3.4 names: 26 Jan, 15 Aug, 2 Oct). None of
+  `app/db/models/` is touched, per the ownership rule -- these columns are
+  read/written through local SQLAlchemy Core `Table` objects
+  (`app/services/notify.py::_users_table`, and P3.4's doctors_profile
+  module), the same pattern `app/services/consent.py` already established
+  for `consents`. **Note to Ashwin**: please fold these four columns and the
+  new table into the real ORM models when convenient, so the Core-`Table`
+  workaround can be deleted.
+- `app/services/notify.py::notify()` writes the `Notification` row (Ashwin's
+  existing model, already has everything P3.2 needs -- no column gap there),
+  publishes `notify.{user_id}` to Redis (same channel-naming convention
+  P2.3's `approval.locked` already used), then makes a best-effort delivery
+  attempt on the user's actual channels: email via `aiosmtplib` to a dev
+  MailHog instance (`settings.smtp_host/port`, default `localhost:1025`),
+  falling back to an `.eml` file under `infra/mail/` when unreachable; SMS
+  via `send_sms()`, which writes a `.txt` under `infra/sms/` carrying the
+  same TRAI DLT entity id / per-type template id / 6-char sender header
+  (`DRCPLT`) a real gateway call would need, so wiring a real gateway in
+  later only changes that one function's body. **Note to Ashwin**: please
+  add a MailHog service to `infra/docker-compose.yml` (image
+  `mailhog/mailhog`, port 1025) when convenient -- until then every
+  environment without one running uses the `.eml` fallback, which is fully
+  functional for the demo.
+- Templates live at `app/services/templates/{en,hi}/<type>.txt`, one pair
+  per `NOTIFICATION_TYPES` entry (`appointment_confirmed`,
+  `appointment_rescheduled`, `lab_order_approved`, `results_ready`,
+  `emergency_escalated`, `prescription_ready`) -- both locales mandatory per
+  spec, `render_notification()` falls back to `en` for a locale it doesn't
+  recognise. `emergency_escalated`'s copy cites all three national
+  helplines (108 ambulance, 104 health, 112 emergency) in both languages.
+  All times rendered via `format_ist()` (`DD-MM-YYYY hh:mm AM/PM`, IST) --
+  never a bare UTC timestamp.
+- `GET /notify`, `POST /notify/{id}/read`, `POST /notify/read-all`
+  (`app/api/v1/notify.py`) are all ownership-checked against
+  `get_current_user`; there is no public `POST /notify` -- creation only
+  happens server-side via `notify()`, called by whichever router raises the
+  event (appointments, approvals, lab results, etc. -- those routers are
+  outside this checkpoint's owned paths, so wiring the actual call sites is
+  a follow-up DRIFT note for whoever owns each: **Ashwin** for
+  appointment-confirmed/rescheduled and results-ready, **already wired** by
+  me for lab-order/prescription-approved since `app/api/v1/approvals.py` is
+  an owned path -- see the P3.2 commit for that one-line addition).
+
 ## 2026-08-27 — CP3 (V3.1-V3.5): SOAP summary, medication ranking, tool adapters, eval
 
 - Environment gap found before any CP3 work: `.env` didn't exist (copied from

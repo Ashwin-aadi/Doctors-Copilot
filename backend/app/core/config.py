@@ -73,6 +73,26 @@ class Settings(BaseSettings):
     frontend_url: str = "http://localhost:5173"
     vite_api_base: str = "http://localhost:8000"
 
+    # P3.2 notifications: dev SMTP defaults to a local MailHog instance
+    # (infra/docker-compose.yml, see docs/DECISIONS.md); undelivered mail
+    # falls back to infra/mail/*.eml so nothing is silently dropped.
+    smtp_host: str = "localhost"
+    smtp_port: int = 1025
+    smtp_from: str = "no-reply@doctorcopilot.dev"
+    mail_fallback_dir: str = "./infra/mail"
+
+    # TRAI DLT (Distributed Ledger Technology) SMS registration -- required
+    # by Indian telecom regulation for any transactional/promotional SMS.
+    # Placeholder ids until a real DLT registration exists; per-type ids let
+    # a real gateway be a drop-in config change. With no gateway configured,
+    # send_sms() writes infra/sms/*.txt instead.
+    dlt_entity_id: str = "1701000000000000000"
+    dlt_sender_header: str = "DRCPLT"
+    sms_fallback_dir: str = "./infra/sms"
+
+    # P3.3 PDF export
+    pdf_output_dir: str = "./infra/exports"
+
 
 @lru_cache
 def get_settings() -> Settings:
