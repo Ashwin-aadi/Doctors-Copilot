@@ -170,5 +170,105 @@
     "noDocument": "No document selected.",
     "pageAlt": "Scanned page {{page}}",
     "noPageImage": "Page image unavailable."
+  },
+  "chat": {
+    "title": "Ask about my health record",
+    "placeholder": "Ask about a lab result or a medicine you were given",
+    "scopeNote": "I can explain your own reports and medicines in simple words. I cannot diagnose you, and I cannot change any dose.",
+    "emergencyBanner": "This sounds like an emergency. Call 112 now, or 108 for an ambulance.",
+    "streamError": "The answer stopped before it finished. Please ask again."
+  },
+  "safety": {
+    "title": "Safety check",
+    "clear": "No interactions, allergy conflicts or contraindications found for this medication set.",
+    "unavailable": "Safety check unavailable",
+    "unavailableHint": "The interaction service did not respond. Do not treat this as an all-clear.",
+    "acknowledge": "Acknowledge",
+    "acknowledged": "Acknowledged"
+  },
+  "prescription": {
+    "title": "Prescription",
+    "none": "No prescription has been drafted for this visit yet.",
+    "lock": "Sign and lock",
+    "lockedLabel": "Locked",
+    "confirmLock": "Confirm signature",
+    "download": "Download PDF",
+    "totalSaving": "Total saving with generic substitution: {{amount}}",
+    "acknowledgeRequired_one": "Acknowledge {{count}} major interaction before locking.",
+    "acknowledgeRequired_other": "Acknowledge {{count}} major interactions before locking."
+  },
+  "visit": {
+    "title": "Visit",
+    "advanceTo": "Advance to {{state}}",
+    "labOrderPending": "Lab order awaiting approval",
+    "openLabOrder": "Open lab order",
+    "reconnecting": "Reconnecting to live updates"
+  },
+  "portal": {
+    "heading": "Your care",
+    "visitProgress": "Where your visit has reached",
+    "nextAppointment": "Your next appointment",
+    "reports": "Your reports",
+    "medicines": "Your medicines",
+    "history": "Your history",
+    "abhaHelper": "Ayushman Bharat Health Account",
+    "consultationFee": "Consultation fee",
+    "pmjay": "Covered under Ayushman Bharat PM-JAY",
+    "queuePosition": "Your position in the queue",
+    "estimatedWait": "About {{minutes}} minutes to wait",
+    "noHistoryTitle": "Nothing here yet",
+    "noHistoryBody": "Your visits, reports and prescriptions will appear here.",
+    "noReportsTitle": "No reports yet",
+    "noReportsBody": "Photograph your lab report and upload it here. We will read the values for you.",
+    "showDetails": "Show details",
+    "hideDetails": "Hide details"
+  },
+  "evidence": {
+    "sources": "Sources",
+    "indianGuidance": "Indian national guidance",
+    "international": "International references",
+    "openSource": "Open source",
+    "noSourcesTitle": "No sources yet",
+    "noSourcesBody": "Sources appear here once the clinical brief has been generated.",
+    "confidenceLow": "Low confidence",
+    "confidenceModerate": "Moderate confidence",
+    "confidenceGood": "Good confidence",
+    "decisionSupport": "This is decision support generated from published guidance. It assists the doctor and does not replace clinical judgement or a diagnosis."
+  },
+  "generic": {
+    "heading": "Cheaper equivalents of {{drug}}",
+    "sameIngredient": "Same active ingredient",
+    "couldSave": "Switching could save about {{amount}} on this prescription.",
+    "was": "was",
+    "percentCheaper": "{{percent}}% cheaper",
+    "priceCap": "Price cap {{amount}}",
+    "janAushadhiHeading": "Available at a Jan Aushadhi Kendra",
+    "janAushadhiPrice": "Jan Aushadhi price",
+    "prescribedBrand": "Prescribed brand",
+    "youWouldSave": "You would save",
+    "findKendra": "Find your nearest Janaushadhi Kendra",
+    "indicativeNotice": "Prices are indicative and for discussion with your doctor. Do not change any medicine on your own.",
+    "ruledOut": "Ruled out for safety",
+    "nlem": "NLEM",
+    "nlemTooltip": "On the National List of Essential Medicines — the government's list of medicines every clinic should be able to supply, with a price cap."
+  },
+  "emergency": {
+    "banner": "Your symptoms may need immediate care. Call 112 now, or 108 for an ambulance, and go to the nearest casualty department.",
+    "call112": "Call 112",
+    "ambulance108": "Ambulance 108",
+    "nearestCasualty": "Nearest casualty department"
+  },
+  "alerts": {
+    "safetyChecks": "Safety checks",
+    "acknowledge": "Acknowledge and continue",
+    "acknowledged": "Acknowledged",
+    "source": "Source",
+    "blockedAllergy": "Blocked — recorded allergy",
+    "blockedContraindication": "Blocked — contraindicated",
+    "blockedScheduleH1": "Blocked — Schedule H1 medicine",
+    "blockedNotEquivalent": "Blocked — not an equivalent medicine",
+    "blockedMajor": "Blocked — major interaction",
+    "scheduleH": "Schedule H",
+    "scheduleH1": "Schedule H1"
   }
 }

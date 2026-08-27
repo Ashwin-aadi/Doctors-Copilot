@@ -11,6 +11,8 @@ import { PrimitivesSection } from "./sections/PrimitivesSection";
 import { ChatSection } from "./sections/ChatSection";
 import { StatesSection } from "./sections/StatesSection";
 import { ResponsiveSection } from "./sections/ResponsiveSection";
+import { PortalSection } from "./sections/PortalSection";
+import { EvidenceSection } from "./sections/EvidenceSection";
 
 export type PreviewState = "loading" | "empty" | "error" | "success";
 
@@ -26,6 +28,8 @@ const sections: PreviewSection[] = [
   { id: "spacing", title: "Spacing scale", render: () => <SpacingSection /> },
   { id: "primitives", title: "UI primitives", render: (s) => <PrimitivesSection state={s} /> },
   { id: "chat", title: "Triage chat", render: (s) => <ChatSection state={s} /> },
+  { id: "portal", title: "Patient portal and generic substitution", render: (s) => <PortalSection state={s} /> },
+  { id: "evidence", title: "Clinical evidence and safety alerts", render: (s) => <EvidenceSection state={s} /> },
   { id: "states", title: "Loading / empty / error / success states", render: (s) => <StatesSection state={s} /> },
   { id: "responsive", title: "Responsive check", render: () => <ResponsiveSection /> },
 ];
