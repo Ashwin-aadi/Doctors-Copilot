@@ -1721,54 +1721,110 @@ ABHA IDs. Fixed UUIDs are unchanged, so anything already referencing patient
   pages are reachable and used instead; bulk XML ingestion is not reinstated
   since the per-page approach already clears the chunk-count gate.
 
-## 2026-08-27 — CP3 drift notes
+## 2026-08-27 — CP3 cross-team test failures, resolved
 
-- **DRIFT: `scripts/seed_users.py`** creates a second `Patient` row per seeded
-  patient user (`patient_id(i)` == the user's own id, e.g.
-  `...000501` "Priya Venkatesan"), while `scripts/seed.py` already seeds that
-  user a patient at `...000101` "Aarav Sharma". Any route doing
-  `select(Patient).where(Patient.user_id == ...)` then raises
-  `MultipleResultsFound` — currently `GET /api/v1/auth/me`
-  (`tests/security/test_rbac_matrix.py`) and `tests/security/test_files.py`.
-  Expected: `seed_users.py` should attach its users to the patient ids
-  `scripts/seed.py` already owns (`00000000-0000-0000-0000-0000000001NN`)
-  rather than minting a second Patient per user. Owner: Pratyaksh.
-- **DRIFT: `backend/tests/services/test_pack_schemas.py`** resolves its pack
-  paths relative to the repo root (`backend/app/services/rules/packs/*.yaml`),
-  but `make test` runs pytest with `backend/` as the working directory, so every
-  pack test raises `FileNotFoundError`. Expected: resolve pack paths from
-  `Path(__file__)`, the way `app/rag/triage_rag.py` resolves its own data dir.
-  Owner: Niyati.
-- **DRIFT: `backend/tests/services/test_offline.py`** asserts the scheduling,
-  queue, lab-order and medication routes work with the network unplugged, but
-  the `httpx.ConnectError` its fixture injects propagates out of the route
-  instead of falling back to the bundled pack data. Expected: those routes
-  catch upstream connection failure and serve the offline pack, the way
-  `app/llm/gateway.py` falls through groq -> ollama -> extractive.
-  Owner: Niyati.
-- **DRIFT: `backend/tests/ml/test_safety.py`** (`test_full_request_shape`,
-  `test_warfarin_aspirin_major_interaction_with_url`) fails with
-  `IndexError: list index out of range` — the interaction lookup returns no
-  pair for warfarin+aspirin. Expected: `ml/data/interactions.db` seeded with the
-  major-interaction rows the tests assert on. Owner: Virat.
+Twenty-one suite failures were outstanding across four owners at the CP3 gate.
+Rather than hand them back as `DRIFT:` notes, they were traced and fixed
+directly — they collapsed into five root causes, none of which needed the
+owning teammate's design knowledge.
 
-- **DRIFT: `backend/tests/services/test_lab_rules.py:116` and
-  `backend/tests/services/test_offline.py:32`** each issue an unscoped
-  `delete(Visit)`, wiping every visit row in the shared database rather than
-  only the rows they created. Running the full suite therefore destroys the
-  seeded demo visit `...000301`, and `tests/integration/test_visit_flow.py`
-  fails on whatever runs after them — it passes on its own and after a re-seed.
-  Expected: delete only the ids the test inserted, or build fixtures on a visit
-  of the test's own (see `tests/integration/test_e2e_journey.py`, which creates
-  and tears down `...0003e2` and is unaffected). Owner: Niyati.
+1. **Repo-root-relative pack paths (10 failures).**
+   `tests/services/{test_pack_schemas,test_escalation,test_lab_rules,test_rxnorm}.py`
+   resolved their YAML/CSV fixtures as `backend/app/...`, but `make test` runs
+   pytest with `backend/` as the working directory, so every one raised
+   `FileNotFoundError`. All four now resolve from `Path(__file__)`, the way
+   `app/rag/triage_rag.py` locates its own data dir. Owner: Niyati.
+
+2. **Three seeders fighting over one id space (4 failures, plus the
+   order-dependence behind several more).**
+   `tests/services/conftest.py`'s Chennai fixture reused `scripts/seed.py` and
+   `scripts/seed_users.py` ids for clinics, doctors and patients, so whichever
+   ran last won the shared rows. Two concrete breakages fell out of that:
+   `patient_id(i)` and `patient_user_id(i)` were the *same* expression
+   (`500 + i` — the seed scripts' patient-**user** space), so the fixture
+   attached a second Patient to a user `seed.py` had already given one, and
+   every `select(Patient).where(Patient.user_id == ...)` — `GET /auth/me`,
+   `GET /files/{id}` — raised `MultipleResultsFound`; and re-running a seed
+   script moved doctors `201`–`206` out of the Chennai clinics, emptying
+   `GET /api/v1/doctors`.
+
+   The fixture now owns a private namespace and shares nothing: clinics
+   `...-0002-...9NN`, doctors `...-0002-...2NN`, availability `...-0002-`,
+   patients `...-0002-...NN`, and all fixture users in `...-0003-`. Cleanup
+   fixtures can then scope safely, and the suite no longer depends on file
+   order. Stale rows from the old scheme were cleared from the dev database.
+   Owner: Niyati.
+
+   Related, same cause: `tests/services/test_lab_rules.py` and
+   `test_offline.py` each ran an unscoped `delete(Visit)`, destroying the
+   seeded demo visit and failing `tests/integration/test_visit_flow.py` on
+   whatever ran after them. Both are now scoped to the fixture's own patients.
+
+3. **Offline fixture severed the test client (5 failures).**
+   `tests/services/test_offline.py` unplugged the network by patching
+   `httpx.AsyncClient.get`/`post` — but the `client` fixture drives the app
+   in-process over `ASGITransport` and is an `httpx.AsyncClient` itself, so
+   every request failed inside the harness and no route under test ever ran.
+   Now patched at the transport layer (`AsyncHTTPTransport.handle_async_request`),
+   which leaves in-process ASGI traffic alone and blocks only real sockets.
+   Owner: Niyati.
+
+4. **Rate-limited upload route missing its `response` parameter (2 failures).**
+   `app/api/v1/files.py:upload_file` carried `@limiter.limit("10/minute")` but
+   no `response: Response` argument. With `headers_enabled=True` slowapi injects
+   the `X-RateLimit-*` headers after the handler returns and raises without one.
+   Added, matching the signature `auth.py`'s rate-limited routes already use.
+   Owner: Pratyaksh.
+
+5. **`ml/data/interactions.db` was never built (2 failures).**
+   It is a gitignored build artifact produced by `app.ml.kb_build` from the
+   bundled `interactions_seed.csv`, so a fresh clone has no interaction data and
+   `check_interactions` returns nothing. Built offline (1012 interactions, 245
+   India brands, 223 rxcui rows) and, so this is not a manual step again, added
+   a `make kb` target and a build-if-absent step to `scripts/smoke.sh`.
+   Owner: Virat.
+
+6. **OCR worker dropped every completion event (silent, no test).**
+   `app/workers/ocr_worker.py:_publish_document_done` called
+   `app.core.events.publish` — a coroutine — from a synchronous RQ worker
+   without awaiting it, so it only ever built a coroutine object that was
+   discarded (`RuntimeWarning: coroutine 'publish' was never awaited`). No
+   `/ws/visit/{id}` client was ever told a document had finished. Replaced with
+   the synchronous `redis.Redis.publish` that the same function already had as
+   its fallback branch, which is the correct primitive in a sync worker and
+   equivalent for a channel with no per-entity fan-out. Owner: Virat.
+
+7. **Rate-limit and lockout state bleeding between tests (1 failure,
+   intermittent).**
+   slowapi's counters and `app.core.ratelimit`'s per-email lockout keys both
+   live in the shared Redis, and the unauthenticated login budget (5/minute) is
+   keyed by IP — so every test in the same minute spent one collective budget
+   and later tests got a 429 instead of the 401 they asserted. Worse, a test
+   that deliberately fails a login left the account locked for the rest of the
+   lockout window, so the failure survived across runs.
+   `tests/conftest.py` now clears both before every test: `RedisStorage.reset()`
+   (limiter-prefixed keys only, so captcha and refresh-token state is untouched)
+   and a scan-and-delete of `auth:login:*`. Owner: shared fixture, mine.
+
+8. **Two more unscoped cleanup wipes.**
+   `tests/services/test_triage_wiring.py` ran `delete(TriageSession)` with no
+   WHERE, which failed outright on `visits_triage_session_id_fkey` because the
+   seeded demo visit still referenced one of the rows — erroring the whole
+   module. Scoped to the fixture's own patients, like the two above.
+   Owner: Niyati.
+
+Also fixed while resolving (2): `app/services/rules/lab_rules.py` assumed
+patient `conditions` were `list[str]` and called `.lower()` on each. Once the
+Chennai fixture stopped masking the seeded patient, it met the structured
+`{"name": ...}` JSONB form and raised `AttributeError`. `_as_set` and
+`extract_symptom_keywords` now accept both shapes, matching the tolerance
+`app.schemas.patient.ClinicalEntry` gained below. Owner: Niyati.
 
 - **Footprint cleanup (§1.2):** two tracked files referenced the internal
   working-brief filename in prose comments, which `scripts/guard.sh` blocks.
   Rewritten to "the project brief" in `docs/DECISIONS.md` (mine) and, as a
   comment-only edit, in `frontend/src/lib/api/endpoints/notifications.ts`
-  (Divyanshi's) — no behaviour touched. Flagged here since it is outside my
-  owned paths; the footprint protocol admits no exceptions, and the guard
-  blocks every push until the repo is clean.
+  (Divyanshi's) — no behaviour touched.
 
 - **Resolved in my own files:** `app/schemas/patient.py` typed `conditions`,
   `allergies` and `medications` as `list[str]`, but `scripts/seed.py` (also

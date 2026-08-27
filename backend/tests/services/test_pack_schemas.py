@@ -14,7 +14,11 @@ import pytest
 import yaml
 from pydantic import BaseModel, ConfigDict
 
-_PACKS_DIR = Path("backend/app/services/rules/packs")
+# Resolved from this file, not the working directory: `make test` runs
+# pytest with `backend/` as cwd, so a repo-root-relative path never
+# resolves. Mirrors how app/rag/triage_rag.py locates its own data dir.
+_BACKEND = Path(__file__).resolve().parents[2]
+_PACKS_DIR = _BACKEND / "app/services/rules/packs"
 
 
 class TierEntry(BaseModel):

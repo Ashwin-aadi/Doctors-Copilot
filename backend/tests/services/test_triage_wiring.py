@@ -22,10 +22,17 @@ from tests.services.conftest import patient_id
 
 @pytest_asyncio.fixture(autouse=True)
 async def _clean_tables():
+    # Scoped to this module's fixture patients. Unscoped, the TriageSession
+    # wipe hit rows the seeded demo visit still points at and failed on
+    # `visits_triage_session_id_fkey`, taking the whole module down with it.
+    ours = [patient_id(i) for i in range(1, 9)]
+
     async def _wipe() -> None:
         async with SessionLocal() as session:
-            await session.execute(delete(QueueEntry))
-            await session.execute(delete(TriageSession))
+            await session.execute(delete(QueueEntry).where(QueueEntry.patient_id.in_(ours)))
+            await session.execute(
+                delete(TriageSession).where(TriageSession.patient_id.in_(ours))
+            )
             await session.commit()
 
     await _wipe()
