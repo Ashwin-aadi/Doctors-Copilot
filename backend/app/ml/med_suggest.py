@@ -147,7 +147,7 @@ async def suggest_medications(req: MedSuggestRequest) -> list[MedCandidate]:
         return []
 
     candidates: list[MedCandidate] = []
-    for ingredient, (match, indications_text) in raw.items():
+    for ingredient, (match, _indications_text) in raw.items():
         check_meds = [*req.current_medications, ingredient]
         report = await check_interactions(
             InteractionRequest(medications=check_meds, allergies=req.allergies, conditions=[])
