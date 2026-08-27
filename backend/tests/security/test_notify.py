@@ -7,7 +7,7 @@ this sandbox's infra caveat.
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from app.api.v1 import notify as notify_api
 from app.services import notify as notify_service
@@ -39,7 +39,7 @@ def test_render_notification_missing_placeholder_degrades_gracefully() -> None:
 
 
 def test_format_ist_renders_dd_mm_yyyy_12h() -> None:
-    dt = datetime(2026, 8, 27, 14, 30, tzinfo=timezone.utc)  # 20:00 IST
+    dt = datetime(2026, 8, 27, 14, 30, tzinfo=UTC)  # 20:00 IST
     rendered = notify_service.format_ist(dt)
     assert rendered == "27-08-2026 08:00 PM"
 

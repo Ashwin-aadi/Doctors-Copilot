@@ -9,6 +9,7 @@ from typing import cast
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, Response
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.deps import CurrentUser, get_current_user
 from app.core.errors import ApiError
@@ -16,7 +17,6 @@ from app.db.models.clinical import LabOrder, Prescription
 from app.db.models.patient import Patient
 from app.db.session import get_db
 from app.services.pdf import Kind, render
-from sqlalchemy.ext.asyncio import AsyncSession
 
 router = APIRouter(prefix="/exports", tags=["exports"])
 

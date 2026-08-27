@@ -15,14 +15,13 @@ same pattern as `app/services/consent.py` uses for `consents`.
 from __future__ import annotations
 
 import json
-import smtplib
 import uuid
 from datetime import UTC, datetime
 from email.message import EmailMessage
 from pathlib import Path
 from typing import Any
-from zoneinfo import ZoneInfo
 from uuid import UUID
+from zoneinfo import ZoneInfo
 
 from sqlalchemy import Column, MetaData, String, Table, select
 from sqlalchemy.dialects.postgresql import UUID as PGUUID

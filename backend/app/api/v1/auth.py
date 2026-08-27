@@ -471,7 +471,6 @@ async def change_password(
     body: ChangePasswordRequest,
     request: Request,
     current_user: CurrentUser = Depends(get_current_user),
-    authorization: str | None = Header(default=None),
     db: AsyncSession = Depends(get_db),
 ) -> dict:
     user = await db.get(User, current_user.id)
@@ -488,14 +487,6 @@ async def change_password(
     await db.commit()
 
     # Keep the session making this request alive; revoke every other one.
-    current_jti = None
-    if authorization and authorization.startswith("Bearer "):
-        try:
-            current_jti = security.decode_token(
-                authorization.removeprefix("Bearer ").strip()
-            ).get("jti")
-        except ApiError:
-            current_jti = None
     refresh_token = request.cookies.get("refresh_token")
     except_jti = None
     if refresh_token:
