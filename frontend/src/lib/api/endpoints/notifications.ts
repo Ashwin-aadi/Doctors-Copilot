@@ -4,7 +4,7 @@ import { request } from "../client";
  * `backend/app/api/v1/notify.py` raises `not_implemented("notifications
  * owned by pratyaksh")` (501/NOT_IMPLEMENTED) on every route today -- see
  * docs/DECISIONS.md, B2.5. Calling these is expected to surface that typed
- * "not ready" state (rule 4 of CLAUDE.md), never a crash.
+ * "not ready" state per the project brief, never a crash.
  */
 export interface NotificationOut {
   id: string;

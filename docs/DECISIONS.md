@@ -286,7 +286,7 @@ entries above and in B2.2-B2.4.
   `ErrorState` with a retry action wired to `refetch()`, never a crash. A
   persistent decision-support banner (`copilot.decisionSupportBanner`,
   en + hi) is mounted above every panel state per the Telemedicine Practice
-  Guidelines 2020 requirement in CLAUDE.md §0.5.
+  Guidelines 2020 requirement in the project brief.
 - Wired `CopilotContainer` directly onto the existing `/doctor/visit/:id`
   route (replacing its `PlaceholderPage`) so it's reachable for e2e —
   B3.5's `VisitContainer` will own that route and compose the panel
@@ -1720,6 +1720,136 @@ ABHA IDs. Fixed UUIDs are unchanged, so anything already referencing patient
   no longer serves a stable `2012` snapshot). Individual MedlinePlus topic
   pages are reachable and used instead; bulk XML ingestion is not reinstated
   since the per-page approach already clears the chunk-count gate.
+
+## 2026-08-27 — CP3 drift notes
+
+- **DRIFT: `scripts/seed_users.py`** creates a second `Patient` row per seeded
+  patient user (`patient_id(i)` == the user's own id, e.g.
+  `...000501` "Priya Venkatesan"), while `scripts/seed.py` already seeds that
+  user a patient at `...000101` "Aarav Sharma". Any route doing
+  `select(Patient).where(Patient.user_id == ...)` then raises
+  `MultipleResultsFound` — currently `GET /api/v1/auth/me`
+  (`tests/security/test_rbac_matrix.py`) and `tests/security/test_files.py`.
+  Expected: `seed_users.py` should attach its users to the patient ids
+  `scripts/seed.py` already owns (`00000000-0000-0000-0000-0000000001NN`)
+  rather than minting a second Patient per user. Owner: Pratyaksh.
+- **DRIFT: `backend/tests/services/test_pack_schemas.py`** resolves its pack
+  paths relative to the repo root (`backend/app/services/rules/packs/*.yaml`),
+  but `make test` runs pytest with `backend/` as the working directory, so every
+  pack test raises `FileNotFoundError`. Expected: resolve pack paths from
+  `Path(__file__)`, the way `app/rag/triage_rag.py` resolves its own data dir.
+  Owner: Niyati.
+- **DRIFT: `backend/tests/services/test_offline.py`** asserts the scheduling,
+  queue, lab-order and medication routes work with the network unplugged, but
+  the `httpx.ConnectError` its fixture injects propagates out of the route
+  instead of falling back to the bundled pack data. Expected: those routes
+  catch upstream connection failure and serve the offline pack, the way
+  `app/llm/gateway.py` falls through groq -> ollama -> extractive.
+  Owner: Niyati.
+- **DRIFT: `backend/tests/ml/test_safety.py`** (`test_full_request_shape`,
+  `test_warfarin_aspirin_major_interaction_with_url`) fails with
+  `IndexError: list index out of range` — the interaction lookup returns no
+  pair for warfarin+aspirin. Expected: `ml/data/interactions.db` seeded with the
+  major-interaction rows the tests assert on. Owner: Virat.
+
+- **DRIFT: `backend/tests/services/test_lab_rules.py:116` and
+  `backend/tests/services/test_offline.py:32`** each issue an unscoped
+  `delete(Visit)`, wiping every visit row in the shared database rather than
+  only the rows they created. Running the full suite therefore destroys the
+  seeded demo visit `...000301`, and `tests/integration/test_visit_flow.py`
+  fails on whatever runs after them — it passes on its own and after a re-seed.
+  Expected: delete only the ids the test inserted, or build fixtures on a visit
+  of the test's own (see `tests/integration/test_e2e_journey.py`, which creates
+  and tears down `...0003e2` and is unaffected). Owner: Niyati.
+
+- **Footprint cleanup (§1.2):** two tracked files referenced the internal
+  working-brief filename in prose comments, which `scripts/guard.sh` blocks.
+  Rewritten to "the project brief" in `docs/DECISIONS.md` (mine) and, as a
+  comment-only edit, in `frontend/src/lib/api/endpoints/notifications.ts`
+  (Divyanshi's) — no behaviour touched. Flagged here since it is outside my
+  owned paths; the footprint protocol admits no exceptions, and the guard
+  blocks every push until the repo is clean.
+
+- **Resolved in my own files:** `app/schemas/patient.py` typed `conditions`,
+  `allergies` and `medications` as `list[str]`, but `scripts/seed.py` (also
+  mine), `app/kg/ingest.py` and `app/rag/clinical_rag.py` all read and write the
+  structured `{"name", "since"/"severity"/"dose"/"rxcui"}` form the knowledge
+  graph needs, so `GET /api/v1/patients` 500'd on real seeded data. Introduced
+  `ClinicalEntry`, which coerces a bare string into `{"name": ...}` — no field
+  removed, both producers keep working, and every consumer now sees one shape.
+  Frontend note for Divyanshi: these three arrays are now arrays of objects;
+  read `.name` rather than the value itself. `types.ts` regenerated.
+
+## 2026-08-27 — CP3 (A3.1–A3.5)
+
+### A3.1 — integration of CP2
+- All four teammate `feat/*/cp2` branches (virat, pratyaksh, niyati, divyanshi)
+  were already merged into `main` when CP3 started; `feat/abhishek/cp2` does not
+  exist, matching `integrate.sh`'s SKIP-if-absent path. No further merge needed,
+  so `integrate.sh 2` was a no-op and `cp2-integrated` follows CP3's own gate.
+
+### A3.2 — patient chatbot
+- Patient retrieval reads two collections and only two: the patient's own
+  `patient_{patient_id}` and a new shared `lay` collection. `clinical` is
+  unreachable from the chat path by construction, not by filter — doctor-facing
+  drug-label and protocol text is not safe patient-facing reading. A test
+  asserts `clinical` is never queried.
+- Added the `lay` collection (MedlinePlus topic pages, plus 36 bundled
+  plain-language entries in `app/rag/data/lay_corpus.yaml` written in-house at
+  ~8th-standard reading level). The bundled entries are always upserted, so the
+  collection is never empty and the demo never depends on the network. Live
+  ingest measured 144 chunks.
+- A deterministic phrase check refuses dose/start/stop/prescribe questions
+  before any model call. The system prompt forbids them too, but the prompt is
+  advice and the check is a guarantee — it also holds when the extractive
+  fallback is answering because both Groq and Ollama are unreachable.
+- The whole answer is guarded before the first SSE token leaves, so nothing can
+  be streamed to a patient and then retracted.
+
+### A3.3 — guardrails
+- `faithfulness` squashes cross-encoder logits through a sigmoid before applying
+  the 0.35 floor, so the threshold means the same thing if `RERANK_MODEL`
+  changes. Sentences with no `[n]` marker (greetings, the "discuss with your
+  doctor" closer) are kept and excluded from the score rather than being scored
+  against nothing.
+- When the cross-encoder itself is unavailable, `filter_unfaithful` keeps the
+  text and returns the 0.35 floor rather than 1.0 — an unavailable scorer must
+  not read as high confidence.
+- `emergency_intercept` calls `app.services.queueing.escalation.escalate_with_referral`
+  in-process rather than issuing an HTTP `POST /api/v1/queue/{id}/escalate` to
+  itself. Same code path, no self-call deadlock under a single worker, and no
+  need to mint a service token. Escalation failure never suppresses the banner:
+  the patient still gets told to call 112/108.
+
+### A3.4 — visit orchestrator
+- The transition table is a single linear chain; anything else is 409 CONFLICT.
+  On top of it, three transitions carry a database precondition — LABS_APPROVED
+  needs a locked lab order, RESULTS_UPLOADED a completed document, PRESCRIBED a
+  locked prescription. A doctor cannot close a visit that has no signed
+  prescription behind it.
+- `force_guard=True` exists for internal callers that created the required row
+  in the same uncommitted transaction. It skips the precondition only — the
+  state table still applies.
+- Every accepted transition re-syncs both the knowledge graph and the patient's
+  plain-language chat corpus, so the chatbot can answer about a lab the moment
+  it lands. Both syncs are best-effort and logged: a Neo4j or Chroma outage must
+  not fail a clinical state change.
+
+### A3.5 — websockets
+- Both sockets take the access token from a `token` query parameter. Browsers
+  cannot set an `Authorization` header on a WebSocket handshake; a bad or
+  missing token closes with 1008.
+- Fan-out goes through Redis pub/sub rather than an in-process registry, so the
+  streams still work under the multi-worker gunicorn setup in
+  `docker-compose.prod.yml`. `publish` logs and swallows — a state transition
+  must never fail because Redis blinked.
+
+### Environment note (local only, no repo change)
+- Host port 5432 was held by an unrelated project's container that this session
+  could not stop, so CP3 verification ran Postgres on host port 5544 via a
+  scratch compose override outside the repo, with `DATABASE_URL` overridden per
+  command. `infra/docker-compose.yml` and `.env.example` still pin 5432 —
+  nothing in the repo was changed for this.
 
 ## 2026-08-25 — A1.1 dev environment note
 
