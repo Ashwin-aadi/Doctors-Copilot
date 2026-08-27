@@ -1,5 +1,49 @@
 # Decisions Log
 
+## 2026-08-27 — CP3 P3.4 doctor & clinic profile management
+
+- `app/api/v1/doctors_profile.py` implements admin-only CRUD for `Doctor`
+  and `Clinic`, weekly `Availability` CRUD, and a new leave/blackout
+  calendar (`availability_blackouts`, this checkpoint's migration). A
+  doctor may `PATCH /doctors-profile/{their_own_id}` but only
+  `{name, specialties, qualifications}` (`_SELF_EDITABLE_FIELDS`) --
+  attempting `nmc_reg_no`/`registration_council`/`registration_year`/`fee`/
+  `rating`/`clinic_id` on their own record is a flat `403 AUTH_FORBIDDEN`,
+  even though an admin can set all of them.
+- **This resolves the standing DRIFT note from Niyati's N1.1 entry above**:
+  she'd asked for `doctors.registration_council`/`clinics.facility_type`
+  (plus `languages`/`schemes`, which are out of this checkpoint's scope) via
+  additive migration since she can't touch `app/db/models/` either. This
+  checkpoint's migration adds `registration_council`/`registration_year`
+  (doctors) and `facility_type` (clinics) for exactly that reason -- but per
+  the same ownership rule, the ORM columns still don't exist, so her
+  `repo.py` TEMP-ADAPTER override dicts should switch to reading the real
+  columns (now present in the DB) once the ORM mapping catches up; noting
+  here rather than editing her file.
+- Availability validation, in order: `weekday` 0-6; `start_time <
+  end_time` (an overnight/wraparound window is rejected, matching the
+  spec's own curl example: `18:00`->`09:00` -> 422); `slot_minutes` in
+  `{10,15,20,30}`; `valid_from <= valid_to` (defaults to today ->
+  today+1y when omitted, since the spec's curl example doesn't send
+  either); no overlapping window for the same doctor+weekday (half-open
+  interval check against every other row for that doctor/weekday, self
+  excluded on update).
+- `availability_blackouts.doctor_id`/`.clinic_id` are both nullable and
+  `OR`-ed with the filter in `GET /blackouts` (a row with `doctor_id=NULL`
+  applies to every doctor, same for `clinic_id`) -- how the three seeded
+  2026 national holidays (26 Jan, 15 Aug, 2 Oct) apply platform-wide without
+  needing one row per doctor. A per-doctor/per-clinic personal leave day is
+  a normal row with the specific id set.
+- NMC registration number format is validated with a permissive regex
+  (`^[A-Z0-9][A-Z0-9/-]{3,31}$`, 4-32 chars) rather than a real per-state
+  medical council format spec, since no single canonical NMC/SMC number
+  format is publicly documented across all 28 state councils -- uniqueness
+  is enforced at the DB query level regardless of the exact format matched.
+- Clinic lat/lng validated against a rough India bounding box (`6.5-37.6°N,
+  68.0-97.5°E`, mainland + islands) -- rejects an obviously wrong
+  coordinate (e.g. a US address) without needing a real reverse-geocoding
+  call.
+
 ## 2026-08-27 — CP3 P3.3 PDF export
 
 - `app/services/pdf.py::render(kind, entity_id, *, locale="en", db=None) ->
