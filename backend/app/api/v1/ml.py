@@ -2,9 +2,9 @@ from fastapi import APIRouter, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.deps import CurrentUser, get_current_user
-from app.core.errors import not_implemented
 from app.db.session import get_db
 from app.ml.lab_flags import flag_labs as _flag_labs
+from app.ml.med_suggest import suggest_medications as _suggest_medications
 from app.ml.ner import extract as _extract_entities
 from app.ml.safety import check_interactions as _check_interactions
 from app.ml.schemas_ml import (
@@ -13,7 +13,10 @@ from app.ml.schemas_ml import (
     InteractionRequest,
     LabFlagRequest,
     LabResultExtended,
+    MedSuggestRequest,
+    SummaryRequest,
 )
+from app.ml.summary import build_summary as _build_summary
 from app.schemas.ml import InteractionReport, MedCandidate, SoapSummary
 
 router = APIRouter(prefix="/ml", tags=["ml"])
@@ -43,10 +46,14 @@ async def flag_labs(
 
 
 @router.post("/summary", response_model=SoapSummary)
-async def summarize() -> SoapSummary:
-    raise not_implemented("SOAP summary owned by virat")
+async def summarize(
+    req: SummaryRequest, current_user: CurrentUser = Depends(get_current_user)
+) -> SoapSummary:
+    return await _build_summary(req)
 
 
 @router.post("/medications/suggest", response_model=list[MedCandidate])
-async def suggest_medications() -> list[MedCandidate]:
-    raise not_implemented("medication suggestion owned by virat")
+async def suggest_medications(
+    req: MedSuggestRequest, current_user: CurrentUser = Depends(get_current_user)
+) -> list[MedCandidate]:
+    return await _suggest_medications(req)

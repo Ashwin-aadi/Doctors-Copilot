@@ -1,0 +1,20 @@
+{"text": "Patient on metformin 500 mg BD and glimepiride 2 mg OD for type 2 diabetes.", "drugs": ["metformin", "glimepiride"], "conditions": ["diabetes"], "allergens": []}
+{"text": "History of hypertension, currently on amlodipine 5 mg and losartan 50 mg.", "drugs": ["amlodipine", "losartan"], "conditions": ["hypertension"], "allergens": []}
+{"text": "Allergic to penicillin; prescribed azithromycin 500 mg OD for 3 days instead.", "drugs": ["azithromycin"], "conditions": [], "allergens": ["penicillin"]}
+{"text": "Patient denies chest pain. History of type 2 diabetes. On metformin 500 mg BD and aspirin 75 mg OD.", "drugs": ["metformin", "aspirin"], "conditions": ["diabetes"], "allergens": []}
+{"text": "Presented with fever and joint pain for 3 days, suspected dengue, platelets low.", "drugs": [], "conditions": ["dengue", "fever"], "allergens": []}
+{"text": "Known case of asthma on salbutamol inhaler PRN and budesonide 200 mcg BD.", "drugs": ["salbutamol", "budesonide"], "conditions": ["asthma"], "allergens": []}
+{"text": "No known drug allergies. Started on omeprazole 20 mg OD for acid reflux.", "drugs": ["omeprazole"], "conditions": ["acid reflux"], "allergens": []}
+{"text": "Patient with chronic kidney disease on furosemide 40 mg OD, renal function monitored.", "drugs": ["furosemide"], "conditions": ["chronic kidney disease"], "allergens": []}
+{"text": "Discontinued warfarin last month; now stable, no anticoagulation currently.", "drugs": ["warfarin"], "conditions": [], "allergens": []}
+{"text": "Diagnosed with pulmonary tuberculosis, started on isoniazid and rifampicin.", "drugs": ["isoniazid", "rifampicin"], "conditions": ["tuberculosis"], "allergens": []}
+{"text": "Allergic to sulfa drugs. Given ciprofloxacin 500 mg BD for UTI.", "drugs": ["ciprofloxacin"], "conditions": ["uti"], "allergens": ["sulfa"]}
+{"text": "Patient with major depressive disorder on sertraline 50 mg OD.", "drugs": ["sertraline"], "conditions": ["depression"], "allergens": []}
+{"text": "History of peptic ulcer disease; avoid NSAIDs, on pantoprazole 40 mg OD.", "drugs": ["pantoprazole"], "conditions": ["peptic ulcer"], "allergens": []}
+{"text": "Complains of persistent cough and weight loss over two months, no fever currently.", "drugs": [], "conditions": ["cough", "weight loss"], "allergens": []}
+{"text": "On atorvastatin 10 mg OD for dyslipidemia, no current chest symptoms.", "drugs": ["atorvastatin"], "conditions": ["dyslipidemia"], "allergens": []}
+{"text": "Patient allergic to penicillin, developed rash with amoxicillin previously.", "drugs": ["amoxicillin"], "conditions": ["rash"], "allergens": ["penicillin"]}
+{"text": "Insulin-dependent diabetic, on insulin glargine 10 units at night.", "drugs": ["insulin"], "conditions": ["diabetic"], "allergens": []}
+{"text": "History of anaemia with fatigue and pallor, hemoglobin low on last report.", "drugs": [], "conditions": ["anaemia", "fatigue"], "allergens": []}
+{"text": "Patient on lithium for bipolar disorder, monitored for toxicity.", "drugs": ["lithium"], "conditions": ["bipolar disorder"], "allergens": []}
+{"text": "No history of drug allergy. Prescribed doxycycline 100 mg BD for suspected typhoid.", "drugs": ["doxycycline"], "conditions": ["typhoid"], "allergens": []}
