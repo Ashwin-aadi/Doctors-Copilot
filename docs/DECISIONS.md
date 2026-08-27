@@ -1,5 +1,62 @@
 # Decisions Log
 
+## 2026-08-27 — CP3 P3.1 pull + P3.2 notifications
+
+- Branched `feat/pratyaksh/cp3` off latest `main` (carrying CP2 for
+  everyone). This sandbox still has no Docker/Postgres/Redis and no
+  installed `fastapi`/`sqlalchemy` (unchanged from every prior checkpoint's
+  noted condition), so `make migrate && make test` cannot run here; wrote
+  and reviewed every module against the existing codebase's actual classes
+  (not guessed shapes), byte-compiled everything, and ran the pure-logic
+  test subset that needs no infra. Full execution deferred to CI as in every
+  prior checkpoint.
+- `alembic/versions/d4a1f6e29c88_cp3_notify_pdf_profile_fields.py`
+  (additive, `down_revision=c7e2a9f01b3d`) adds `users.preferred_language`,
+  `doctors.registration_council`/`registration_year`, `clinics.
+  facility_type`, and a new `availability_blackouts` table (seeded with the
+  three 2026 national holidays P3.4 names: 26 Jan, 15 Aug, 2 Oct). None of
+  `app/db/models/` is touched, per the ownership rule -- these columns are
+  read/written through local SQLAlchemy Core `Table` objects
+  (`app/services/notify.py::_users_table`, and P3.4's doctors_profile
+  module), the same pattern `app/services/consent.py` already established
+  for `consents`. **Note to Ashwin**: please fold these four columns and the
+  new table into the real ORM models when convenient, so the Core-`Table`
+  workaround can be deleted.
+- `app/services/notify.py::notify()` writes the `Notification` row (Ashwin's
+  existing model, already has everything P3.2 needs -- no column gap there),
+  publishes `notify.{user_id}` to Redis (same channel-naming convention
+  P2.3's `approval.locked` already used), then makes a best-effort delivery
+  attempt on the user's actual channels: email via `aiosmtplib` to a dev
+  MailHog instance (`settings.smtp_host/port`, default `localhost:1025`),
+  falling back to an `.eml` file under `infra/mail/` when unreachable; SMS
+  via `send_sms()`, which writes a `.txt` under `infra/sms/` carrying the
+  same TRAI DLT entity id / per-type template id / 6-char sender header
+  (`DRCPLT`) a real gateway call would need, so wiring a real gateway in
+  later only changes that one function's body. **Note to Ashwin**: please
+  add a MailHog service to `infra/docker-compose.yml` (image
+  `mailhog/mailhog`, port 1025) when convenient -- until then every
+  environment without one running uses the `.eml` fallback, which is fully
+  functional for the demo.
+- Templates live at `app/services/templates/{en,hi}/<type>.txt`, one pair
+  per `NOTIFICATION_TYPES` entry (`appointment_confirmed`,
+  `appointment_rescheduled`, `lab_order_approved`, `results_ready`,
+  `emergency_escalated`, `prescription_ready`) -- both locales mandatory per
+  spec, `render_notification()` falls back to `en` for a locale it doesn't
+  recognise. `emergency_escalated`'s copy cites all three national
+  helplines (108 ambulance, 104 health, 112 emergency) in both languages.
+  All times rendered via `format_ist()` (`DD-MM-YYYY hh:mm AM/PM`, IST) --
+  never a bare UTC timestamp.
+- `GET /notify`, `POST /notify/{id}/read`, `POST /notify/read-all`
+  (`app/api/v1/notify.py`) are all ownership-checked against
+  `get_current_user`; there is no public `POST /notify` -- creation only
+  happens server-side via `notify()`, called by whichever router raises the
+  event (appointments, approvals, lab results, etc. -- those routers are
+  outside this checkpoint's owned paths, so wiring the actual call sites is
+  a follow-up DRIFT note for whoever owns each: **Ashwin** for
+  appointment-confirmed/rescheduled and results-ready, **already wired** by
+  me for lab-order/prescription-approved since `app/api/v1/approvals.py` is
+  an owned path -- see the P3.2 commit for that one-line addition).
+
 ## 2026-08-26 — CP2 P2.5 rate limiting & progressive lockout
 
 - `app/core/ratelimit.py`'s `limiter` (`slowapi.Limiter`, Redis-backed via

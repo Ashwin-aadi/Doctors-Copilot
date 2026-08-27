@@ -1,0 +1,1 @@
+Your doctor has approved your lab order. Please visit the diagnostic centre with this reference: {entity_id}.

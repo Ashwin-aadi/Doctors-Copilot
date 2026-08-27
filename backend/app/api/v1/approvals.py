@@ -28,8 +28,10 @@ from app.core.errors import ApiError
 from app.core.redis_client import redis_client
 from app.db.models.audit import AuditLog
 from app.db.models.clinical import LabOrder, Prescription, Visit
+from app.db.models.patient import Patient
 from app.db.models.scheduling import Doctor
 from app.db.session import get_db
+from app.services.notify import notify
 
 router = APIRouter(prefix="/approvals", tags=["approvals"])
 
@@ -73,6 +75,23 @@ async def _reject_if_locked(
     raise ApiError(
         "LOCKED", f"{entity.replace('_', ' ')} is already approved and locked", status_code=409
     )
+
+
+async def _notify_patient_approved(
+    db: AsyncSession, patient_id: UUID, type_: str, entity_id: UUID
+) -> None:
+    """Best-effort: an approval must never fail because a notification
+    couldn't be sent (P3.2's `notify()` already degrades gracefully on a
+    missing email/phone; this just guards against notify() itself raising,
+    e.g. a Redis publish failing)."""
+    result = await db.execute(select(Patient.user_id).where(Patient.id == patient_id))
+    user_id = result.scalar_one_or_none()
+    if user_id is None:
+        return
+    try:
+        await notify(user_id, type_, {"entity_id": str(entity_id)}, db)
+    except Exception:
+        pass
 
 
 @router.post("/lab-order/{lab_order_id}")
@@ -127,6 +146,7 @@ async def approve_lab_order(
         "approval.locked",
         json.dumps({"entity": "lab_order", "id": str(lab_order.id), "content_hash": content_hash}),
     )
+    await _notify_patient_approved(db, lab_order.patient_id, "lab_order_approved", lab_order.id)
 
     return {
         "id": lab_order.id,
@@ -192,6 +212,9 @@ async def approve_prescription(
         json.dumps(
             {"entity": "prescription", "id": str(prescription.id), "content_hash": content_hash}
         ),
+    )
+    await _notify_patient_approved(
+        db, prescription.patient_id, "prescription_ready", prescription.id
     )
 
     return {

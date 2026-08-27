@@ -1,0 +1,1 @@
+Your appointment with Dr. {doctor_name} at {clinic_name} is confirmed for {slot_time_ist} (IST). Please arrive 10 minutes early.
