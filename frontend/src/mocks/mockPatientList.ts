@@ -14,8 +14,11 @@ export const mockPatientList: PatientListItem[] = [
     triageColour: "yellow",
     visitState: "BRIEF_READY",
     lastVisitAt: "2026-08-20T05:30:00Z",
-    allergies: ["Penicillin"],
-    medications: ["Metformin (Glycomet) 500mg", "Amlodipine (Amlong) 5mg"],
+    allergies: [{ name: "Penicillin", severity: "moderate" }],
+    medications: [
+      { name: "Metformin (Glycomet)", dose: "500mg BD" },
+      { name: "Amlodipine (Amlong)", dose: "5mg OD" },
+    ],
   },
   {
     id: "00000000-0000-0000-0000-000000000102",
@@ -29,7 +32,7 @@ export const mockPatientList: PatientListItem[] = [
     visitState: "LABS_APPROVED",
     lastVisitAt: "2026-08-26T11:15:00Z",
     allergies: [],
-    medications: ["Doxycycline (Doxy 1)"],
+    medications: [{ name: "Doxycycline (Doxy 1)", dose: "100mg BD" }],
   },
   {
     id: "00000000-0000-0000-0000-000000000103",
@@ -42,7 +45,7 @@ export const mockPatientList: PatientListItem[] = [
     triageColour: "red",
     visitState: "TRIAGED",
     lastVisitAt: "2026-08-27T02:05:00Z",
-    allergies: ["Sulfa drugs"],
+    allergies: [{ name: "Sulfa drugs", severity: "severe" }],
     medications: [],
   },
   {
@@ -57,7 +60,10 @@ export const mockPatientList: PatientListItem[] = [
     visitState: "PRESCRIBED",
     lastVisitAt: "2026-08-18T07:45:00Z",
     allergies: [],
-    medications: ["Metformin (Glycomet) 500mg", "Atorvastatin (Storvas) 10mg"],
+    medications: [
+      { name: "Metformin (Glycomet)", dose: "500mg BD" },
+      { name: "Atorvastatin (Storvas)", dose: "10mg OD" },
+    ],
   },
   {
     id: "00000000-0000-0000-0000-000000000105",
@@ -71,7 +77,7 @@ export const mockPatientList: PatientListItem[] = [
     visitState: "RESULTS_UPLOADED",
     lastVisitAt: "2026-08-25T09:00:00Z",
     allergies: [],
-    medications: ["Ferrous ascorbate (Fefol)"],
+    medications: [{ name: "Ferrous ascorbate (Fefol)", dose: "1 tab OD" }],
   },
   {
     id: "00000000-0000-0000-0000-000000000106",
@@ -84,7 +90,7 @@ export const mockPatientList: PatientListItem[] = [
     triageColour: "green",
     visitState: "CONSULTED",
     lastVisitAt: "2026-08-15T04:30:00Z",
-    allergies: ["NSAIDs"],
-    medications: ["Isoniazid + Rifampicin (ATT, Category I)"],
+    allergies: [{ name: "NSAIDs", severity: "moderate" }],
+    medications: [{ name: "Isoniazid + Rifampicin (ATT, Category I)" }],
   },
 ];

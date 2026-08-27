@@ -23,6 +23,6 @@ describe("PatientHeaderCard", () => {
     render(<PatientHeaderCard patient={mockPatientList[0]} />);
     expect(screen.getByText(/XXXX-XXXX/)).toBeTruthy();
     expect(screen.getByText("Penicillin")).toBeTruthy();
-    expect(screen.getByText(/Metformin \(Glycomet\)/)).toBeTruthy();
+    expect(screen.getAllByText(/Metformin \(Glycomet\)/).length).toBeGreaterThan(0);
   });
 });

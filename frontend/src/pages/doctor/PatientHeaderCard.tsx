@@ -108,8 +108,9 @@ export function PatientHeaderCard({ patient, loading, error, onRetry }: PatientH
           ) : (
             <div className="flex flex-wrap gap-1.5">
               {patient.allergies.map((a) => (
-                <Badge key={a} tone="critical">
-                  {a}
+                <Badge key={a.name} tone="critical">
+                  {a.name}
+                  {a.severity && <span className="opacity-80"> · {a.severity}</span>}
                 </Badge>
               ))}
             </div>
@@ -123,7 +124,10 @@ export function PatientHeaderCard({ patient, loading, error, onRetry }: PatientH
           ) : (
             <ul className="flex flex-col gap-0.5 text-sm text-fg">
               {patient.medications.map((m) => (
-                <li key={m}>{m}</li>
+                <li key={m.name}>
+                  {m.name}
+                  {m.dose && <span className="text-fg-muted"> — {m.dose}</span>}
+                </li>
               ))}
             </ul>
           )}
