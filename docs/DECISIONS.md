@@ -1,5 +1,23 @@
 # Decisions Log
 
+## 2026-08-27 — CP3 post-merge: switch PDF generic lookup to Niyati's real service
+
+- Merged `main` into `feat/pratyaksh/cp3` (Ashwin's and Virat's CP3 work,
+  already integrated upstream). Only conflict was `docs/DECISIONS.md`
+  itself (both branches appended entries) -- resolved by keeping both
+  logs' entries in full, newest-first. No other file conflicted.
+- The merge brought in Niyati's real `GET /medications/generic`
+  (`app/services/mapping/india_drugs.py::to_generic`, offline-first NLEM/
+  Jan Aushadhi CSV lookup with RxNav enrichment on a miss). `app/services/
+  pdf.py::_generic_alternative()` was written against a local
+  `medications`-table TEMP-ADAPTER since her service didn't exist yet at
+  P3.3 -- switched it over to call `to_generic()` directly now that it has
+  shipped, per rule 3 ("remove when owner ships"). Verified live: `Crocin`
+  -> `Paracetamol` through the real CSV-backed resolver; an unresolvable
+  brand name degrades to `None` (empty generic column) even with Redis
+  unreachable, since `to_generic()`'s own RxNav-enrichment fallback path is
+  wrapped in the same try/except this function already had.
+
 ## 2026-08-27 — CP3 P3.5 session management, CP3 wrap
 
 - `app/core/security.py` gains per-user session tracking: `_register_refresh`

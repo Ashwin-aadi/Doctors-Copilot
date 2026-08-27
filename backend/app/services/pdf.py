@@ -84,25 +84,22 @@ def format_inr(amount: float) -> str:
     return format_currency(amount, "INR", locale="en_IN")
 
 
-async def _generic_alternative(db: AsyncSession, drug_name: str) -> str | None:
-    """Best-effort Jan Aushadhi generic lookup against the local `medications`
-    table (ingredient match). Niyati's `GET /medications/generic` service
-    doesn't exist yet (still `not_implemented`, see
-    app/api/v1/medications.py) -- TEMP-ADAPTER: falls back to `None` (empty
-    generic column) if no match is found. Remove this local lookup and call
-    her real service once it ships."""
-    from app.db.models.clinical import Medication
+async def _generic_alternative(drug_name: str) -> str | None:
+    """Jan Aushadhi generic lookup via Niyati's real brand->generic service
+    (`app/services/mapping/india_drugs.py::to_generic`), which shipped after
+    this checkpoint's original TEMP-ADAPTER (a local `medications` table
+    query) was first written -- switched over to the real service instead of
+    keeping the workaround now that it's available. Returns `None` (empty
+    generic column) on any miss/lookup failure rather than blocking export."""
+    from app.services.mapping.india_drugs import to_generic
 
-    result = await db.execute(select(Medication).where(Medication.name.ilike(drug_name)))
-    med = result.scalars().first()
-    if med is None or not med.ingredient:
+    try:
+        mapping = await to_generic(name=drug_name, rxcui=None)
+    except Exception:
         return None
-    generic_result = await db.execute(
-        select(Medication.name)
-        .where(Medication.ingredient == med.ingredient, Medication.is_generic.is_(True))
-        .limit(1)
-    )
-    return generic_result.scalar_one_or_none()
+    if not mapping.generics:
+        return None
+    return mapping.generics[0].name
 
 
 async def _doctor_extra_fields(db: AsyncSession, doctor_id: UUID) -> dict:
@@ -195,7 +192,7 @@ async def _render_prescription_or_lab_order(
             dose = item.get("dose", "")
             frequency = item.get("frequency", "")
             duration = item.get("duration", "")
-            generic = await _generic_alternative(db, drug)
+            generic = await _generic_alternative(drug)
             drug_cell = (
                 f'<span class="generic">{generic}</span><span class="brand">{drug}</span>'
                 if generic
