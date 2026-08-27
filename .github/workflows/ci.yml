@@ -92,7 +92,14 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
-          node-version: "20"
+          # Node 24. Two reasons, both binding: Node 20 went end-of-life in
+          # April 2026, and the jsdom/msw stack cannot complete an
+          # XMLHttpRequest whose FormData body contains a File on Node 20 or
+          # 22 -- the request reaches the mock handler, the handler responds,
+          # and the XHR never advances past readyState 1, so the upload tests
+          # in src/features/documents hang and fail. Verified across
+          # 20.20.2 (fails), 22.23.2 (fails) and 24.19.0 (passes).
+          node-version: "24"
       - run: npm ci
       - run: npm run lint
       - run: npx tsc --noEmit

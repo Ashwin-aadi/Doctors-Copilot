@@ -1765,6 +1765,42 @@ ABHA IDs. Fixed UUIDs are unchanged, so anything already referencing patient
   pages are reachable and used instead; bulk XML ingestion is not reinstated
   since the per-page approach already clears the chunk-count gate.
 
+## 2026-08-27 — CI pinned to Node 24
+
+CI failed on `frontend/src/features/documents/__tests__/upload.test.tsx` (all
+three tests) while the same file passed locally. It was not flakiness and not a
+timeout: locally the whole upload chain completes in 38 ms against a 1000 ms
+`findBy*` budget, so there was 26x headroom.
+
+Reproduced in containers and bisected by Node version:
+
+| Node    | XHR with a File in its FormData body | upload.test.tsx |
+|---------|--------------------------------------|-----------------|
+| 20.20.2 | hangs at `readyState 1`              | 3 failed        |
+| 22.23.2 | hangs at `readyState 1`              | 3 failed        |
+| 24.19.0 | completes normally                   | 3 passed        |
+
+A probe isolated it exactly: with a `File` in the `FormData`, the request does
+reach the msw handler and the handler returns a response, but the XHR never
+advances past `readyState 1` — no `load`, no `error`, no `loadend`, so
+`uploadFileWithProgress`'s promise never settles and the item sits on
+"Uploading…" forever. The same XHR with a text-only `FormData`, a string body,
+or no body completes normally on every version. Upgrading msw (2.7.0 -> 2.11.5)
+does not help, so this is the Node-level `FormData`/`Blob` stream handling that
+`@mswjs/interceptors` reads, not an msw bug. It affects tests only — a real
+browser XHR is unaffected.
+
+`node-version` in `.github/workflows/ci.yml` and `FROM node:20-alpine` in
+`infra/Dockerfile.frontend` both move to 24, and `frontend/package.json` gains
+`"engines": {"node": ">=24"}` so the requirement is explicit rather than
+folklore. Node 20 was end-of-life in April 2026 regardless, so this pin was
+overdue on its own terms; Node 22 is still supported but does not clear the bug,
+which is why 24 rather than 22.
+
+Verified by running the full CI job (`eslint --max-warnings 0`, `tsc --noEmit`,
+`vitest run`, `vite build`) inside a clean `node:24` container: lint clean, tsc
+clean, 22 files / 79 tests passing, build succeeds.
+
 ## 2026-08-27 — CP3 cross-team test failures, resolved
 
 Twenty-one suite failures were outstanding across four owners at the CP3 gate.
