@@ -1,5 +1,69 @@
 # Decisions Log
 
+## 2026-08-27 — CP3 (V3.1-V3.5): SOAP summary, medication ranking, tool adapters, eval
+
+- Environment gap found before any CP3 work: `.env` didn't exist (copied from
+  `.env.example`), `python-magic` needed `python-magic-bin` on Windows (plain
+  `python-magic` hangs forever probing for `libmagic` rather than raising),
+  and the DB had never been seeded (`scripts/seed_users.py` +
+  `scripts/seed.py`) -- every RBAC/security/offline/rxnorm/KG test was 401ing
+  for that reason alone, not a code defect. All three fixed; full suite was
+  374 passed / 0 failed after seeding, before any CP3 code was written.
+- **DRIFT: `app/ml/tools.py` vs. the frozen §4.2 signatures for
+  `check_interactions`/`flag_labs`.** The original interface spec's pseudocode has
+  `check_interactions(req: InteractionRequest) -> InteractionReport` and
+  `flag_labs(patient_id, results: list[LabResultOut]) -> list[LabResultOut]`.
+  But `app/rag/tool_bridge.py` (Ashwin's, already merged to `main`, already
+  called from `app/services/visit.py._safety` and
+  `app/rag/clinical_rag.py.build_brief`) imports those two names and calls
+  them as `check_interactions(patient_id, medications: list[dict|str]) ->
+  dict` and `flag_labs(patient_id, labs: list[dict]) -> list[dict]`.
+  Implemented `app/ml/tools.py` to match `tool_bridge.py`'s actual call
+  convention instead of the pseudocode: it's real, already-merged
+  integration code, and matching the pseudocode instead would leave
+  `tool_bridge`'s own `except Exception` swallow every call silently and
+  keep returning its typed-empty fallback forever -- a worse outcome than
+  the signature drift itself. `extract_entities(text) -> EntityBundle` and
+  the two CP3-only functions (`build_summary`, `suggest_medications`, no
+  other consumer exists yet) match §4.2 verbatim. Flagging for Ashwin in
+  case `tool_bridge.py` is meant to be updated instead.
+- `app/ml/kb_build.py` extended (additive, same owned file): `label_sections`
+  now also carries `indications_and_usage` and `warnings` openFDA sections
+  (previously only `drug_interactions`/`contraindications`), the ingredient
+  target list grew from 15 to ~35 to cover common India-relevant conditions
+  (diabetes, hypertension, infection, pain/fever, asthma, GERD, allergy, TB,
+  depression), and an `indications_fts` FTS5 table is built from
+  `indications_and_usage` rows for V3.3's BM25 retrieval (falls back to a
+  `LIKE` scan if the local sqlite3 build lacks FTS5 -- verified present
+  here). Rerun via `python -m app.ml.kb_build` after pulling this branch.
+- `app/ml/med_suggest.py` resolves NLEM/Jan Aushadhi/MRP by reading
+  `app/services/mapping/data/india_drugs.csv` directly, keyed by
+  *ingredient* rather than brand. Niyati's `app.services.mapping.
+  india_drugs.to_generic(name=...)` only resolves brand/rxcui -> ingredient
+  (its `_brand_index()` is keyed off the `brand` column), so it can't answer
+  "what Indian brands treat this ingredient" -- the direction V3.3 needs.
+  Read-only; `india_drugs.py` itself untouched.
+- `V3.1`'s `python -m app.ml.eval --quick` step was skipped as written:
+  `app/ml/eval.py` is a V3.5 deliverable and doesn't exist until this same
+  checkpoint builds it, so there was nothing to run yet.
+- Endpoint-level `curl` verification (as written in V3.2/V3.3's Verify blocks)
+  could not be run against a live `uvicorn app.main:app` process on this
+  Windows machine: uvicorn's default event loop is `ProactorEventLoop`,
+  which psycopg's async driver refuses outright
+  (`psycopg.InterfaceError: Psycopg cannot use the 'ProactorEventLoop'...`).
+  `app/db/session.py` already sets `WindowsSelectorEventLoopPolicy` at import
+  time, but uvicorn's own loop is already running by the time that import
+  happens, so it has no effect. Confirmed pre-existing and unrelated to CP3:
+  the already-shipped `/api/v1/ml/entities` (CP2) 500s identically against
+  the same running server. `pytest` doesn't hit this (httpx's ASGI transport
+  never starts a real uvicorn loop), which is why the full suite -- 374
+  passed before CP3, 379 after -- exercises every one of these same
+  DB-backed code paths successfully -- 374 passed before CP3, 395 after (21
+  new tests across `test_summary.py`/`test_med_suggest.py`/`test_tools.py`/
+  `test_eval.py`). Verified `/ml/summary` and
+  `/ml/medications/suggest` end-to-end via `tests/ml/test_summary.py` and
+  `tests/ml/test_med_suggest.py` instead.
+
 ## 2026-08-27 — Frontend CP2: doctor workspace & Indian lab report review
 
 - Built the presentational component set for the doctor workspace checkpoint:
