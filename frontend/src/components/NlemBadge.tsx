@@ -12,7 +12,7 @@ export function NlemBadge({ className }: NlemBadgeProps) {
     <Tooltip content="On the National List of Essential Medicines — the government's list of medicines every clinic should be able to supply, with a price cap.">
       <span
         className={cn(
-          "inline-flex items-center gap-1 rounded-sm bg-normal-soft px-2 py-0.5 text-xs font-semibold text-normal",
+          "inline-flex items-center gap-1 rounded-sm bg-normal-soft px-2 py-0.5 text-xs font-semibold text-normal-soft-fg",
           className,
         )}
       >

@@ -11,7 +11,7 @@ migrate:   ## apply db migrations
 revision:  ## create a new migration; usage: make revision m="message"
 	cd backend && alembic revision --autogenerate -m "$(m)"
 api:       ## run the backend dev server
-	cd backend && uvicorn app.main:app --reload --port 8000
+	cd backend && python run.py --reload --port 8000
 web:       ## run the frontend dev server
 	cd frontend && npm run dev
 worker:    ## run the rq worker

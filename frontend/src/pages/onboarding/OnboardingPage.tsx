@@ -60,7 +60,7 @@ export function OnboardingPage({
       </Card>
 
       {submitAttempted && errorMessages.length > 0 && (
-        <div role="alert" className="rounded-md border border-critical/30 bg-critical-soft p-3 text-sm text-critical">
+        <div role="alert" className="rounded-md border border-critical/30 bg-critical-soft p-3 text-sm text-critical-soft-fg">
           <p className="font-medium">Please fix the following before continuing:</p>
           <ul className="mt-1 list-inside list-disc">
             {errorMessages.map((msg) => (

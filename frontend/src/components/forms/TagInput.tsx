@@ -48,7 +48,7 @@ export function TagInput({ label, values, onChange, suggestions = [], placeholde
         {values.map((tag) => (
           <span
             key={tag}
-            className="flex items-center gap-1 rounded-sm bg-primary-soft px-2 py-0.5 text-xs font-medium text-primary"
+            className="flex items-center gap-1 rounded-sm bg-primary-soft px-2 py-0.5 text-xs font-medium text-primary-soft-fg"
           >
             {tag}
             <button

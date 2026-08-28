@@ -278,10 +278,16 @@ test.describe("responsive duplication", () => {
 });
 
 test.describe("motion", () => {
-  test.use({ reducedMotion: "reduce" });
-
   test("prefers-reduced-motion disables transitions and animations", async ({ page }) => {
+    // Emulated on the page rather than through `test.use({ reducedMotion })`:
+    // the fixture option is not reaching the browser context under Playwright
+    // 1.49 with a device preset applied, so the query stayed unmatched and the
+    // test failed against CSS that is in fact correct.
+    await page.emulateMedia({ reducedMotion: "reduce" });
     await openPreview(page, DESKTOP);
+    expect(
+      await page.evaluate(() => matchMedia("(prefers-reduced-motion: reduce)").matches),
+    ).toBe(true);
 
     const animated = await page.evaluate(() => {
       const offenders: string[] = [];

@@ -1,9 +1,21 @@
 import type { HTMLAttributes, TdHTMLAttributes, ThHTMLAttributes } from "react";
 import { cn } from "../../lib/cn";
 
-export function Table({ className, children, ...rest }: HTMLAttributes<HTMLTableElement>) {
+export function Table({
+  className,
+  children,
+  scrollLabel,
+  ...rest
+}: HTMLAttributes<HTMLTableElement> & { scrollLabel?: string }) {
   return (
-    <div className="w-full overflow-x-auto">
+    // A region that scrolls has to be reachable by keyboard, so the wrapper is
+    // a labelled, focusable group rather than a bare div.
+    <div
+      role="group"
+      tabIndex={0}
+      aria-label={scrollLabel ?? "Table, scrolls sideways"}
+      className="w-full overflow-x-auto"
+    >
       <table className={cn("w-full border-collapse text-sm", className)} {...rest}>
         {children}
       </table>

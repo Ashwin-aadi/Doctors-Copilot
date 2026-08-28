@@ -14,7 +14,7 @@ export function QuickReplyChips({ replies, onSelect, disabled = false }: QuickRe
           type="button"
           disabled={disabled}
           onClick={() => onSelect(reply)}
-          className="rounded-full border border-primary/40 bg-primary-soft px-3 py-1 text-xs font-medium text-primary transition-colors hover:bg-primary hover:text-primary-fg disabled:opacity-50"
+          className="rounded-full border border-primary/40 bg-primary-soft px-3 py-1 text-xs font-medium text-primary-soft-fg transition-colors hover:bg-primary hover:text-primary-fg disabled:opacity-50"
         >
           {reply}
         </button>

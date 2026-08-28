@@ -123,7 +123,7 @@ export function PatientListPanel({
               onClick={() => onFilterChange({ ...filters, colours: toggle(filters.colours, colour) })}
               className={cn(
                 "rounded-full border px-2.5 py-1 text-xs font-medium transition-colors",
-                active ? "border-primary bg-primary-soft text-primary" : "border-border text-fg-muted hover:bg-surface-2",
+                active ? "border-primary bg-primary-soft text-primary-soft-fg" : "border-border text-fg-muted hover:bg-surface-2",
               )}
             >
               {label}
@@ -141,7 +141,7 @@ export function PatientListPanel({
               onClick={() => onFilterChange({ ...filters, severities: toggle(filters.severities, esi) })}
               className={cn(
                 "rounded-full border px-2.5 py-1 text-xs font-medium transition-colors",
-                active ? "border-primary bg-primary-soft text-primary" : "border-border text-fg-muted hover:bg-surface-2",
+                active ? "border-primary bg-primary-soft text-primary-soft-fg" : "border-border text-fg-muted hover:bg-surface-2",
               )}
             >
               ESI {esi}

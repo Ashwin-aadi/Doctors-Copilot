@@ -30,7 +30,7 @@ export function VisitStepper({ state, onStageClick, className }: VisitStepperPro
               aria-hidden="true"
               className={cn(
                 "flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-[10px] font-semibold",
-                done && "bg-normal text-white",
+                done && "bg-normal text-normal-fg",
                 current && "bg-primary text-primary-fg",
                 !done && !current && "border border-border text-fg-subtle",
               )}
@@ -48,7 +48,7 @@ export function VisitStepper({ state, onStageClick, className }: VisitStepperPro
 
         const classes = cn(
           "flex items-center gap-2 rounded-md px-2 py-1 text-xs font-medium",
-          current && "bg-primary-soft text-primary",
+          current && "bg-primary-soft text-primary-soft-fg",
           done && "text-fg",
           !done && !current && "text-fg-subtle",
         );

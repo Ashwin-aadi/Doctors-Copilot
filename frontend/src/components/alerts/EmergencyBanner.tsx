@@ -39,14 +39,14 @@ export function EmergencyBanner({ message, onFindClinic, className }: EmergencyB
       <div className="flex flex-wrap gap-2">
         <a
           href="tel:112"
-          className="inline-flex items-center gap-1.5 rounded-md bg-critical px-4 py-2 text-sm font-semibold text-white hover:opacity-90"
+          className="inline-flex min-h-[44px] items-center gap-1.5 rounded-md bg-critical px-4 py-2 text-sm font-semibold text-critical-fg hover:opacity-90"
         >
           <PhoneCall className="h-4 w-4" aria-hidden="true" />
           Call 112
         </a>
         <a
           href="tel:108"
-          className="inline-flex items-center gap-1.5 rounded-md border border-critical px-4 py-2 text-sm font-semibold text-critical hover:bg-critical/10"
+          className="inline-flex min-h-[44px] items-center gap-1.5 rounded-md border border-critical px-4 py-2 text-sm font-semibold text-critical hover:bg-critical/10"
         >
           <PhoneCall className="h-4 w-4" aria-hidden="true" />
           Ambulance 108
@@ -55,7 +55,7 @@ export function EmergencyBanner({ message, onFindClinic, className }: EmergencyB
           <button
             type="button"
             onClick={onFindClinic}
-            className="inline-flex items-center gap-1.5 rounded-md border border-border bg-surface px-4 py-2 text-sm font-semibold text-fg hover:bg-surface-2"
+            className="inline-flex min-h-[44px] items-center gap-1.5 rounded-md border border-border bg-surface px-4 py-2 text-sm font-semibold text-fg hover:bg-surface-2"
           >
             <Navigation className="h-4 w-4" aria-hidden="true" />
             Nearest casualty department

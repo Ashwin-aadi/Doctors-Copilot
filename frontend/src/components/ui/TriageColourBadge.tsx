@@ -10,9 +10,9 @@ export interface TriageColourBadgeProps {
 // MoHFW/AIIMS casualty colour code. Never shown without its text label --
 // colour alone is not an accessible or clinically safe signal.
 const toneClasses: Record<TriageColour, string> = {
-  red: "bg-critical-soft text-critical",
-  yellow: "bg-high-soft text-high",
-  green: "bg-normal-soft text-normal",
+  red: "bg-critical-soft text-critical-soft-fg",
+  yellow: "bg-high-soft text-high-soft-fg",
+  green: "bg-normal-soft text-normal-soft-fg",
 };
 
 const labels: Record<TriageColour, string> = {
@@ -32,7 +32,7 @@ export function TriageColourBadge({ colour, esi, className }: TriageColourBadgeP
     >
       <span aria-hidden="true" className="h-2 w-2 shrink-0 rounded-full bg-current" />
       {labels[colour]}
-      {esi != null && <span className="font-normal opacity-80">(ESI {esi})</span>}
+      {esi != null && <span className="font-normal">(ESI {esi})</span>}
     </span>
   );
 }

@@ -12,6 +12,12 @@ from app.core.config import get_settings
 from app.core.logging import get_logger
 
 log = get_logger(__name__)
+
+
+class LlmEmptyResponse(RuntimeError):
+    """A provider replied successfully but with no usable text."""
+
+
 settings = get_settings()
 
 _TIMEOUT = 30.0
@@ -41,6 +47,11 @@ async def _groq_chat(
     }
     if json_mode:
         payload["response_format"] = {"type": "json_object"}
+    # Reasoning models bill their hidden reasoning against max_tokens, so a tight
+    # budget is spent thinking and the reply comes back empty. Cap the reasoning
+    # so short calls (a single triage question) still leave room for an answer.
+    if "gpt-oss" in settings.groq_model:
+        payload["reasoning_effort"] = "low"
     async with httpx.AsyncClient(timeout=_TIMEOUT) as client:
         resp = await client.post(
             "https://api.groq.com/openai/v1/chat/completions",
@@ -57,7 +68,16 @@ async def _groq_chat(
             prompt_tokens=usage.get("prompt_tokens"),
             completion_tokens=usage.get("completion_tokens"),
         )
-        return data["choices"][0]["message"]["content"]
+        choice = data["choices"][0]
+        text = choice["message"]["content"] or ""
+        if not text.strip():
+            # An empty completion is a failure, not an answer -- fall through to
+            # the next provider rather than handing callers a blank string.
+            raise LlmEmptyResponse(
+                f"groq returned an empty completion (finish_reason="
+                f"{choice.get('finish_reason')!r}, max_tokens={max_tokens})"
+            )
+        return text
 
 
 @retry(stop=stop_after_attempt(2), wait=wait_exponential(multiplier=1, min=1, max=4), reraise=True)

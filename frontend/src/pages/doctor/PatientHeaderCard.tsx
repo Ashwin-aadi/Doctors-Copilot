@@ -110,7 +110,7 @@ export function PatientHeaderCard({ patient, loading, error, onRetry }: PatientH
               {patient.allergies.map((a) => (
                 <Badge key={a.name} tone="critical">
                   {a.name}
-                  {a.severity && <span className="opacity-80"> · {a.severity}</span>}
+                  {a.severity && <span className="font-normal"> · {a.severity}</span>}
                 </Badge>
               ))}
             </div>

@@ -1,8 +1,7 @@
-import { useEffect, useReducer, useRef } from "react";
+import { useEffect, useId, useReducer, useRef } from "react";
 import { useTranslation } from "react-i18next";
 import { Camera, UploadCloud } from "lucide-react";
 import { cn } from "../../lib/cn";
-import { Button } from "../ui/Button";
 import { FileRow } from "./FileRow";
 import type { DropzoneFileState } from "./uploadTypes";
 
@@ -51,8 +50,8 @@ function useStallDetection(files: DropzoneFileState[]): Set<string> {
 
 export function Dropzone({ files, onFilesSelected, onCancel, onRetry, disabled, className }: DropzoneProps) {
   const { t } = useTranslation();
-  const filePickerRef = useRef<HTMLInputElement>(null);
-  const cameraRef = useRef<HTMLInputElement>(null);
+  const filePickerId = useId();
+  const cameraId = useId();
   const stalledIds = useStallDetection(files);
 
   function pick(list: FileList | null) {
@@ -62,14 +61,12 @@ export function Dropzone({ files, onFilesSelected, onCancel, onRetry, disabled, 
 
   return (
     <div className={cn("flex flex-col gap-3", className)}>
-      <div
-        role="button"
-        tabIndex={disabled ? -1 : 0}
-        aria-disabled={disabled}
-        onClick={() => !disabled && filePickerRef.current?.click()}
-        onKeyDown={(e) => {
-          if (!disabled && (e.key === "Enter" || e.key === " ")) filePickerRef.current?.click();
-        }}
+      {/* The dashed box is the file input's own <label>, not a role="button"
+          wrapper: that keeps one control instead of nesting the input inside a
+          second interactive element, and gives the input its accessible name.
+          Drag-and-drop still lands on the label, which is where users aim. */}
+      <label
+        htmlFor={filePickerId}
         onDragOver={(e) => e.preventDefault()}
         onDrop={(e) => {
           e.preventDefault();
@@ -77,39 +74,21 @@ export function Dropzone({ files, onFilesSelected, onCancel, onRetry, disabled, 
         }}
         className={cn(
           "flex flex-col items-center gap-2 rounded-lg border-2 border-dashed border-border p-8 text-center transition-colors",
+          "focus-within:border-primary focus-within:outline focus-within:outline-2 focus-within:outline-offset-2 focus-within:outline-ring",
           !disabled && "cursor-pointer hover:border-primary",
           disabled && "opacity-50",
         )}
       >
         <UploadCloud className="h-8 w-8 text-fg-subtle" aria-hidden="true" />
-        <p className="text-sm font-medium text-fg">
+        <span className="text-sm font-medium text-fg">
           {t("upload.dropLabel", { defaultValue: "Drag reports here, or tap to choose photos / PDFs" })}
-        </p>
-        <p className="text-xs text-fg-muted">
+        </span>
+        <span className="text-xs text-fg-muted">
           {t("upload.hint", { defaultValue: "Hold the report flat, fill the frame, avoid shadows." })}
-        </p>
-
-        <div className="mt-2 flex flex-wrap items-center justify-center gap-2">
-          <Button type="button" size="sm" variant="secondary" disabled={disabled} onClick={(e) => e.stopPropagation()}>
-            {t("upload.choose", { defaultValue: "Choose files" })}
-          </Button>
-          <Button
-            type="button"
-            size="sm"
-            variant="secondary"
-            leftIcon={<Camera className="h-4 w-4" />}
-            disabled={disabled}
-            onClick={(e) => {
-              e.stopPropagation();
-              cameraRef.current?.click();
-            }}
-          >
-            {t("upload.camera", { defaultValue: "Take a photo" })}
-          </Button>
-        </div>
+        </span>
 
         <input
-          ref={filePickerRef}
+          id={filePickerId}
           type="file"
           multiple
           accept="image/*,application/pdf"
@@ -120,20 +99,35 @@ export function Dropzone({ files, onFilesSelected, onCancel, onRetry, disabled, 
             e.target.value = "";
           }}
         />
-        {/* Camera capture on mobile devices -- a distinct input so the
-            browser opens the camera app instead of the file picker. */}
-        <input
-          ref={cameraRef}
-          type="file"
-          accept="image/*"
-          capture="environment"
-          className="sr-only"
-          disabled={disabled}
-          onChange={(e) => {
-            pick(e.target.files);
-            e.target.value = "";
-          }}
-        />
+      </label>
+
+      {/* Camera capture on mobile devices -- a distinct input so the browser
+          opens the camera app instead of the file picker. It sits outside the
+          dashed label so the two file inputs never nest inside one control. */}
+      <div className="flex flex-wrap items-center justify-center gap-2">
+        <label
+          htmlFor={cameraId}
+          className={cn(
+            "inline-flex min-h-[44px] cursor-pointer items-center gap-2 rounded-md border border-border bg-surface px-4 text-sm font-medium text-fg transition-colors hover:bg-surface-2",
+            "focus-within:outline focus-within:outline-2 focus-within:outline-offset-2 focus-within:outline-ring",
+            disabled && "pointer-events-none opacity-50",
+          )}
+        >
+          <Camera className="h-4 w-4" aria-hidden="true" />
+          {t("upload.camera", { defaultValue: "Take a photo" })}
+          <input
+            id={cameraId}
+            type="file"
+            accept="image/*"
+            capture="environment"
+            className="sr-only"
+            disabled={disabled}
+            onChange={(e) => {
+              pick(e.target.files);
+              e.target.value = "";
+            }}
+          />
+        </label>
       </div>
 
       {files.length > 0 && (

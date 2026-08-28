@@ -20,9 +20,9 @@ export interface TriageResultCardProps {
 }
 
 const colourBadge: Record<TriageResult["triage_colour"], { label: string; className: string }> = {
-  red: { label: "Red — immediate", className: "bg-critical text-white" },
-  yellow: { label: "Yellow — urgent", className: "bg-high text-white" },
-  green: { label: "Green — non-urgent", className: "bg-normal text-white" },
+  red: { label: "Red — immediate", className: "bg-critical text-critical-fg" },
+  yellow: { label: "Yellow — urgent", className: "bg-high text-high-fg" },
+  green: { label: "Green — non-urgent", className: "bg-normal text-normal-fg" },
 };
 
 const sourceLabel: Record<string, string> = { rule: "Rule", rag: "Guideline", both: "Rule + guideline" };

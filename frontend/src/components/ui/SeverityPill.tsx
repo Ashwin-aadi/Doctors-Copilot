@@ -18,10 +18,10 @@ const esiToLevel: Record<EsiLevel, SeverityLevel> = {
 };
 
 const levelClasses: Record<SeverityLevel, string> = {
-  critical: "bg-critical-soft text-critical",
-  high: "bg-high-soft text-high",
-  moderate: "bg-moderate-soft text-moderate",
-  normal: "bg-normal-soft text-normal",
+  critical: "bg-critical-soft text-critical-soft-fg",
+  high: "bg-high-soft text-high-soft-fg",
+  moderate: "bg-moderate-soft text-moderate-soft-fg",
+  normal: "bg-normal-soft text-normal-soft-fg",
 };
 
 const levelText: Record<SeverityLevel, string> = {

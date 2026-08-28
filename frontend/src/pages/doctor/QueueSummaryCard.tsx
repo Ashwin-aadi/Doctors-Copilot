@@ -44,7 +44,7 @@ export function QueueSummaryCard({ summary, loading, error, onRetry }: QueueSumm
       <CardHeader>
         <CardTitle>{summary.clinicName}</CardTitle>
         {emergencyActive && (
-          <span className="flex items-center gap-1 rounded-sm bg-critical-soft px-2 py-0.5 text-xs font-semibold text-critical">
+          <span className="flex items-center gap-1 rounded-sm bg-critical-soft px-2 py-0.5 text-xs font-semibold text-critical-soft-fg">
             <AlertTriangle className="h-3.5 w-3.5" aria-hidden="true" />
             Emergency
           </span>
@@ -97,15 +97,15 @@ function ColourCount({
   tone: "critical" | "high" | "normal";
 }) {
   const toneClasses: Record<typeof tone, string> = {
-    critical: "bg-critical-soft text-critical",
-    high: "bg-high-soft text-high",
-    normal: "bg-normal-soft text-normal",
+    critical: "bg-critical-soft text-critical-soft-fg",
+    high: "bg-high-soft text-high-soft-fg",
+    normal: "bg-normal-soft text-normal-soft-fg",
   };
   return (
     <div className={cn("flex flex-col items-center gap-0.5 rounded-lg p-3 text-center", toneClasses[tone])}>
       <span className="text-3xl font-bold leading-none">{count}</span>
       <span className="text-xs font-semibold uppercase tracking-wide">{label}</span>
-      <span className="text-[11px] opacity-80">{sub}</span>
+      <span className="text-[11px]">{sub}</span>
     </div>
   );
 }

@@ -38,7 +38,7 @@ function CitationText({
             type="button"
             onClick={() => onCitationClick(seg.n)}
             aria-label={`View source ${seg.n}`}
-            className="mx-0.5 rounded-sm bg-primary-soft px-1 text-xs font-medium text-primary hover:underline"
+            className="mx-0.5 rounded-sm bg-primary-soft px-1 text-xs font-medium text-primary-soft-fg hover:underline"
           >
             [{seg.n}]
           </button>
@@ -62,7 +62,7 @@ export function CopilotContainer({ visitId: visitIdProp }: CopilotContainerProps
     <div className="flex flex-col gap-3 p-4">
       <div
         role="note"
-        className="flex items-center gap-2 rounded-md border border-info/30 bg-info-soft px-3 py-2 text-xs text-info"
+        className="flex items-center gap-2 rounded-md border border-info/30 bg-info-soft px-3 py-2 text-xs text-info-soft-fg"
       >
         <ShieldAlert className="h-4 w-4 shrink-0" aria-hidden="true" />
         <span>{t("copilot.decisionSupportBanner")}</span>

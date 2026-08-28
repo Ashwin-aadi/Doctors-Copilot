@@ -1,10 +1,23 @@
 from functools import lru_cache
+from pathlib import Path
 
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
+# backend/app/core/config.py -> backend/app/core -> backend/app -> backend -> repo root
+_REPO_ROOT = Path(__file__).resolve().parents[3]
+
 
 class Settings(BaseSettings):
-    model_config = SettingsConfigDict(env_file=".env", extra="ignore")
+    # Resolved absolutely, not as the bare relative ".env" this used to be.
+    # `make api` runs `cd backend && uvicorn ...`, so a cwd-relative path looked
+    # for `backend/.env`, which does not exist -- the repo-root `.env` next to
+    # `.env.example` was never loaded, and every setting silently fell back to
+    # its default. GROQ_API_KEY read as empty even when set, which sent every
+    # LLM call down the extractive-fallback path.
+    model_config = SettingsConfigDict(
+        env_file=(_REPO_ROOT / ".env", _REPO_ROOT / "backend" / ".env"),
+        extra="ignore",
+    )
 
     app_env: str = "dev"
     api_port: int = 8000

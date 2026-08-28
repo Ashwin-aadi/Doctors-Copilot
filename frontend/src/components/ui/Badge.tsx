@@ -9,13 +9,13 @@ export interface BadgeProps extends HTMLAttributes<HTMLSpanElement> {
 
 const toneClasses: Record<BadgeTone, string> = {
   neutral: "bg-surface-2 text-fg-muted",
-  primary: "bg-primary-soft text-primary",
-  accent: "bg-accent-soft text-accent",
-  critical: "bg-critical-soft text-critical",
-  high: "bg-high-soft text-high",
-  moderate: "bg-moderate-soft text-moderate",
-  normal: "bg-normal-soft text-normal",
-  info: "bg-info-soft text-info",
+  primary: "bg-primary-soft text-primary-soft-fg",
+  accent: "bg-accent-soft text-accent-soft-fg",
+  critical: "bg-critical-soft text-critical-soft-fg",
+  high: "bg-high-soft text-high-soft-fg",
+  moderate: "bg-moderate-soft text-moderate-soft-fg",
+  normal: "bg-normal-soft text-normal-soft-fg",
+  info: "bg-info-soft text-info-soft-fg",
 };
 
 export function Badge({ tone = "neutral", className, children, ...rest }: BadgeProps) {
