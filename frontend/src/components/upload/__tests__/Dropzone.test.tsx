@@ -23,10 +23,12 @@ describe("Dropzone", () => {
   it("renders the drop target and exposes camera capture", () => {
     render(<Dropzone files={[]} onFilesSelected={() => {}} onCancel={() => {}} onRetry={() => {}} />);
     expect(screen.getByText(/Hold the report flat/i)).toBeTruthy();
-    const cameraButtons = screen
-      .getAllByRole("button", { name: /take a photo/i })
-      .filter((el) => el.tagName === "BUTTON");
-    expect(cameraButtons.length).toBe(1);
+    // Camera capture is a labelled file input, not a <button> wrapping one:
+    // one control rather than an input nested inside a second interactive
+    // element. Assert the capture affordance itself.
+    const camera = screen.getByLabelText(/take a photo/i) as HTMLInputElement;
+    expect(camera.type).toBe("file");
+    expect(camera.getAttribute("capture")).toBe("environment");
   });
 
   it("shows per-file progress and lets the user cancel", () => {
@@ -64,7 +66,10 @@ describe("Dropzone", () => {
   it("calls onFilesSelected when a file is dropped", () => {
     const onFilesSelected = vi.fn();
     render(<Dropzone files={[]} onFilesSelected={onFilesSelected} onCancel={() => {}} onRetry={() => {}} />);
-    const target = screen.getByRole("button", { name: /photos/i });
+    // The drop target is the file input's own <label>, not a role="button"
+    // wrapper -- see the comment in Dropzone.tsx. Reach it through the input
+    // it names, so the query keeps working if the copy changes.
+    const target = screen.getByLabelText(/photos/i).closest("label")!;
     const droppedFile = new File(["data"], "cbc.pdf", { type: "application/pdf" });
     fireEvent.drop(target, { dataTransfer: { files: [droppedFile] } });
     expect(onFilesSelected).toHaveBeenCalledWith([droppedFile]);
