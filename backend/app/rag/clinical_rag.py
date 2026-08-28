@@ -31,6 +31,21 @@ log = get_logger(__name__)
 _K_PER_AXIS = 8
 _TOP_K = 12
 
+# A plain `[n]` marker, and the wrappers models put around one. Smaller local
+# models routinely emit `[cite [2]]` or `(ref: 3)` where the prompt asked for
+# `[2]`; the citation is real, only the packaging differs, so normalise rather
+# than discard.
+_CITE_MARKER = re.compile(r"\[(\d+)\]")
+_LOOSE_MARKER = re.compile(
+    r"[\[(]\s*(?:cite|citation|ref|reference|source)s?\s*[:\-]?\s*\[?(\d+)\]?\s*[\])]",
+    re.IGNORECASE,
+)
+
+
+def _normalise_markers(text: str) -> str:
+    """Rewrite decorated citation markers into the bare `[n]` form."""
+    return _LOOSE_MARKER.sub(r"[\1]", text or "")
+
 
 async def _load_visit(db: AsyncSession, visit_id: UUID) -> Visit:
     visit = await db.get(Visit, visit_id)
@@ -156,21 +171,46 @@ async def build_brief(visit_id: UUID, db: AsyncSession) -> CopilotBrief:
 
     raw = await json_complete(prompt, schema=_RawBrief, system=CLINICAL_BRIEF_SYSTEM)
 
-    valid_titles = {h.metadata.get("title", "") for h in hits}
-    kept_citations = [c for c in raw.citations if c.title in valid_titles]
-    kept_numbers = {c.n for c in kept_citations}
+    # Citations are rebuilt from the retrieved excerpt a marker points at,
+    # never from what the model wrote about it. Matching on model-supplied
+    # titles dropped every citation whenever the model paraphrased the title
+    # -- routine for smaller local models -- which silently collapsed the
+    # brief to confidence 0 despite perfectly good retrieval.
+    summary = _normalise_markers(raw.summary)
+    cautions = [_normalise_markers(c) for c in raw.cautions]
 
-    def _strip_unresolved(text: str) -> str:
-        for c in raw.citations:
-            if c.n not in kept_numbers:
-                text = re.sub(rf"\[{c.n}\]", "", text)
-        return text
+    cited: set[int] = {
+        int(n) for text in (summary, *cautions) for n in _CITE_MARKER.findall(text)
+    }
+    cited.update(c.n for c in raw.citations if isinstance(c.n, int))
 
-    summary = _strip_unresolved(raw.summary)
-    cautions = [_strip_unresolved(c) for c in raw.cautions]
+    # An excerpt number is only usable if it indexes a hit we actually retrieved.
+    resolved = sorted(n for n in cited if 1 <= n <= len(hits))
+    renumber = {old: new for new, old in enumerate(resolved, start=1)}
 
-    for i, c in enumerate(kept_citations, start=1):
-        c.n = i
+    kept_citations = [
+        Citation(
+            n=renumber[old],
+            title=hits[old - 1].metadata.get("title", "untitled"),
+            source=hits[old - 1].metadata.get("source", "unknown"),
+            url=hits[old - 1].metadata.get("url"),
+            snippet=hits[old - 1].text[:300],
+            published=hits[old - 1].metadata.get("published"),
+        )
+        for old in resolved
+    ]
+
+    def _remap(text: str) -> str:
+        """Renumber surviving markers and drop the ones nothing backs."""
+
+        def replace(match: re.Match[str]) -> str:
+            old = int(match.group(1))
+            return f"[{renumber[old]}]" if old in renumber else ""
+
+        return _CITE_MARKER.sub(replace, text).replace("  ", " ").strip()
+
+    summary = _remap(summary)
+    cautions = [_remap(c) for c in cautions]
 
     confidence = raw.confidence if kept_citations else 0.0
     if not kept_citations:

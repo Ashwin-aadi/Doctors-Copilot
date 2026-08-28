@@ -84,5 +84,17 @@ class VectorStore:
             hits.append(Hit(id=i, text=doc, score=1.0 - dist, metadata=dict(meta)))
         return hits
 
+    def reset(self, collection: str) -> None:
+        """Drop a collection so an ingest is a rebuild rather than a merge.
+
+        Upsert alone leaves stale chunks behind whenever chunk ids shift -- for
+        example when a content-quality filter starts rejecting boilerplate, the
+        boilerplate already in the store would survive under its old ids.
+        """
+        try:
+            _client().delete_collection(name=collection)
+        except Exception as exc:  # noqa: BLE001
+            log.info("collection_reset_skipped", collection=collection, error=str(exc))
+
     def count(self, collection: str) -> int:
         return self._collection(collection).count()

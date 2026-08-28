@@ -28,19 +28,20 @@ def _patch_llm(monkeypatch, question: str = "How long has this been going on?"):
     async def fake_json_complete(prompt, *, schema, system=None, retries=2):
         return schema()
 
-    async def fake_hybrid(collection, query, k=8, where=None):
+    async def fake_multi_hybrid(collection, queries, k=10, **kwargs):
         return [
             Hit(
                 id="g1",
                 text="Chest pain radiating to the arm suggests a cardiac cause.",
                 score=0.9,
-                metadata={"title": "Chest Pain"},
+                metadata={"title": "Chest Pain", "source": "test"},
             )
         ]
 
     monkeypatch.setattr("app.rag.triage_rag.complete", fake_complete)
     monkeypatch.setattr("app.rag.triage_rag.json_complete", fake_json_complete)
-    monkeypatch.setattr("app.rag.triage_rag.hybrid", fake_hybrid)
+    monkeypatch.setattr("app.rag.patient_state.json_complete", fake_json_complete)
+    monkeypatch.setattr("app.rag.triage_rag.multi_hybrid", fake_multi_hybrid)
 
 
 async def test_start_creates_session_and_asks_one_question(db, monkeypatch):

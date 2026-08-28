@@ -1,0 +1,474 @@
+# Clinical feature lexicon shared by patient-state extraction, RAG query
+# construction, retrieval reranking, red-flag detection and ESI assignment.
+#
+# Every stage of the triage pipeline resolves the patient's words to the
+# canonical `name` values below, so "state", "evidence", "red flags" and
+# "triage" all talk about the same objects and cannot drift apart.
+#
+# Fields
+#   name         canonical concept id, used everywhere downstream
+#   label        human-readable phrase, used in prompts and rationale text
+#   category     coarse grouping, used for question coverage and lab rules
+#   patterns     regexes matched against patient utterances (case-insensitive)
+#   specificity  0.0-1.0. How much the feature narrows a differential.
+#                  <=0.25 generic (fever, vomiting, headache) -- almost never
+#                         discriminating on its own
+#                  >=0.60 discriminating -- drives retrieval query weighting
+#   suggests     conditions the feature raises, used only to widen retrieval,
+#                never to assert a diagnosis
+#
+# A feature that is explicitly ABSENT is never turned into a red flag and is
+# never injected into a retrieval query as positive text.
+
+features:
+  # ---------------------------------------------------------------- generic
+  - name: fever
+    label: fever
+    category: constitutional
+    patterns: ["fever", "temperature", "bukhar", "pyrexia", "febrile"]
+    specificity: 0.10
+  - name: headache
+    label: headache
+    category: neurological
+    patterns: ["headache", "head ache", "sar dard", "sir dard"]
+    specificity: 0.15
+  - name: nausea
+    label: nausea
+    category: gastrointestinal
+    patterns: ["nausea", "nauseous", "feel(ing)? like vomiting", "queasy"]
+    specificity: 0.10
+  - name: vomiting
+    label: vomiting
+    category: gastrointestinal
+    patterns: ["vomit(ing|ed|s)?", "throwing up", "ulti"]
+    specificity: 0.12
+  - name: diarrhoea
+    label: loose stools
+    category: gastrointestinal
+    patterns: ["diarrh(o)?ea", "loose motion", "loose stool", "watery stool", "dast"]
+    specificity: 0.20
+  - name: cough
+    label: cough
+    category: respiratory
+    patterns: ["cough(ing)?", "khansi"]
+    specificity: 0.12
+  - name: body_ache
+    label: generalised body ache
+    category: musculoskeletal
+    patterns: ["body ache", "bodyache", "body pain", "generalis?ed pain", "badan dard"]
+    specificity: 0.10
+  - name: rash
+    label: skin rash
+    category: dermatological
+    patterns: ["rash", "skin eruption", "red spots", "spots on (my )?skin"]
+    specificity: 0.20
+  - name: abdominal_pain
+    label: abdominal pain
+    category: gastrointestinal
+    patterns: ["abdominal pain", "abdominal discomfort", "stomach ache", "stomach pain", "tummy pain", "pet dard", "belly pain"]
+    specificity: 0.15
+  - name: fatigue
+    label: tiredness
+    category: constitutional
+    patterns: ["tired(ness)?", "fatigue", "exhaust(ed|ion)", "kamzori"]
+    specificity: 0.08
+  - name: sore_throat
+    label: sore throat
+    category: ent
+    patterns: ["sore throat", "throat pain", "gale me dard"]
+    specificity: 0.20
+  - name: coryza
+    label: runny or blocked nose
+    category: ent
+    patterns: ["runny nose", "blocked nose", "stuffy nose", "nasal congestion", "sneezing", "common cold", "\bcold\b", "coryza", "naak beh"]
+    specificity: 0.18
+  - name: dizziness
+    label: dizziness
+    category: neurological
+    patterns: ["dizz(y|iness)", "light ?headed", "giddy", "vertigo", "chakkar"]
+    specificity: 0.25
+  - name: back_pain
+    label: back pain
+    category: musculoskeletal
+    patterns: ["back pain", "backache", "lower back", "kamar dard"]
+    specificity: 0.25
+  - name: joint_pain
+    label: joint pain
+    category: musculoskeletal
+    patterns: ["joint pain", "joints? (are )?(hurt|ach)", "arthralgia", "jodo me dard"]
+    specificity: 0.30
+
+  # ------------------------------------------------- discriminating features
+  - name: calf_myalgia
+    label: severe calf muscle pain
+    category: musculoskeletal
+    patterns:
+      - "calf (muscle )?(pain|ache|tender)"
+      - "calves? (are )?(pain|hurt|ach|sore|tender)"
+      - "pain in (my |the )?calves?"
+      - "muscle pain[^.]{0,25}(calf|calves|legs?)"
+      - "(severe|bad|terrible|intense) (muscle|leg) pain"
+      - "pindli"
+    specificity: 0.85
+    suggests: [leptospirosis, dengue, influenza, viral myositis, rhabdomyolysis]
+  - name: dark_urine
+    label: dark or tea-coloured urine
+    category: renal
+    patterns:
+      - "dark (coloured |colored )?urine"
+      - "tea[- ]colou?red urine"
+      - "brown urine"
+      - "cola[- ]colou?red urine"
+      - "urine[^.,]{0,35}(dark|brown|tea[- ]colou?red)"
+      - "peshab[^.]{0,12}(kala|gehra)"
+    specificity: 0.80
+    suggests: [leptospirosis, viral hepatitis, haemolysis, rhabdomyolysis, severe malaria, dehydration]
+  - name: jaundice
+    label: yellow eyes or skin
+    category: hepatic
+    patterns: ["jaundice", "yellow(ing)? (of )?(the )?(eyes|skin)", "eyes[^.]{0,12}yellow", "piliya"]
+    specificity: 0.80
+    suggests: [viral hepatitis, leptospirosis, severe malaria, biliary obstruction]
+  - name: conjunctival_suffusion
+    label: red eyes without discharge
+    category: ophthalmic
+    patterns: ["red eyes", "eyes are red", "conjunctival suffusion", "bloodshot eyes"]
+    specificity: 0.70
+    suggests: [leptospirosis, dengue, viral conjunctivitis]
+  - name: stagnant_water_exposure
+    label: contact with stagnant, flood or sewage water
+    category: exposure
+    patterns:
+      - "stagnant water"
+      - "flood(ed|ing|water|s)?\\b"
+      - "waterlogg(ed|ing)"
+      - "sewage"
+      - "drain water"
+      - "dirty water"
+      - "contaminated water"
+      - "paddy field"
+      - "wad(ing|ed) through"
+      - "walk(ed|ing) through[^.]{0,20}water"
+      - "knee deep water"
+      - "canal"
+      - "pond"
+    specificity: 0.90
+    suggests: [leptospirosis, melioidosis, hepatitis A and E, enteric fever]
+  - name: rodent_exposure
+    label: rodent contact or infestation
+    category: exposure
+    patterns: ["\\brats?\\b", "rodents?", "\\bmice\\b", "mouse infestation", "chuha"]
+    specificity: 0.75
+    suggests: [leptospirosis, hantavirus, plague]
+  - name: eschar
+    label: painless black scab at a bite site
+    category: dermatological
+    patterns: ["eschar", "black scab", "black (mark|spot)[^.]{0,25}bite", "painless (black )?scab"]
+    specificity: 0.95
+    suggests: [scrub typhus, rickettsial fever, cutaneous anthrax]
+  - name: scrub_exposure
+    label: rural, scrub, forest or agricultural exposure
+    category: exposure
+    patterns: ["scrub", "bushes", "forest", "farm(ing| work)", "field work", "agricultur", "plantation", "trek"]
+    specificity: 0.65
+    suggests: [scrub typhus, leptospirosis, malaria, snakebite]
+  - name: lymphadenopathy
+    label: swollen lymph nodes
+    category: constitutional
+    patterns: ["swollen (lymph )?(nodes?|glands?)", "lymph node", "gland(s)? in (my )?neck", "ganth"]
+    specificity: 0.60
+    suggests: [scrub typhus, tuberculosis, lymphoma, HIV seroconversion]
+  - name: rose_spots
+    label: faint rose-coloured spots on the trunk
+    category: dermatological
+    patterns: ["rose spots?", "faint (pink|rose) spots?"]
+    specificity: 0.95
+    suggests: [enteric fever]
+  - name: relative_bradycardia
+    label: slow pulse despite high fever
+    category: cardiovascular
+    patterns: ["slow pulse", "pulse[^.]{0,20}(slow|low)", "relative bradycardia"]
+    specificity: 0.85
+    suggests: [enteric fever, scrub typhus]
+  - name: stepladder_fever
+    label: fever rising step by step over days
+    category: constitutional
+    patterns: ["step ?ladder", "fever[^.]{0,25}(rising|increasing|going up)[^.]{0,15}(every|each|daily)"]
+    specificity: 0.80
+    suggests: [enteric fever]
+  - name: rigors
+    label: shaking chills with the fever
+    category: constitutional
+    patterns: ["rigors?\\b", "shaking chills", "shivering", "chills", "kapkapi", "thand lag"]
+    specificity: 0.55
+    suggests: [malaria, sepsis, pyelonephritis, abscess]
+  - name: periodic_fever
+    label: fever coming every second or third day
+    category: constitutional
+    patterns: ["every (other|second|third|alternate) day", "alternate day fever", "fever comes and goes"]
+    specificity: 0.85
+    suggests: [malaria]
+  - name: retro_orbital_pain
+    label: pain behind the eyes
+    category: ophthalmic
+    patterns: ["behind (my |the )?eyes?", "retro[- ]orbital", "eye socket pain", "pain in (my )?eye sockets?"]
+    specificity: 0.75
+    suggests: [dengue]
+  - name: severe_joint_pain
+    label: disabling joint pain
+    category: musculoskeletal
+    patterns: ["cannot (walk|stand|grip)", "joints?[^.]{0,25}(unbearable|disabl|excruciat)", "crippling joint"]
+    specificity: 0.75
+    suggests: [chikungunya, septic arthritis, acute rheumatic fever]
+  - name: night_sweats
+    label: drenching night sweats
+    category: constitutional
+    patterns: ["night sweat", "sweating at night", "drenching sweat"]
+    specificity: 0.70
+    suggests: [tuberculosis, lymphoma, endocarditis, HIV]
+  - name: weight_loss
+    label: unintended weight loss
+    category: constitutional
+    patterns: ["(lost|losing) weight", "weight loss", "wajan kam"]
+    specificity: 0.60
+    suggests: [tuberculosis, malignancy, uncontrolled diabetes, HIV]
+  - name: chronic_cough
+    label: cough lasting more than two weeks
+    category: respiratory
+    patterns: ["cough[^.]{0,30}(two|2|three|3|four|4|several) weeks?", "cough for (a |one )?month", "long standing cough", "chronic cough"]
+    specificity: 0.75
+    suggests: [tuberculosis, COPD, asthma, bronchiectasis, lung malignancy]
+  - name: reduced_urine_output
+    label: passing much less urine
+    category: renal
+    patterns: ["(less|reduced|decreased) urine", "not passing urine", "no urine", "urine[^.]{0,15}(very )?(less|little)", "oliguria", "peshab kam"]
+    specificity: 0.75
+    suggests: [acute kidney injury, severe dehydration, leptospirosis, sepsis]
+  - name: bleeding_tendency
+    label: abnormal bleeding
+    category: haematological
+    patterns: ["bleeding gums", "gums?[^.]{0,12}bleed", "nose ?bleed", "epistaxis", "petechiae", "bruis(e|es|ing)", "blood spots"]
+    specificity: 0.70
+    suggests: [dengue, leptospirosis, thrombocytopenia, leukaemia]
+  - name: neck_stiffness
+    label: stiff neck
+    category: neurological
+    patterns: ["neck stiff", "stiff neck", "neck (is )?rigid", "cannot (bend|touch)[^.]{0,20}(neck|chin)", "gardan akad"]
+    specificity: 0.85
+    suggests: [meningitis, subarachnoid haemorrhage]
+  - name: photophobia
+    label: light hurts the eyes
+    category: neurological
+    patterns: ["light hurts", "photophobi", "cannot (look at|tolerate) light"]
+    specificity: 0.70
+    suggests: [meningitis, migraine, uveitis]
+  - name: altered_sensorium
+    label: confusion or drowsiness
+    category: neurological
+    patterns: ["confus(ed|ion)", "drowsy", "not making sense", "disorient", "unarousable", "very sleepy", "behaving strangely", "unresponsive"]
+    specificity: 0.80
+    suggests: [sepsis, meningitis, cerebral malaria, hepatic encephalopathy, hypoglycaemia]
+  - name: snakebite
+    label: snakebite
+    category: exposure
+    patterns: ["snake ?bite", "bitten by a snake", "saanp"]
+    specificity: 0.98
+    suggests: [snake envenoming]
+  - name: pesticide_exposure
+    label: pesticide or organophosphate ingestion
+    category: exposure
+    patterns: ["pesticide", "organophosphate", "insecticide", "rat poison", "consumed poison", "drank poison"]
+    specificity: 0.98
+    suggests: [organophosphate poisoning]
+  - name: heat_exposure
+    label: prolonged heat or sun exposure
+    category: exposure
+    patterns: ["in the sun", "heat stroke", "loo lag", "working outdoors", "very hot weather", "heat wave"]
+    specificity: 0.70
+    suggests: [heat exhaustion, heat stroke]
+  - name: raw_water_or_street_food
+    label: untreated water or street food
+    category: exposure
+    patterns: ["street food", "roadside food", "outside food", "well water", "hand pump", "untreated water", "unboiled water"]
+    specificity: 0.60
+    suggests: [enteric fever, hepatitis A and E, cholera, amoebiasis]
+  - name: mosquito_exposure
+    label: heavy mosquito exposure
+    category: exposure
+    patterns: ["mosquito", "machhar", "dengue[^.]{0,25}(area|colony|locality|neighbourhood)", "malaria in the area"]
+    specificity: 0.45
+    suggests: [dengue, malaria, chikungunya, japanese encephalitis]
+  - name: sick_contact
+    label: someone at home with the same illness
+    category: exposure
+    patterns: ["someone (at home|in the family|in my house)", "family member[^.]{0,25}(fever|ill|sick)", "sick contact", "others? (also )?(have|has) fever"]
+    specificity: 0.50
+  - name: recent_travel
+    label: recent travel
+    category: exposure
+    patterns: ["travel(l)?ed", "came back from", "returned from", "trip to"]
+    specificity: 0.40
+  - name: pregnancy
+    label: pregnancy
+    category: obstetric
+    patterns: ["pregnan(t|cy)", "months pregnant", "expecting a baby", "garbh"]
+    specificity: 0.80
+  - name: chest_pain
+    label: chest pain
+    category: cardiovascular
+    patterns: ["chest pain", "pain in (my |the )?chest", "chest discomfort", "chest tightness", "seene me dard"]
+    specificity: 0.55
+    suggests: [acute coronary syndrome, pulmonary embolism, pneumonia, musculoskeletal chest pain]
+  - name: dyspnoea
+    label: shortness of breath
+    category: respiratory
+    patterns:
+      - "short(ness)? of breath"
+      - "breathless"
+      - "difficulty (in )?breathing"
+      - "difficulty breathing"
+      - "hard to breathe"
+      - "can'?t breathe"
+      - "cannot breathe"
+      - "trouble breathing"
+      - "saans[^.]{0,12}(phool|takleef)"
+      - "dyspn(o)?ea"
+    specificity: 0.50
+    suggests: [pneumonia, asthma, COPD, heart failure, anaemia, acidosis]
+  - name: haemoptysis
+    label: coughing up blood
+    category: respiratory
+    patterns: ["cough(ing)? (up )?blood", "blood in (my )?(sputum|phlegm|cough)", "haemoptysis", "hemoptysis"]
+    specificity: 0.85
+    suggests: [tuberculosis, bronchiectasis, lung malignancy, pulmonary embolism]
+  - name: haematemesis
+    label: vomiting blood
+    category: gastrointestinal
+    patterns: ["vomit(ing|ed)? blood", "blood in (my )?vomit", "haematemesis", "coffee ground vomit"]
+    specificity: 0.85
+  - name: melaena
+    label: black tarry stools
+    category: gastrointestinal
+    patterns: ["black (tarry )?stool", "tarry stool", "black motion", "mel(a)?ena", "blood in (my )?stool"]
+    specificity: 0.85
+  - name: haematuria
+    label: blood in the urine
+    category: renal
+    patterns: ["blood in (my )?urine", "haematuria", "hematuria"]
+    specificity: 0.75
+
+# Red-flag rules. Every feature in `all_of` must be asserted PRESENT in the
+# patient state; a feature that is ABSENT or UNKNOWN can never satisfy a rule.
+# `any_of_text` further requires one of those qualifiers to appear, un-negated,
+# in the patient's own words. Each rule carries the ESI floor it imposes.
+red_flags:
+  - id: rf_chest_pain_cardiac
+    all_of: [chest_pain]
+    any_of_text: ["crushing", "radiating", "sweating", "pressure", "left arm", "jaw", "tightness"]
+    esi: 2
+    text: "chest pain with features suggestive of a cardiac cause"
+  - id: rf_dyspnoea_rest
+    all_of: [dyspnoea]
+    any_of_text: ["at rest", "sitting", "lying", "cannot speak", "severe", "worsening", "gasping"]
+    esi: 2
+    text: "shortness of breath at rest"
+  - id: rf_altered_sensorium
+    all_of: [altered_sensorium]
+    esi: 2
+    text: "confusion or altered level of consciousness"
+  - id: rf_meningism
+    all_of: [fever, neck_stiffness]
+    esi: 2
+    text: "fever with neck stiffness"
+  - id: rf_haemoptysis
+    all_of: [haemoptysis]
+    esi: 2
+    text: "coughing up blood"
+  - id: rf_haematemesis
+    all_of: [haematemesis]
+    esi: 2
+    text: "vomiting blood"
+  - id: rf_melaena
+    all_of: [melaena]
+    esi: 2
+    text: "black tarry stools suggesting gastrointestinal bleeding"
+  - id: rf_snakebite
+    all_of: [snakebite]
+    esi: 1
+    text: "snakebite"
+  - id: rf_pesticide
+    all_of: [pesticide_exposure]
+    esi: 1
+    text: "pesticide or organophosphate exposure"
+  - id: rf_bleeding_with_fever
+    all_of: [fever, bleeding_tendency]
+    esi: 2
+    text: "fever with abnormal bleeding"
+  - id: rf_anuria
+    all_of: [reduced_urine_output]
+    esi: 2
+    text: "markedly reduced urine output"
+  - id: rf_pregnancy_bleeding
+    all_of: [pregnancy, bleeding_tendency]
+    esi: 2
+    text: "bleeding in pregnancy"
+  - id: rf_heat_stroke
+    all_of: [heat_exposure, altered_sensorium]
+    esi: 1
+    text: "heat exposure with altered consciousness"
+
+# Concerning-but-not-emergency combinations. These raise the ESI floor to 3
+# (yellow) rather than 2, and are the honest classification for a patient who is
+# clearly unwell and needs a workup today but has no life-threatening sign.
+urgent_rules:
+  - id: ur_prolonged_fever
+    all_of: [fever]
+    min_duration_days: 5
+    esi: 3
+    text: "fever lasting five days or more without a confirmed source"
+  - id: ur_fever_with_organ_feature
+    all_of: [fever]
+    any_of: [jaundice, dark_urine, calf_myalgia, reduced_urine_output, altered_sensorium]
+    esi: 3
+    text: "fever with a feature suggesting organ involvement"
+  - id: ur_dehydration
+    all_of: [vomiting, diarrhoea]
+    esi: 3
+    text: "vomiting with loose stools and a risk of dehydration"
+  - id: ur_chronic_cough
+    all_of: [chronic_cough]
+    esi: 3
+    text: "cough for more than two weeks needing tuberculosis evaluation"
+  - id: ur_severe_pain
+    any_of: [severe_joint_pain, calf_myalgia, abdominal_pain, chest_pain, headache]
+    min_severity: severe
+    esi: 3
+    text: "pain the patient describes as severe or disabling"
+  - id: ur_bleeding_any
+    any_of: [bleeding_tendency, haematuria]
+    esi: 3
+    text: "abnormal bleeding reported without fever"
+  - id: ur_pregnancy_fever
+    all_of: [pregnancy, fever]
+    esi: 3
+    text: "fever in pregnancy"
+
+# Conditions whose base rate in Indian OPD is high enough that retrieval and
+# reasoning drift toward them on generic features alone. A condition listed here
+# may only lead the differential when at least one of its own discriminating
+# features is PRESENT in the patient state.
+common_condition_bias:
+  requires_discriminator: 1
+  conditions:
+    dengue:
+      generic: [fever, headache, body_ache, vomiting, rash, nausea]
+      discriminators: [retro_orbital_pain, bleeding_tendency, mosquito_exposure]
+    viral fever:
+      generic: [fever, body_ache, headache, sore_throat, cough]
+      discriminators: [sick_contact]
+    gastroenteritis:
+      generic: [vomiting, diarrhoea, abdominal_pain, nausea]
+      discriminators: [raw_water_or_street_food]
+    upper respiratory infection:
+      generic: [cough, sore_throat, fever]
+      discriminators: []

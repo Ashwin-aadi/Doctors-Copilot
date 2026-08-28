@@ -45,19 +45,23 @@ def _patch_triage_llm(monkeypatch):
     async def fake_json_complete(prompt, *, schema, system=None, retries=2):
         return schema(severity_esi=3, specialty="general_medicine", confidence=0.7)
 
-    async def fake_hybrid(collection, query, k=8, where=None):
+    # Triage retrieval is now a weighted multi-query fan-out driven by the
+    # structured patient state, so the stub takes (collection, queries) rather
+    # than a single query string.
+    async def fake_multi_hybrid(collection, queries, k=10, **kwargs):
         return [
             Hit(
                 id="g1",
                 text="Persistent fever with high blood sugar warrants review.",
                 score=0.9,
-                metadata={"title": "Fever Workup"},
+                metadata={"title": "Fever Workup", "source": "test"},
             )
         ]
 
     monkeypatch.setattr("app.rag.triage_rag.complete", fake_complete)
     monkeypatch.setattr("app.rag.triage_rag.json_complete", fake_json_complete)
-    monkeypatch.setattr("app.rag.triage_rag.hybrid", fake_hybrid)
+    monkeypatch.setattr("app.rag.patient_state.json_complete", fake_json_complete)
+    monkeypatch.setattr("app.rag.triage_rag.multi_hybrid", fake_multi_hybrid)
 
 
 def _patch_clinical_llm(monkeypatch):

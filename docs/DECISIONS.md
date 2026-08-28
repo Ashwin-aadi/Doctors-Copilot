@@ -2478,3 +2478,57 @@ repo; `tsc -b` (what `npm run build` runs) does. Use the build, not the bare
 `--noEmit`, as the type gate. Playwright specs for CP3 are written but unrun on
 this machine: they need the live seeded backend, which does not come up here
 (same limitation recorded for B2.x on 2026-08-26).
+
+## 2026-08-28 — Pre-assessment triage: state grounding, evidence weighting, consistency
+
+**Context.** A leptospirosis-like test case exposed three failures that were
+symptoms of one design problem: the pipeline had no structured representation of
+the patient. A single transcript blob went to a single retrieval call and a
+single LLM call, so there was nothing any stage could be checked against.
+Observed: a red flag for "difficulty breathing" the patient had explicitly
+denied; ESI 2 / "critical" alongside a rationale stating there were no
+life-threatening signs; and a differential that converged on dengue from fever,
+vomiting and rash while ignoring stagnant-water exposure, calf myalgia and dark
+urine.
+
+**Decision.** Split the pipeline into explicit stages over one shared
+`PatientState`, and move every safety-relevant decision out of the LLM.
+
+- `app/rag/negation.py` — NegEx-style scoped negation and uncertainty detection.
+  Deterministic and not overrulable by the model.
+- `app/rag/patient_state.py` — findings as present/absent/unknown with evidence
+  spans. A lexicon pass decides polarity; the LLM may only *add* findings, and
+  only with a quote copied verbatim from the patient's own words.
+- `app/rag/data/clinical_features.yaml` — one lexicon shared by extraction,
+  retrieval weighting, red flags and ESI, so those four cannot drift apart.
+  Each feature carries a `specificity`; features at or above 0.60 are treated as
+  discriminating and drive retrieval.
+- `app/rag/query_builder.py` + `retriever.multi_hybrid` — weighted multi-query
+  fan-out (presentation, per-discriminator, combination, named-condition probes),
+  weighted RRF, evidence rescoring, and a per-source diversity cap. Denied
+  findings never enter query text; they are applied as rerank penalties.
+- `app/rag/triage_rules.py` — red flags require every constituent feature to be
+  PRESENT. The rule engine sets the severity band; the model proposes inside it
+  and cannot reach ESI 1-2 without a fired rule. `check_consistency` repairs
+  contradictions between severity, red flags and rationale rather than reporting
+  them.
+
+**Corpus defect found while verifying.** `ingest_guidelines` stripped HTML tags
+but not `<script>`/`<style>` bodies, and ingested the curated `symptom_corpus`
+only as an offline *fallback*. On a successful fetch the store therefore held
+leptospirosis as three chunks of JavaScript and no clean prose, while dengue had
+twelve good chunks. That corpus skew, not the ranker, was the largest single
+cause of the common-disease bias. Fixed by cleaning non-content elements, adding
+a prose-quality gate, always ingesting the curated corpus, and resetting the
+collection on ingest so rejected chunks cannot survive under stale ids.
+
+**Contract impact.** `TriageResult` gains `differentials`, `patient_state`,
+`uncertainty` and `consistency_notes`. All are additive and defaulted; no
+existing field changed. `app.rag.triage_rag.hybrid` is replaced by
+`multi_hybrid` — the only in-repo callers were test monkeypatches, updated.
+
+**Known limitation.** The differential and rationale stages still depend on the
+LLM and degrade to an empty differential with `confidence=0.0` when the Groq
+free tier rate-limits. The degradation is honest (`uncertainty` distinguishes
+"stage unavailable" from "nothing supported") but the note loses its reasoning
+section. A local Ollama fallback would remove this.

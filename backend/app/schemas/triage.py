@@ -40,6 +40,46 @@ class TriageTurnOut(BaseModel):
     questions_asked: int
 
 
+# --- Pre-assessment reasoning detail (additive; every field defaulted) --------
+# These expose the structured state and differential the pipeline reasons over,
+# so a doctor can see WHY a triage level was assigned and check it against what
+# the patient actually said. Existing consumers are unaffected.
+
+
+class FindingOut(BaseModel):
+    """One clinical concept as asserted by the patient, with its evidence."""
+
+    name: str
+    label: str
+    category: str = "other"
+    status: Literal["present", "absent", "unknown"] = "unknown"
+    specificity: float = 0.4
+    severity: str | None = None
+    evidence: str = ""
+
+
+class PatientStateOut(BaseModel):
+    """The structured state every pipeline stage was given."""
+
+    chief_complaint: str = ""
+    duration_days: float | None = None
+    present: list[FindingOut] = []
+    absent: list[FindingOut] = []
+    unknown: list[FindingOut] = []
+    discriminating_features: list[str] = []
+
+
+class DifferentialItem(BaseModel):
+    """A condition worth considering, with what supports and opposes it."""
+
+    condition: str
+    likelihood: Literal["consider", "possible", "likely"] = "consider"
+    supporting: list[str] = []
+    against: list[str] = []
+    discriminating_tests: list[str] = []
+    citation_numbers: list[int] = []
+
+
 class TriageResult(BaseModel):
     session_id: UUID
     patient_id: UUID | None
@@ -51,3 +91,8 @@ class TriageResult(BaseModel):
     rationale: str
     citations: list[Citation]
     confidence: float
+    # Additive reasoning detail.
+    differentials: list[DifferentialItem] = []
+    patient_state: PatientStateOut | None = None
+    uncertainty: list[str] = []
+    consistency_notes: list[str] = []
