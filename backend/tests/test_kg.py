@@ -22,12 +22,56 @@ async def _require_neo4j():
         pytest.skip("Neo4j not reachable in this environment")
 
 
+@pytest_asyncio.fixture
+async def patient_conditions():
+    """Set the patient's conditions in Postgres and restore them afterwards.
+
+    The graph must mirror the record, so a test about the graph has to own what
+    the record says -- asserting on whatever happens to be in Neo4j already is
+    how stale projections pass for real evidence.
+    """
+    from app.db.models.patient import Patient
+    from app.db.session import SessionLocal
+
+    async def _set(value):
+        async with SessionLocal() as db:
+            patient = await db.get(Patient, PATIENT_1)
+            previous = patient.conditions
+            patient.conditions = value
+            await db.commit()
+            return previous
+
+    original = await _set([{"name": "type 2 diabetes mellitus", "since": "2021-03-01"}])
+    yield
+    await _set(original)
+
+
 @pytest.mark.asyncio
-async def test_sync_patient_populates_context():
+async def test_sync_patient_populates_context(patient_conditions):
     await sync_patient(PATIENT_1)
     context = await patient_context(PATIENT_1)
-    assert context["conditions"], context
+    assert [c["name"] for c in context["conditions"]] == ["type 2 diabetes mellitus"]
     assert "recent_labs" in context
+
+
+@pytest.mark.asyncio
+async def test_sync_patient_drops_what_postgres_no_longer_has(patient_conditions):
+    """A condition removed from the record must leave the graph on the next
+    sync. MERGE alone only ever adds, which left the copilot brief reasoning
+    about diagnoses and drugs the patient no longer had."""
+    from app.db.models.patient import Patient
+    from app.db.session import SessionLocal
+
+    await sync_patient(PATIENT_1)
+    assert (await patient_context(PATIENT_1))["conditions"]
+
+    async with SessionLocal() as db:
+        patient = await db.get(Patient, PATIENT_1)
+        patient.conditions = []
+        await db.commit()
+
+    await sync_patient(PATIENT_1)
+    assert (await patient_context(PATIENT_1))["conditions"] == []
 
 
 @pytest.mark.asyncio

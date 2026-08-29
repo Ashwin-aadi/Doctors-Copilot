@@ -32,6 +32,29 @@ except ImportError:
         return {"conditions": [], "medications": [], "allergens": []}
 
 
+async def _clear_patient_projection(patient_id: UUID) -> None:
+    """Drop everything this patient's graph derives from Postgres, so the
+    rebuild below reflects the record as it stands now.
+
+    MERGE alone only ever adds. A condition a doctor corrected, a drug that was
+    stopped, a lab from a report the patient withdrew -- all of it stayed in the
+    graph forever and kept feeding the copilot brief, which is how a brief ends
+    up describing a patient who no longer exists. Postgres is the source of
+    truth; the graph is a projection of it and is rebuilt, not appended to.
+    Shared nodes (a Condition, a Medication) are left alone -- other patients
+    point at them -- only this patient's edges and their own lab nodes go.
+    """
+    await run_write(
+        "MATCH (p:Patient {id: $pid})-[r:DIAGNOSED_WITH|ALLERGIC_TO|PRESCRIBED]->() DELETE r",
+        pid=str(patient_id),
+    )
+    await run_write(
+        "MATCH (p:Patient {id: $pid})-[:HAD]->(:Encounter)-[:YIELDED]->(l:LabResult) "
+        "DETACH DELETE l",
+        pid=str(patient_id),
+    )
+
+
 async def sync_patient(patient_id: UUID) -> None:
     await ensure_schema()
 
@@ -39,6 +62,8 @@ async def sync_patient(patient_id: UUID) -> None:
         patient = await db.get(Patient, patient_id)
         if patient is None:
             return
+
+        await _clear_patient_projection(patient_id)
 
         await run_write(
             "MERGE (p:Patient {id: $id}) SET p.name = $name, p.synced_at = $now",
@@ -113,7 +138,9 @@ async def sync_patient(patient_id: UUID) -> None:
                 )
 
         visits = (
-            await db.execute(select(Visit).where(Visit.patient_id == patient_id))
+            await db.execute(
+                select(Visit).where(Visit.patient_id == patient_id).order_by(Visit.created_at)
+            )
         ).scalars().all()
         for visit in visits:
             await run_write(
@@ -132,6 +159,12 @@ async def sync_patient(patient_id: UUID) -> None:
                     eid=str(visit.id),
                 )
 
+        # Labs hang off the patient's latest encounter, once. A LabResult row
+        # carries no visit of its own, and attaching every lab to every visit
+        # (as this did) made one result look like several, which is exactly the
+        # kind of phantom evidence the brief must never see.
+        if visits:
+            latest = visits[-1]
             labs = (
                 await db.execute(select(LabResult).where(LabResult.patient_id == patient_id))
             ).scalars().all()
@@ -147,7 +180,7 @@ async def sync_patient(patient_id: UUID) -> None:
                     unit=lab.unit,
                     flag=lab.flag,
                     observed=lab.observed_at.isoformat() if lab.observed_at else None,
-                    eid=str(visit.id),
+                    eid=str(latest.id),
                 )
 
     log.info("kg_synced", patient_id=str(patient_id))
