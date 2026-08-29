@@ -9,6 +9,7 @@ chain it landed on (once, at first load).
 from __future__ import annotations
 
 import os
+import shutil
 from pathlib import Path
 from typing import Any
 
@@ -23,6 +24,33 @@ CACHE_DIR = REPO_ROOT / "ml" / ".cache"
 
 os.environ.setdefault("HF_HOME", str(CACHE_DIR))
 os.environ.setdefault("TRANSFORMERS_CACHE", str(CACHE_DIR))
+
+
+# Where the Tesseract binary lands on a default install, per platform. The
+# Python package is only a wrapper -- pip cannot install the engine itself --
+# and the Windows installer does not put it on PATH, so a machine with
+# Tesseract properly installed still falls through to the weakest OCR tier
+# unless it is pointed at explicitly. TESSERACT_CMD overrides all of these.
+_TESSERACT_CANDIDATES = (
+    r"C:\Program Files\Tesseract-OCR\tesseract.exe",
+    r"C:\Program Files (x86)\Tesseract-OCR\tesseract.exe",
+    "/usr/bin/tesseract",
+    "/usr/local/bin/tesseract",
+    "/opt/homebrew/bin/tesseract",
+)
+
+
+def _point_pytesseract_at_binary(pytesseract: Any) -> None:
+    configured = os.environ.get("TESSERACT_CMD")
+    if configured:
+        pytesseract.pytesseract.tesseract_cmd = configured
+        return
+    if shutil.which("tesseract"):
+        return
+    for candidate in _TESSERACT_CANDIDATES:
+        if Path(candidate).exists():
+            pytesseract.pytesseract.tesseract_cmd = candidate
+            return
 
 
 class OcrEngine:
@@ -78,6 +106,7 @@ class Registry:
         try:
             import pytesseract
 
+            _point_pytesseract_at_binary(pytesseract)
             pytesseract.get_tesseract_version()
             self._ocr_engine = OcrEngine("tesseract", pytesseract)
             self._log_once("ocr", tier="tesseract")

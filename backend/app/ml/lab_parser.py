@@ -46,9 +46,13 @@ LINE_RE = re.compile(
     r"(?:[\(\[]?(?P<low>\d+\.?\d*)\s*[-–]\s*(?P<high>\d+\.?\d*)[\)\]]?)?"
 )
 
-RANGE_RE = re.compile(r"(?P<low>\d+\.?\d*)\s*[-–]\s*(?P<high>\d+\.?\d*)")
-GT_RE = re.compile(r"[>≥]\s*(?P<low>\d+\.?\d*)")
-LT_RE = re.compile(r"[<≤]\s*(?P<high>\d+\.?\d*)")
+# Ranges are printed with thousands separators as often as not ("4,000 -
+# 11,000"). Without the comma branch the regex matched from inside the group
+# and read that as 0-11, turning a normal white-cell count into a critical one.
+_NUM = r"\d{1,3}(?:,\d{3})+(?:\.\d+)?|\d+(?:\.\d+)?"
+RANGE_RE = re.compile(rf"(?P<low>{_NUM})\s*[-–]\s*(?P<high>{_NUM})")
+GT_RE = re.compile(rf"[>≥]\s*(?P<low>{_NUM})")
+LT_RE = re.compile(rf"[<≤]\s*(?P<high>{_NUM})")
 
 
 def _load_yaml(name: str) -> Any:
@@ -83,17 +87,21 @@ def _match_canonical(raw_name: str) -> tuple[str, float] | None:
     return _ALIAS_INDEX[alias], score / 100.0
 
 
+def _num(raw: str) -> float:
+    return float(raw.replace(",", ""))
+
+
 def _parse_range(text: str) -> tuple[float | None, float | None]:
     text = text.strip()
     m = RANGE_RE.search(text)
     if m:
-        return float(m.group("low")), float(m.group("high"))
+        return _num(m.group("low")), _num(m.group("high"))
     m = GT_RE.search(text)
     if m:
-        return float(m.group("low")), None
+        return _num(m.group("low")), None
     m = LT_RE.search(text)
     if m:
-        return None, float(m.group("high"))
+        return None, _num(m.group("high"))
     return None, None
 
 
@@ -180,12 +188,31 @@ def _row_conf(cells: list[str], conf_by_text: dict[str, float], fallback: float)
     return sum(confs) / len(confs) if confs else fallback
 
 
-def _parse_value(raw: str) -> float | None:
-    raw = raw.strip().lstrip("<>")
+# A result cell as most labs actually print it: the number, optionally with its
+# unit right beside it ("13.8 g/dL", "3,400 /uL", "<0.5 mg/dL"). Splitting the
+# two here is what lets a report with no separate Unit column be read at all --
+# requiring a bare number silently dropped every such row, which is to say most
+# real reports.
+_VALUE_UNIT_RE = re.compile(
+    r"^[<>≤≥]?\s*(?P<value>\d{1,3}(?:,\d{3})+(?:\.\d+)?|\d+(?:\.\d+)?)"
+    r"\s*(?P<unit>[A-Za-zµ%/\^0-9\.\-]{1,15})?"
+)
+
+
+def _split_value_unit(raw: str) -> tuple[float | None, str | None]:
+    m = _VALUE_UNIT_RE.match(raw.strip())
+    if m is None:
+        return None, None
     try:
-        return float(raw)
+        value = float(m.group("value").replace(",", ""))
     except ValueError:
-        return None
+        return None, None
+    unit = (m.group("unit") or "").strip() or None
+    return value, unit
+
+
+def _parse_value(raw: str) -> float | None:
+    return _split_value_unit(raw)[0]
 
 
 def _find_header(table: list[list[str]]) -> tuple[int, dict[int, str]] | None:
@@ -227,7 +254,7 @@ def _table_mode_entries(
             if len(row) <= max(name_col, value_col):
                 continue
             raw_name = row[name_col]
-            value = _parse_value(row[value_col])
+            value, inline_unit = _split_value_unit(row[value_col])
             if value is None:
                 continue
             match = _match_canonical(raw_name)
@@ -235,6 +262,9 @@ def _table_mode_entries(
                 continue
             canonical_name, alias_score = match
             unit = row[unit_col].strip() if unit_col is not None and unit_col < len(row) else None
+            # A dedicated Unit column wins; otherwise take what was printed
+            # alongside the value.
+            unit = unit or inline_unit
             low, high = (
                 _parse_range(row[range_col]) if range_col is not None and range_col < len(row) else (None, None)
             )
