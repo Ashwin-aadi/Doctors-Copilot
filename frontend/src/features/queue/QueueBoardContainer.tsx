@@ -3,6 +3,8 @@ import { useTranslation } from "react-i18next";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Wifi, WifiOff } from "lucide-react";
 import { Card, CardBody, CardHeader, CardTitle } from "../../components/ui/Card";
+import { PageHeader } from "../../components/ui/PageHeader";
+import { Button } from "../../components/ui/Button";
 import { Table, TableHead, TableBody, TableRow, TableHeaderCell, TableCaption } from "../../components/ui/Table";
 import { Skeleton } from "../../components/ui/Skeleton";
 import { EmptyState } from "../../components/ui/EmptyState";
@@ -77,7 +79,7 @@ export function QueueBoardContainer() {
 
   if (!clinicId) {
     return (
-      <div className="p-4">
+      <div className="page">
         <ErrorState title={t("queue.noClinic")} />
       </div>
     );
@@ -87,21 +89,24 @@ export function QueueBoardContainer() {
   const headId = entries.find((e) => e.status === "waiting")?.id;
 
   return (
-    <div className="flex flex-col gap-4 p-4">
-      <div className="flex items-center justify-between">
-        <h2 className="text-lg font-semibold text-fg">{t("queue.title")}</h2>
-        {status === "open" ? (
-          <Badge tone="normal">
-            <Wifi className="h-3 w-3" aria-hidden="true" />
-            {t("queue.connected")}
-          </Badge>
-        ) : (
-          <Badge tone="moderate">
-            <WifiOff className="h-3 w-3" aria-hidden="true" />
-            {t("queue.reconnecting")}
-          </Badge>
-        )}
-      </div>
+    <div className="page">
+      <PageHeader
+        title={t("queue.title")}
+        description={t("queue.subtitle")}
+        actions={
+          status === "open" ? (
+            <Badge tone="normal">
+              <Wifi className="h-3 w-3" aria-hidden="true" />
+              {t("queue.connected")}
+            </Badge>
+          ) : (
+            <Badge tone="moderate">
+              <WifiOff className="h-3 w-3" aria-hidden="true" />
+              {t("queue.reconnecting")}
+            </Badge>
+          )
+        }
+      />
 
       <QueueStats entries={entries} />
 
@@ -117,13 +122,9 @@ export function QueueBoardContainer() {
         <ErrorState
           title={t("errorCodes.INTERNAL")}
           action={
-            <button
-              type="button"
-              className="text-sm text-primary underline"
-              onClick={() => void queueQuery.refetch()}
-            >
+            <Button size="sm" variant="secondary" onClick={() => void queueQuery.refetch()}>
               {t("errors.retry")}
-            </button>
+            </Button>
           }
         />
       )}
@@ -133,11 +134,11 @@ export function QueueBoardContainer() {
       )}
 
       {!queueQuery.isLoading && !queueQuery.error && entries.length > 0 && (
-        <Card>
+        <Card variant="raised" className="overflow-hidden">
           <CardHeader>
-            <CardTitle>{t("queue.boardTitle")}</CardTitle>
+            <CardTitle subtitle={t("queue.boardSubtitle")}>{t("queue.boardTitle")}</CardTitle>
           </CardHeader>
-          <CardBody className="p-0">
+          <CardBody className="overflow-x-auto p-0">
             <Table>
               <TableCaption>{t("queue.boardTitle")}</TableCaption>
               <TableHead>

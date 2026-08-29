@@ -2,12 +2,14 @@ import { useState } from "react";
 import { useParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { useQuery } from "@tanstack/react-query";
-import { ArrowRight } from "lucide-react";
+import { ArrowRight, History } from "lucide-react";
 import { Card, CardHeader, CardTitle, CardBody } from "../../components/ui/Card";
 import { Button } from "../../components/ui/Button";
+import { Badge } from "../../components/ui/Badge";
 import { Modal } from "../../components/ui/Modal";
 import { Skeleton } from "../../components/ui/Skeleton";
 import { ErrorState } from "../../components/ui/ErrorState";
+import { PageHeader } from "../../components/ui/PageHeader";
 import { TriageResultCard } from "../../components/chat/TriageResultCard";
 import { VisitStepper } from "../../components/timeline/VisitStepper";
 import { VISIT_STATES, VISIT_STATE_LABELS } from "../../components/timeline/visitStates";
@@ -25,6 +27,7 @@ import { PrescriptionContainer } from "../prescription/PrescriptionContainer";
 import { PrescriptionEditor } from "../prescription/PrescriptionEditor";
 import { PrescriptionDownloadCard } from "../prescription/PrescriptionDownloadCard";
 import { MedSuggestionsCard } from "../prescription/MedSuggestions";
+import { PatientContextRail } from "./PatientContextRail";
 import { TranscriptCard } from "./TranscriptCard";
 import { useVisit, nextState } from "./useVisit";
 import type { VisitState } from "../../lib/api/endpoints/visits";
@@ -36,10 +39,9 @@ import { useVisitSocket } from "./useVisitSocket";
  * The visit screen used to stack every panel it could render on top of each
  * other, so the same triage rationale, upload box and brief followed the user
  * through all seven stages and none of them said what to do next. Each stage
- * now renders only the surface that belongs to it: the interview and its
- * reasoning while triaging, the order while choosing tests, the results while
- * reading them, the pad while prescribing. The stepper is the only navigation,
- * and it still moves both ways.
+ * now renders only the surface that belongs to it, in a work column, with the
+ * patient's standing context pinned beside it -- allergies and current
+ * medicines are relevant at every stage and belong in neither.
  */
 export function VisitContainer() {
   const { t } = useTranslation();
@@ -63,16 +65,24 @@ export function VisitContainer() {
 
   if (loading) {
     return (
-      <div className="mx-auto flex w-full max-w-4xl flex-col gap-3 p-4">
-        <Skeleton className="h-6 w-1/3" />
-        <Skeleton className="h-24 w-full" />
+      <div className="page">
+        <Skeleton className="h-8 w-1/3" />
+        <Skeleton className="h-20 w-full" />
+        <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_320px]">
+          <Skeleton className="h-64 w-full" />
+          <Skeleton className="h-64 w-full" />
+        </div>
       </div>
     );
   }
 
   if (error || !visit) {
     const code = error instanceof ApiError ? error.code : "INTERNAL";
-    return <ErrorState title={t(`errorCodes.${code}`, { defaultValue: t("errorCodes.INTERNAL") })} />;
+    return (
+      <div className="page">
+        <ErrorState title={t(`errorCodes.${code}`, { defaultValue: t("errorCodes.INTERNAL") })} />
+      </div>
+    );
   }
 
   // `PatientOut` carries these as objects ({name, since, dose, ...}); the
@@ -88,6 +98,7 @@ export function VisitContainer() {
   // stepper deep-links backwards without moving the visit.
   const view: VisitState = stage ?? visit.state;
   const label = VISIT_STATE_LABELS[view];
+  const viewingPast = VISIT_STATES.indexOf(view) < VISIT_STATES.indexOf(visit.state);
   // Differentials from the brief are the closest thing to a working diagnosis
   // the visit has; the patient's own conditions stand in until it is built.
   const briefConditions = visit.brief?.differentials?.length
@@ -95,30 +106,42 @@ export function VisitContainer() {
     : conditions;
 
   return (
-    <div className="mx-auto flex w-full max-w-4xl flex-col gap-4 p-4">
-      <Card>
-        <CardHeader className="flex flex-wrap items-center justify-between gap-2">
-          <CardTitle>{t("visit.title")}</CardTitle>
-          {isClinician && target && (
+    <div className="page">
+      <PageHeader
+        title={label.en}
+        titleAlt={label.hi}
+        description={t(`visit.stageHelp.${view}`, { defaultValue: "" }) || undefined}
+        meta={
+          viewingPast ? (
+            <Badge tone="info">
+              <History className="h-3 w-3" aria-hidden="true" />
+              {t("visit.viewingPast", { state: VISIT_STATE_LABELS[visit.state].en })}
+            </Badge>
+          ) : undefined
+        }
+        actions={
+          isClinician && target ? (
             <Button
-              size="sm"
-              variant="secondary"
               rightIcon={<ArrowRight className="h-4 w-4" />}
-              disabled={advancing}
+              loading={advancing}
               data-testid="advance-visit"
               onClick={() => advance(target)}
             >
-              {t("visit.advanceTo", { state: target })}
+              {t("visit.advanceTo", { state: VISIT_STATE_LABELS[target].en })}
             </Button>
-          )}
-        </CardHeader>
-        <CardBody>
+          ) : undefined
+        }
+      />
+
+      <Card variant="raised">
+        <CardBody className="px-3 py-4 sm:px-5">
           {/* A consultation does not only run forwards: an unreadable report
               or a brief built too early has to be reworked. A clinician
               clicking a stage already passed moves the visit back to it;
               everyone else just deep-links to that stage's view. */}
           <VisitStepper
             state={visit.state}
+            viewing={view}
             onStageClick={(clicked) => {
               const isEarlier = VISIT_STATES.indexOf(clicked) < VISIT_STATES.indexOf(visit.state);
               if (isClinician && isEarlier) setPendingRewind(clicked);
@@ -159,114 +182,119 @@ export function VisitContainer() {
         </div>
       </Modal>
 
-      <div>
-        <h2 className="text-lg font-semibold text-fg">{label.en}</h2>
-        <p lang="hi" className="text-sm text-fg-subtle">
-          {label.hi}
-        </p>
-      </div>
+      <div className="grid min-w-0 items-start gap-5 lg:grid-cols-[minmax(0,1fr)_320px]">
+        <div className="flex min-w-0 animate-rise-in flex-col gap-5" key={view}>
+          {/* --- Symptoms checked: the interview and the reasoning over it. The
+              suggested-lab table belongs to the next stage, where it is acted on. */}
+          {view === "TRIAGED" && (
+            <>
+              {visit.triage && <TriageResultCard result={visit.triage} showSuggestedLabs={false} />}
+              <TranscriptCard visitId={visit.id} />
+            </>
+          )}
 
-      {/* --- Symptoms checked: the interview and the reasoning over it. The
-          suggested-lab table belongs to the next stage, where it is acted on. */}
-      {view === "TRIAGED" && (
-        <>
-          {visit.triage && <TriageResultCard result={visit.triage} showSuggestedLabs={false} />}
-          <TranscriptCard visitId={visit.id} />
-        </>
-      )}
+          {/* --- Tests suggested: choosing and signing the order, nothing else.
+              The reasoning behind it stays one click back in the stepper. */}
+          {view === "LABS_SUGGESTED" &&
+            (isClinician ? (
+              <VisitLabOrderPanel visitId={visit.id} labOrderId={visit.lab_order_id ?? null} />
+            ) : (
+              <Card variant="raised">
+                <CardHeader>
+                  <CardTitle>{t("visit.awaitingOrder")}</CardTitle>
+                </CardHeader>
+                <CardBody>
+                  <p>{t("visit.awaitingOrderHelp")}</p>
+                </CardBody>
+              </Card>
+            ))}
 
-      {/* --- Tests suggested: choosing and signing the order, nothing else.
-          The reasoning behind it stays one click back in the stepper. */}
-      {view === "LABS_SUGGESTED" &&
-        (isClinician ? (
-          <VisitLabOrderPanel visitId={visit.id} labOrderId={visit.lab_order_id ?? null} />
-        ) : (
-          <Card>
-            <CardHeader>
-              <CardTitle>{t("visit.awaitingOrder")}</CardTitle>
-            </CardHeader>
-            <CardBody>
-              <p className="text-sm text-fg-muted">{t("visit.awaitingOrderHelp")}</p>
-            </CardBody>
-          </Card>
-        ))}
-
-      {/* --- Tests approved: what was ordered and what has come back. */}
-      {view === "LABS_APPROVED" && (
-        <LabReportSummary
-          labOrderId={visit.lab_order_id ?? null}
-          documents={visit.documents ?? []}
-        />
-      )}
-
-      {/* --- Report uploaded: collecting the reports, and only that. */}
-      {view === "RESULTS_UPLOADED" &&
-        (visit.lab_order_id ? (
-          <LabOrderUploadPanel
-            visitId={visit.id}
-            patientId={visit.patient_id}
-            labOrderId={visit.lab_order_id}
-            documents={visit.documents ?? []}
-          />
-        ) : (
-          <UploadContainer patientId={visit.patient_id} />
-        ))}
-
-      {/* --- Summary ready: the brief, the values it was built from, and the
-          medicines it points towards. */}
-      {view === "BRIEF_READY" && (
-        <>
-          <CopilotContainer visitId={visit.id} />
-          <LabReportSummary
-            labOrderId={visit.lab_order_id ?? null}
-            documents={visit.documents ?? []}
-          />
-          <MedSuggestionsCard
-            visitId={visit.id}
-            conditions={briefConditions}
-            allergies={allergies}
-            currentMedications={medications}
-          />
-        </>
-      )}
-
-      {/* --- Doctor consulted: the prescription pad. */}
-      {view === "CONSULTED" &&
-        (isClinician ? (
-          <>
-            <PrescriptionEditor
-              visitId={visit.id}
-              patientConditions={briefConditions}
-              patientAllergies={allergies}
-              patientMedications={medications}
+          {/* --- Tests approved: what was ordered and what has come back. */}
+          {view === "LABS_APPROVED" && (
+            <LabReportSummary
+              labOrderId={visit.lab_order_id ?? null}
+              documents={visit.documents ?? []}
             />
-            {medications.length > 0 && (
-              <SafetyContainer
-                visitId={visit.id}
-                inputs={{ medications, allergies, conditions }}
-              />
-            )}
-            {actions.canPrescribe && (
-              <PrescriptionContainer
-                visitId={visit.id}
-                patientAllergies={allergies}
-                patientConditions={conditions}
-              />
-            )}
-          </>
-        ) : (
-          <Card>
-            <CardHeader>
-              <CardTitle>{t("visit.awaitingPrescription")}</CardTitle>
-            </CardHeader>
-            <CardBody>
-              <p className="text-sm text-fg-muted">{t("visit.awaitingPrescriptionHelp")}</p>
-            </CardBody>
-          </Card>
-        ))}
+          )}
 
-      {/* --- Prescription issued: the handover. */}
-      {view === "PRESCRIBED" && <PrescriptionDownloadCard visitId={visit.id} />}
+          {/* --- Report uploaded: collecting the reports, and only that. */}
+          {view === "RESULTS_UPLOADED" &&
+            (visit.lab_order_id ? (
+              <LabOrderUploadPanel
+                visitId={visit.id}
+                patientId={visit.patient_id}
+                labOrderId={visit.lab_order_id}
+                documents={visit.documents ?? []}
+              />
+            ) : (
+              <UploadContainer patientId={visit.patient_id} />
+            ))}
+
+          {/* --- Summary ready: the brief, the values it was built from, and the
+              medicines it points towards. */}
+          {view === "BRIEF_READY" && (
+            <>
+              <CopilotContainer visitId={visit.id} />
+              <LabReportSummary
+                labOrderId={visit.lab_order_id ?? null}
+                documents={visit.documents ?? []}
+              />
+              <MedSuggestionsCard
+                visitId={visit.id}
+                conditions={briefConditions}
+                allergies={allergies}
+                currentMedications={medications}
+              />
+            </>
+          )}
+
+          {/* --- Doctor consulted: the prescription pad. */}
+          {view === "CONSULTED" &&
+            (isClinician ? (
+              <>
+                <PrescriptionEditor
+                  visitId={visit.id}
+                  patientConditions={briefConditions}
+                  patientAllergies={allergies}
+                  patientMedications={medications}
+                />
+                {medications.length > 0 && (
+                  <SafetyContainer
+                    visitId={visit.id}
+                    inputs={{ medications, allergies, conditions }}
+                  />
+                )}
+                {actions.canPrescribe && (
+                  <PrescriptionContainer
+                    visitId={visit.id}
+                    patientAllergies={allergies}
+                    patientConditions={conditions}
+                  />
+                )}
+              </>
+            ) : (
+              <Card variant="raised">
+                <CardHeader>
+                  <CardTitle>{t("visit.awaitingPrescription")}</CardTitle>
+                </CardHeader>
+                <CardBody>
+                  <p>{t("visit.awaitingPrescriptionHelp")}</p>
+                </CardBody>
+              </Card>
+            ))}
+
+          {/* --- Prescription issued: the handover. */}
+          {view === "PRESCRIBED" && <PrescriptionDownloadCard visitId={visit.id} />}
+        </div>
+
+        <div className="lg:sticky lg:top-[5.5rem]">
+          <PatientContextRail
+            visit={visit}
+            patient={patientQuery.data ?? null}
+            loading={patientQuery.isLoading}
+          />
+        </div>
+      </div>
     </div>
   );
 }

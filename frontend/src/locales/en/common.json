@@ -1,6 +1,7 @@
 {
   "app": {
-    "name": "Doctor's Copilot"
+    "name": "Doctor's Copilot",
+    "tagline": "Clinic workspace"
   },
   "nav": {
     "chat": "Symptom Check",
@@ -11,7 +12,15 @@
     "doctorQueue": "Queue",
     "admin": "Admin",
     "logout": "Log out",
-    "emergency": "Emergency: 112 / 108"
+    "emergency": "Emergency: 112 / 108",
+    "assistant": "Ask about my reports",
+    "primary": "Primary navigation",
+    "sectionWorkspace": "Workspace",
+    "collapse": "Collapse",
+    "expand": "Expand navigation",
+    "openMenu": "Open navigation",
+    "toggleLanguage": "Switch language",
+    "toggleTheme": "Switch light or dark theme"
   },
   "errors": {
     "boundaryTitle": "Something went wrong",
@@ -97,7 +106,11 @@
       "in_consult": "In consult",
       "done": "Done",
       "cancelled": "Cancelled"
-    }
+    },
+    "subtitle": "Live OPD queue for your clinic, ordered by triage priority and waiting time.",
+    "boardSubtitle": "Red-coded and escalated patients are called first.",
+    "minutesHint": "minutes",
+    "urgentCount": "Urgent"
   },
   "documents": {
     "title": "Upload reports",
@@ -212,7 +225,17 @@
     "awaitingOrder": "Waiting for the doctor to order your tests",
     "awaitingOrderHelp": "Your symptoms have been assessed. The doctor is choosing which tests you need; you will be able to upload the reports here once the order is signed.",
     "awaitingPrescription": "Waiting for the doctor to write your prescription",
-    "awaitingPrescriptionHelp": "The doctor is reviewing your reports. Your prescription will appear here once it is signed."
+    "awaitingPrescriptionHelp": "The doctor is reviewing your reports. Your prescription will appear here once it is signed.",
+    "viewingPast": "Looking back — visit is at {{state}}",
+    "stageHelp": {
+      "TRIAGED": "What the patient reported, and how the assessment reached this severity.",
+      "LABS_SUGGESTED": "Choose the tests to order, then sign the order.",
+      "LABS_APPROVED": "What was ordered and which reports have come back.",
+      "RESULTS_UPLOADED": "Collect the lab reports for this visit.",
+      "BRIEF_READY": "The clinical summary built from this patient's own results.",
+      "CONSULTED": "Write the prescription and check it for interactions.",
+      "PRESCRIBED": "The signed prescription, ready to hand over."
+    }
   },
   "portal": {
     "heading": "Your care",
@@ -296,7 +319,27 @@
     "transcript": "Pre-assessment conversation",
     "transcriptEmpty": "No pre-assessment conversation was recorded for this visit.",
     "you": "Patient",
-    "assistant": "Assistant"
+    "assistant": "Assistant",
+    "subtitle": "Every consultation you have started, and what it is waiting on.",
+    "doctorSubtitle": "Patients assigned to you, ordered by how recently their visit moved.",
+    "filterLabel": "Filter visits",
+    "filterAll": "All",
+    "filterOpen": "Open",
+    "filterWaiting": "Awaiting reports",
+    "filterUrgent": "Urgent",
+    "filterClosed": "Completed",
+    "statOpen": "Open visits",
+    "statWaiting": "Awaiting reports",
+    "statWaitingHint": "Lab order signed",
+    "statUrgent": "Red triage",
+    "statClosed": "Completed",
+    "searchPatients": "Search patients",
+    "searchVisits": "Search visits",
+    "noMatches": "No visits match this filter",
+    "noMatchesHelp": "Try a different filter, or clear the search.",
+    "clearFilters": "Clear filters",
+    "progressLabel": "Progress: {{stage}}",
+    "stageOf": "Stage {{index}} of {{total}}"
   },
   "triage": {
     "colour": {
@@ -362,7 +405,8 @@
     "addToPad": "Add",
     "onPad": "Added",
     "nlem": "NLEM",
-    "janAushadhi": "Jan Aushadhi"
+    "janAushadhi": "Jan Aushadhi",
+    "noWorkingDiagnosis": "No working diagnosis yet. Build the clinical summary, or record the patient's conditions, and candidate medicines will appear here."
   },
   "prescriptionDownload": {
     "title": "Your prescription",
@@ -370,5 +414,41 @@
     "download": "Download PDF",
     "none": "No prescription issued yet",
     "noneHelp": "Once the doctor signs your prescription it can be downloaded here."
+  },
+  "roles": {
+    "patient": "Patient",
+    "doctor": "Doctor",
+    "staff": "Front desk",
+    "admin": "Administrator"
+  },
+  "emergencyCard": {
+    "title": "Emergency",
+    "body": "Call 112, or 108 for an ambulance. For severe symptoms, go to the nearest casualty department."
+  },
+  "pageTitles": {
+    "triage": "Symptom check",
+    "assistant": "Ask about my reports",
+    "booking": "Book an appointment",
+    "portal": "My visits",
+    "visit": "Visit workspace",
+    "queue": "OPD queue",
+    "labOrder": "Lab order approval",
+    "patient": "Patient record",
+    "doctorHome": "Caseload",
+    "onboarding": "Set up your profile"
+  },
+  "patientRail": {
+    "none": "None recorded",
+    "age": "{{count}} yrs",
+    "triage": "Triage",
+    "noTriage": "Not triaged yet",
+    "allergies": "Allergies",
+    "conditions": "Conditions",
+    "medications": "Current medicines",
+    "record": "Record",
+    "reports": "Reports",
+    "abha": "ABHA",
+    "dob": "Date of birth",
+    "updated": "Updated"
   }
 }
