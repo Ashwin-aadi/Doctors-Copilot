@@ -63,13 +63,14 @@
     "differentials": "Differentials",
     "recommendedProcedures": "Recommended procedures",
     "cautions": "Cautions",
-    "extractiveFallback": "No external sources were found for this brief; the summary is drawn directly from the visit record.",
+    "extractiveFallback": "This brief could not be grounded in any source — the language model was unreachable or rate-limited. Only the recorded values below are shown. Rebuild it to try again.",
     "sourceDrawerTitle": "Source",
     "stage": {
       "skeleton": "Loading…",
       "retrievingSources": "Retrieving sources…",
       "composing": "Composing brief…"
-    }
+    },
+    "rebuild": "Rebuild brief"
   },
   "queue": {
     "title": "Live Queue",
@@ -202,7 +203,16 @@
     "advanceTo": "Advance to {{state}}",
     "labOrderPending": "Lab order awaiting approval",
     "openLabOrder": "Open lab order",
-    "reconnecting": "Reconnecting to live updates"
+    "reconnecting": "Reconnecting to live updates",
+    "rewindTitle": "Move this visit back?",
+    "rewindBody": "The visit will go back to {{state}} and resume work from there.",
+    "rewindKeepsApprovals": "Approvals already signed stay signed — a locked lab order or prescription is amended, never reopened.",
+    "rewindConfirm": "Move back",
+    "rewindCancel": "Cancel",
+    "awaitingOrder": "Waiting for the doctor to order your tests",
+    "awaitingOrderHelp": "Your symptoms have been assessed. The doctor is choosing which tests you need; you will be able to upload the reports here once the order is signed.",
+    "awaitingPrescription": "Waiting for the doctor to write your prescription",
+    "awaitingPrescriptionHelp": "The doctor is reviewing your reports. Your prescription will appear here once it is signed."
   },
   "portal": {
     "heading": "Your care",
@@ -305,6 +315,60 @@
     "uploadFor": "Upload report",
     "uploadAnother": "Upload another",
     "uploaded": "Uploaded",
-    "uploadForTest": "Upload report for {{test}}"
+    "uploadForTest": "Upload report for {{test}}",
+    "removeReport": "Remove",
+    "removeReportFor": "Remove the uploaded report for {{test}}",
+    "reportOnFile": "Report uploaded"
+  },
+  "labSummary": {
+    "orderedTitle": "Tests ordered",
+    "resultsTitle": "Report summary",
+    "signed": "Signed",
+    "draft": "Draft",
+    "received": "Report received",
+    "awaited": "Awaited",
+    "test": "Test",
+    "value": "Value",
+    "reference": "Reference range",
+    "flag": "Flag",
+    "noResults": "No values read yet",
+    "noResultsHelp": "Values appear here once the uploaded reports have been read.",
+    "flags": {
+      "critical": "Critical",
+      "high": "High",
+      "low": "Low",
+      "normal": "Normal",
+      "unknown": "Unread"
+    }
+  },
+  "prescriptionEditor": {
+    "title": "Prescription",
+    "addRow": "Add medicine",
+    "save": "Save prescription",
+    "saved": "Prescription saved",
+    "signed": "Signed",
+    "lockedHelp": "This prescription has been signed and can no longer be edited. Move the visit back a stage to write a new one.",
+    "empty": "No medicines added yet",
+    "emptyHelp": "Add a medicine, or take one from the suggestions below.",
+    "medicine": "Medicine",
+    "dose": "Dose",
+    "frequency": "Frequency",
+    "duration": "Duration",
+    "remove": "Remove",
+    "removeRow": "Remove {{name}} from the prescription",
+    "suggestionsTitle": "Suggested medicines",
+    "suggestionsHelp": "Screened against this patient’s allergies and current medicines. Suggestions only — nothing is prescribed until you add it and sign.",
+    "noSuggestions": "No suggestions for this presentation.",
+    "addToPad": "Add",
+    "onPad": "Added",
+    "nlem": "NLEM",
+    "janAushadhi": "Jan Aushadhi"
+  },
+  "prescriptionDownload": {
+    "title": "Your prescription",
+    "signed": "Signed by the doctor",
+    "download": "Download PDF",
+    "none": "No prescription issued yet",
+    "noneHelp": "Once the doctor signs your prescription it can be downloaded here."
   }
 }

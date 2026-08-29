@@ -4,6 +4,8 @@
 report and queue position -- in one response, so the doctor's screen needs a
 single call. `POST /visits/{id}/advance` is the only way a visit changes state
 from outside; illegal transitions come back as 409 CONFLICT.
+`POST /visits/{id}/rewind` moves it back to an earlier stage without undoing
+any signed approval.
 """
 
 from datetime import datetime
@@ -25,6 +27,10 @@ router = APIRouter(prefix="/visits", tags=["visits"])
 
 class AdvanceIn(BaseModel):
     target: VisitState | None = None
+
+
+class RewindIn(BaseModel):
+    target: VisitState
 
 
 class VisitSummary(BaseModel):
@@ -200,3 +206,123 @@ async def advance_visit(
     target = body.target if body else None
     await visit_service.advance(db, visit_id, target, actor_id=user.id)
     return await visit_service.assemble(db, visit_id)
+
+
+@router.post("/{visit_id}/rewind", response_model=VisitOut)
+async def rewind_visit(
+    visit_id: UUID,
+    body: RewindIn,
+    db: AsyncSession = Depends(get_db),
+    user: CurrentUser = Depends(require_role("doctor", "staff", "admin")),
+) -> VisitOut:
+    """Send a visit back to an earlier stage. Clinician-only, and never
+    reopens anything a practitioner has already signed -- see
+    `app.services.visit.rewind`.
+    """
+    await visit_service.rewind(db, visit_id, body.target, actor_id=user.id)
+    return await visit_service.assemble(db, visit_id)
+
+
+class PrescriptionItemIn(BaseModel):
+    """One line of a prescription as the doctor writes it.
+
+    Deliberately loose: dose/frequency/duration are free text because Indian
+    OPD prescribing is written that way ("1 tab TDS x 5 days"), and forcing a
+    structured vocabulary here would make the editor unusable before it made
+    the data cleaner.
+    """
+
+    name: str
+    dose: str | None = None
+    frequency: str | None = None
+    duration: str | None = None
+    notes: str | None = None
+
+
+class PrescriptionIn(BaseModel):
+    items: list[PrescriptionItemIn]
+
+
+class PrescriptionOut(BaseModel):
+    id: UUID
+    visit_id: UUID
+    patient_id: UUID
+    items: list[PrescriptionItemIn] = []
+    locked: bool = False
+    approved_by: UUID | None = None
+    approved_at: datetime | None = None
+    content_hash: str | None = None
+
+
+async def _latest_prescription(db: AsyncSession, visit_id: UUID):
+    from app.db.models.clinical import Prescription
+
+    return (
+        await db.execute(
+            select(Prescription)
+            .where(Prescription.visit_id == visit_id)
+            .order_by(Prescription.created_at.desc())
+            .limit(1)
+        )
+    ).scalar_one_or_none()
+
+
+def _prescription_out(record) -> PrescriptionOut:
+    return PrescriptionOut(
+        id=record.id,
+        visit_id=record.visit_id,
+        patient_id=record.patient_id,
+        items=[PrescriptionItemIn(**item) for item in (record.items or []) if isinstance(item, dict)],
+        locked=bool(record.locked),
+        approved_by=record.approved_by,
+        approved_at=record.approved_at,
+        content_hash=record.content_hash,
+    )
+
+
+@router.get("/{visit_id}/prescription", response_model=PrescriptionOut)
+async def get_visit_prescription(
+    visit_id: UUID,
+    db: AsyncSession = Depends(get_db),
+    user: CurrentUser = Depends(get_current_user),
+) -> PrescriptionOut:
+    """The visit's working prescription. 404 until one is drafted -- callers
+    treat that as "empty draft", not as an error.
+    """
+    await _assert_may_read(db, visit_id, user)
+    record = await _latest_prescription(db, visit_id)
+    if record is None:
+        raise ApiError("NOT_FOUND", "no prescription for this visit", status_code=404)
+    return _prescription_out(record)
+
+
+@router.put("/{visit_id}/prescription", response_model=PrescriptionOut)
+async def save_visit_prescription(
+    visit_id: UUID,
+    body: PrescriptionIn,
+    db: AsyncSession = Depends(get_db),
+    user: CurrentUser = Depends(require_role("doctor", "admin")),
+) -> PrescriptionOut:
+    """Create or replace the draft. Once a practitioner has signed it the
+    content is what they signed for, so a locked prescription is never edited
+    in place -- the visit has to be rewound and a new one written.
+    """
+    from app.db.models.clinical import Prescription, Visit
+
+    visit = await db.get(Visit, visit_id)
+    if visit is None:
+        raise ApiError("NOT_FOUND", "visit not found", status_code=404)
+
+    record = await _latest_prescription(db, visit_id)
+    if record is not None and record.locked:
+        raise ApiError("LOCKED", "prescription already signed", status_code=409)
+
+    items = [item.model_dump() for item in body.items]
+    if record is None:
+        record = Prescription(visit_id=visit_id, patient_id=visit.patient_id, items=items)
+        db.add(record)
+    else:
+        record.items = items
+    await db.commit()
+    await db.refresh(record)
+    return _prescription_out(record)

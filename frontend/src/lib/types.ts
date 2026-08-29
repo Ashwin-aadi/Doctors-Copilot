@@ -829,6 +829,55 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/visits/{visit_id}/rewind": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Rewind Visit
+         * @description Send a visit back to an earlier stage. Clinician-only, and never
+         *     reopens anything a practitioner has already signed -- see
+         *     `app.services.visit.rewind`.
+         */
+        post: operations["rewind_visit_api_v1_visits__visit_id__rewind_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/visits/{visit_id}/prescription": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Visit Prescription
+         * @description The visit's working prescription. 404 until one is drafted -- callers
+         *     treat that as "empty draft", not as an error.
+         */
+        get: operations["get_visit_prescription_api_v1_visits__visit_id__prescription_get"];
+        /**
+         * Save Visit Prescription
+         * @description Create or replace the draft. Once a practitioner has signed it the
+         *     content is what they signed for, so a locked prescription is never edited
+         *     in place -- the visit has to be rewound and a new one written.
+         */
+        put: operations["save_visit_prescription_api_v1_visits__visit_id__prescription_put"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/documents/upload": {
         parameters: {
             query?: never;
@@ -857,7 +906,14 @@ export interface paths {
         get: operations["get_document_api_v1_documents__document_id__get"];
         put?: never;
         post?: never;
-        delete?: never;
+        /**
+         * Delete Document
+         * @description Withdraw an uploaded report: the wrong file, the wrong patient's report,
+         *     a scan too poor to read. Removes the extracted lab values with it -- values
+         *     read out of a document the patient has retracted must not keep informing
+         *     the brief -- and the stored file when nothing else references it.
+         */
+        delete: operations["delete_document_api_v1_documents__document_id__delete"];
         options?: never;
         head?: never;
         patch?: never;
@@ -2287,6 +2343,66 @@ export interface components {
              */
             discriminating_features: string[];
         };
+        /** PrescriptionIn */
+        PrescriptionIn: {
+            /** Items */
+            items: components["schemas"]["PrescriptionItemIn"][];
+        };
+        /**
+         * PrescriptionItemIn
+         * @description One line of a prescription as the doctor writes it.
+         *
+         *     Deliberately loose: dose/frequency/duration are free text because Indian
+         *     OPD prescribing is written that way ("1 tab TDS x 5 days"), and forcing a
+         *     structured vocabulary here would make the editor unusable before it made
+         *     the data cleaner.
+         */
+        PrescriptionItemIn: {
+            /** Name */
+            name: string;
+            /** Dose */
+            dose?: string | null;
+            /** Frequency */
+            frequency?: string | null;
+            /** Duration */
+            duration?: string | null;
+            /** Notes */
+            notes?: string | null;
+        };
+        /** PrescriptionOut */
+        PrescriptionOut: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /**
+             * Visit Id
+             * Format: uuid
+             */
+            visit_id: string;
+            /**
+             * Patient Id
+             * Format: uuid
+             */
+            patient_id: string;
+            /**
+             * Items
+             * @default []
+             */
+            items: components["schemas"]["PrescriptionItemIn"][];
+            /**
+             * Locked
+             * @default false
+             */
+            locked: boolean;
+            /** Approved By */
+            approved_by?: string | null;
+            /** Approved At */
+            approved_at?: string | null;
+            /** Content Hash */
+            content_hash?: string | null;
+        };
         /** RecommendIn */
         RecommendIn: {
             /**
@@ -2324,6 +2440,10 @@ export interface components {
             token: string;
             /** New Password */
             new_password: string;
+        };
+        /** RewindIn */
+        RewindIn: {
+            target: components["schemas"]["VisitState"];
         };
         /**
          * SimulateRequest
@@ -4609,6 +4729,113 @@ export interface operations {
             };
         };
     };
+    rewind_visit_api_v1_visits__visit_id__rewind_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+            };
+            path: {
+                visit_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RewindIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["VisitOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_visit_prescription_api_v1_visits__visit_id__prescription_get: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+            };
+            path: {
+                visit_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PrescriptionOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    save_visit_prescription_api_v1_visits__visit_id__prescription_put: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+            };
+            path: {
+                visit_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PrescriptionIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PrescriptionOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     upload_document_api_v1_documents_upload_post: {
         parameters: {
             query?: never;
@@ -4661,6 +4888,37 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["DocumentOut"];
                 };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    delete_document_api_v1_documents__document_id__delete: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+            };
+            path: {
+                document_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
             /** @description Validation Error */
             422: {

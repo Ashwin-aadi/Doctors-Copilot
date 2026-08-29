@@ -197,7 +197,9 @@ describe("VisitContainer", () => {
       user: { id: "u1", email: "asha@example.in", role: "patient", name: "Asha Kumari" },
     });
     mockVisit(
-      visit("LABS_APPROVED", {
+      // Collecting reports is the "Report uploaded" stage's job -- the stage
+      // before it shows what was ordered, read-only.
+      visit("RESULTS_UPLOADED", {
         lab_order_id: "lab-1",
         documents: [
           {
@@ -236,6 +238,29 @@ describe("VisitContainer", () => {
     expect(screen.getByText("1 of 2 uploaded")).toBeTruthy();
     // The outstanding test gets its own labelled control, not a shared dropzone.
     expect(screen.getByLabelText("Upload report for Dengue NS1 antigen")).toBeTruthy();
+    // ...and a report already in can be withdrawn.
+    expect(screen.getAllByTestId("uploaded-report")).toHaveLength(1);
+    expect(
+      screen.getByLabelText("Remove the uploaded report for CBC with platelet count"),
+    ).toBeTruthy();
+  });
+
+  it("sends the visit back when a clinician clicks a stage already passed", async () => {
+    mockVisit(visit("CONSULTED"));
+    let rewoundTo: string | null = null;
+    server.use(
+      http.post(`${env.apiBase}/api/v1/visits/:id/rewind`, async ({ request }) => {
+        rewoundTo = ((await request.json()) as { target: string }).target;
+        return HttpResponse.json(visit("BRIEF_READY"));
+      }),
+    );
+    renderVisit();
+
+    fireEvent.click(await screen.findByRole("button", { name: /Summary ready/i }));
+    // Going backwards is confirmed first -- it is a state change other people see.
+    fireEvent.click(await screen.findByTestId("confirm-rewind"));
+
+    await waitFor(() => expect(rewoundTo).toBe("BRIEF_READY"));
   });
 
   it("offers the next transition to a clinician", async () => {

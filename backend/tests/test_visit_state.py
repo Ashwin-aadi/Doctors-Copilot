@@ -255,3 +255,52 @@ async def test_transition_publishes_visit_updated(monkeypatch):
     assert payload["state"] == VisitState.LABS_SUGGESTED.value
     assert payload["from"] == VisitState.TRIAGED.value
     assert payload["visit_id"] == str(db.visit.id)
+
+
+# ------------------------------------------------------------ moving back
+
+
+@pytest.mark.asyncio
+async def test_rewind_moves_the_visit_to_an_earlier_stage():
+    """A brief built before the last report landed has to be reworkable."""
+    db = _FakeDb(_visit(VisitState.CONSULTED))
+    updated = await visit_service.rewind(db, db.visit.id, VisitState.BRIEF_READY)
+    assert updated.state == VisitState.BRIEF_READY.value
+
+
+@pytest.mark.asyncio
+async def test_rewind_skips_straight_back_to_any_earlier_stage():
+    db = _FakeDb(_visit(VisitState.CONSULTED))
+    updated = await visit_service.rewind(db, db.visit.id, VisitState.LABS_SUGGESTED)
+    assert updated.state == VisitState.LABS_SUGGESTED.value
+
+
+@pytest.mark.asyncio
+async def test_rewind_refuses_to_move_forward():
+    """Rewind must never become a way around the guards that protect a
+    forward transition -- skipping to PRESCRIBED without a signed
+    prescription is exactly what `advance` exists to prevent."""
+    db = _FakeDb(_visit(VisitState.TRIAGED))
+    with pytest.raises(ApiError) as exc:
+        await visit_service.rewind(db, db.visit.id, VisitState.PRESCRIBED)
+    assert exc.value.code == "CONFLICT"
+    assert db.visit.state == VisitState.TRIAGED.value
+
+
+@pytest.mark.asyncio
+async def test_rewind_to_the_current_state_is_a_no_op():
+    db = _FakeDb(_visit(VisitState.BRIEF_READY))
+    updated = await visit_service.rewind(db, db.visit.id, VisitState.BRIEF_READY)
+    assert updated.state == VisitState.BRIEF_READY.value
+
+
+@pytest.mark.asyncio
+async def test_rewind_leaves_a_signed_lab_order_locked():
+    """Moving back reworks the stage, never the signature on it."""
+    order = LabOrder(id=uuid4(), visit_id=uuid4(), patient_id=uuid4(), items=[], locked=True)
+    visit = _visit(VisitState.RESULTS_UPLOADED, lab_order_id=order.id)
+    db = _FakeDb(visit, guard_object=order)
+
+    await visit_service.rewind(db, visit.id, VisitState.LABS_SUGGESTED)
+
+    assert order.locked is True

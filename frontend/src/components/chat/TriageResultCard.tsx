@@ -17,6 +17,12 @@ import type { TriageResult } from "../types";
 export interface TriageResultCardProps {
   result: TriageResult;
   onCitationClick?: (n: number) => void;
+  /**
+   * The suggested-lab table is a recommendation towards the order the doctor
+   * actually signs, so the stage that signs it owns that decision -- the
+   * triage stage shows the reasoning and hides the table.
+   */
+  showSuggestedLabs?: boolean;
 }
 
 const colourBadge: Record<TriageResult["triage_colour"], { label: string; className: string }> = {
@@ -27,7 +33,11 @@ const colourBadge: Record<TriageResult["triage_colour"], { label: string; classN
 
 const sourceLabel: Record<string, string> = { rule: "Rule", rag: "Guideline", both: "Rule + guideline" };
 
-export function TriageResultCard({ result, onCitationClick }: TriageResultCardProps) {
+export function TriageResultCard({
+  result,
+  onCitationClick,
+  showSuggestedLabs = true,
+}: TriageResultCardProps) {
   const colour = colourBadge[result.triage_colour];
 
   return (
@@ -63,7 +73,7 @@ export function TriageResultCard({ result, onCitationClick }: TriageResultCardPr
           </div>
         )}
 
-        {result.suggested_labs.length > 0 && (
+        {showSuggestedLabs && result.suggested_labs.length > 0 && (
           <div>
             <h4 className="mb-2 text-sm font-semibold text-fg">Suggested labs</h4>
             <Table>

@@ -1,13 +1,16 @@
+import { useState } from "react";
 import { useParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { useQuery } from "@tanstack/react-query";
 import { ArrowRight } from "lucide-react";
 import { Card, CardHeader, CardTitle, CardBody } from "../../components/ui/Card";
 import { Button } from "../../components/ui/Button";
+import { Modal } from "../../components/ui/Modal";
 import { Skeleton } from "../../components/ui/Skeleton";
 import { ErrorState } from "../../components/ui/ErrorState";
 import { TriageResultCard } from "../../components/chat/TriageResultCard";
 import { VisitStepper } from "../../components/timeline/VisitStepper";
+import { VISIT_STATES, VISIT_STATE_LABELS } from "../../components/timeline/visitStates";
 import { ApiError } from "../../lib/api/errors";
 import { getPatient } from "../../lib/api/endpoints/patients";
 import { qk } from "../../lib/queryKeys";
@@ -15,13 +18,29 @@ import { useAuthStore } from "../../store/auth";
 import { CopilotContainer } from "../copilot/CopilotContainer";
 import { UploadContainer } from "../documents/UploadContainer";
 import { LabOrderUploadPanel } from "../documents/LabOrderUploadPanel";
+import { LabReportSummary } from "../documents/LabReportSummary";
 import { VisitLabOrderPanel } from "../approvals/VisitLabOrderPanel";
 import { SafetyContainer } from "../safety/SafetyContainer";
 import { PrescriptionContainer } from "../prescription/PrescriptionContainer";
+import { PrescriptionEditor } from "../prescription/PrescriptionEditor";
+import { PrescriptionDownloadCard } from "../prescription/PrescriptionDownloadCard";
+import { MedSuggestionsCard } from "../prescription/MedSuggestions";
 import { TranscriptCard } from "./TranscriptCard";
 import { useVisit, nextState } from "./useVisit";
+import type { VisitState } from "../../lib/api/endpoints/visits";
 import { useVisitSocket } from "./useVisitSocket";
 
+/**
+ * One stage, one job.
+ *
+ * The visit screen used to stack every panel it could render on top of each
+ * other, so the same triage rationale, upload box and brief followed the user
+ * through all seven stages and none of them said what to do next. Each stage
+ * now renders only the surface that belongs to it: the interview and its
+ * reasoning while triaging, the order while choosing tests, the results while
+ * reading them, the pad while prescribing. The stepper is the only navigation,
+ * and it still moves both ways.
+ */
 export function VisitContainer() {
   const { t } = useTranslation();
   const params = useParams<{ id: string }>();
@@ -29,7 +48,11 @@ export function VisitContainer() {
   const role = useAuthStore((s) => s.user?.role);
   const isClinician = role === "doctor" || role === "staff";
 
-  const { visit, setStage, actions, loading, error, advance, advancing } = useVisit(visitId);
+  const { visit, stage, setStage, actions, loading, error, advance, advancing, rewind, rewinding } =
+    useVisit(visitId);
+  // Sending a visit backwards is a real state change other people see, so it
+  // is confirmed rather than fired on a stray click in the stepper.
+  const [pendingRewind, setPendingRewind] = useState<VisitState | null>(null);
   useVisitSocket(visitId);
 
   const patientQuery = useQuery({
@@ -40,7 +63,7 @@ export function VisitContainer() {
 
   if (loading) {
     return (
-      <div className="flex flex-col gap-3 p-4">
+      <div className="mx-auto flex w-full max-w-4xl flex-col gap-3 p-4">
         <Skeleton className="h-6 w-1/3" />
         <Skeleton className="h-24 w-full" />
       </div>
@@ -61,14 +84,21 @@ export function VisitContainer() {
   const medications = names(patientQuery.data?.medications);
   const target = nextState(visit.state);
 
+  // The stage being viewed, which is not always the stage the visit is at: the
+  // stepper deep-links backwards without moving the visit.
+  const view: VisitState = stage ?? visit.state;
+  const label = VISIT_STATE_LABELS[view];
+  // Differentials from the brief are the closest thing to a working diagnosis
+  // the visit has; the patient's own conditions stand in until it is built.
+  const briefConditions = visit.brief?.differentials?.length
+    ? visit.brief.differentials
+    : conditions;
+
   return (
-    <div className="flex flex-col gap-4 p-4">
+    <div className="mx-auto flex w-full max-w-4xl flex-col gap-4 p-4">
       <Card>
-        <CardHeader>
+        <CardHeader className="flex flex-wrap items-center justify-between gap-2">
           <CardTitle>{t("visit.title")}</CardTitle>
-        </CardHeader>
-        <CardBody className="flex flex-col gap-3">
-          <VisitStepper state={visit.state} onStageClick={setStage} />
           {isClinician && target && (
             <Button
               size="sm"
@@ -81,56 +111,162 @@ export function VisitContainer() {
               {t("visit.advanceTo", { state: target })}
             </Button>
           )}
+        </CardHeader>
+        <CardBody>
+          {/* A consultation does not only run forwards: an unreadable report
+              or a brief built too early has to be reworked. A clinician
+              clicking a stage already passed moves the visit back to it;
+              everyone else just deep-links to that stage's view. */}
+          <VisitStepper
+            state={visit.state}
+            onStageClick={(clicked) => {
+              const isEarlier = VISIT_STATES.indexOf(clicked) < VISIT_STATES.indexOf(visit.state);
+              if (isClinician && isEarlier) setPendingRewind(clicked);
+              else setStage(clicked);
+            }}
+          />
         </CardBody>
       </Card>
 
-      {/* The triage result and the interview behind it are the context for the
-          whole visit, not an artefact of its first stage -- a doctor reviewing
-          labs or writing a prescription still needs the rationale and what the
-          patient actually said. Both stay on screen for every stage. */}
-      {visit.triage && <TriageResultCard result={visit.triage} />}
+      <Modal
+        open={pendingRewind !== null}
+        onClose={() => setPendingRewind(null)}
+        title={t("visit.rewindTitle")}
+      >
+        <div className="flex flex-col gap-3">
+          <p className="text-sm text-fg-muted">
+            {t("visit.rewindBody", { state: pendingRewind ?? "" })}
+          </p>
+          <p className="text-xs text-fg-subtle">{t("visit.rewindKeepsApprovals")}</p>
+          <div className="flex justify-end gap-2">
+            <Button variant="secondary" onClick={() => setPendingRewind(null)}>
+              {t("visit.rewindCancel")}
+            </Button>
+            <Button
+              data-testid="confirm-rewind"
+              loading={rewinding}
+              onClick={() => {
+                if (pendingRewind) {
+                  rewind(pendingRewind);
+                  setStage(pendingRewind);
+                }
+                setPendingRewind(null);
+              }}
+            >
+              {t("visit.rewindConfirm")}
+            </Button>
+          </div>
+        </div>
+      </Modal>
 
-      <TranscriptCard visitId={visit.id} />
+      <div>
+        <h2 className="text-lg font-semibold text-fg">{label.en}</h2>
+        <p lang="hi" className="text-sm text-fg-subtle">
+          {label.hi}
+        </p>
+      </div>
 
-      {/* Choosing the tests is the doctor's decision and belongs next to the
-          triage that prompted it, so the order is edited and signed here
-          rather than behind a link to a separate screen. */}
-      {isClinician && (actions.canApproveLabOrder || visit.lab_order_id) && (
-        <VisitLabOrderPanel visitId={visit.id} labOrderId={visit.lab_order_id ?? null} />
+      {/* --- Symptoms checked: the interview and the reasoning over it. The
+          suggested-lab table belongs to the next stage, where it is acted on. */}
+      {view === "TRIAGED" && (
+        <>
+          {visit.triage && <TriageResultCard result={visit.triage} showSuggestedLabs={false} />}
+          <TranscriptCard visitId={visit.id} />
+        </>
       )}
 
-      {/* Collecting the reports is the patient's job, so the signed order is
-          shown to them test by test with its own upload control -- they can
-          see what is still outstanding instead of guessing. The loose dropzone
-          stays for anything that does not belong to an order. */}
-      {actions.canUploadDocuments && visit.lab_order_id && (
-        <LabOrderUploadPanel
-          patientId={visit.patient_id}
-          labOrderId={visit.lab_order_id}
+      {/* --- Tests suggested: choosing and signing the order, nothing else.
+          The reasoning behind it stays one click back in the stepper. */}
+      {view === "LABS_SUGGESTED" &&
+        (isClinician ? (
+          <VisitLabOrderPanel visitId={visit.id} labOrderId={visit.lab_order_id ?? null} />
+        ) : (
+          <Card>
+            <CardHeader>
+              <CardTitle>{t("visit.awaitingOrder")}</CardTitle>
+            </CardHeader>
+            <CardBody>
+              <p className="text-sm text-fg-muted">{t("visit.awaitingOrderHelp")}</p>
+            </CardBody>
+          </Card>
+        ))}
+
+      {/* --- Tests approved: what was ordered and what has come back. */}
+      {view === "LABS_APPROVED" && (
+        <LabReportSummary
+          labOrderId={visit.lab_order_id ?? null}
           documents={visit.documents ?? []}
         />
       )}
 
-      {actions.canUploadDocuments && !visit.lab_order_id && (
-        <UploadContainer patientId={visit.patient_id} />
+      {/* --- Report uploaded: collecting the reports, and only that. */}
+      {view === "RESULTS_UPLOADED" &&
+        (visit.lab_order_id ? (
+          <LabOrderUploadPanel
+            visitId={visit.id}
+            patientId={visit.patient_id}
+            labOrderId={visit.lab_order_id}
+            documents={visit.documents ?? []}
+          />
+        ) : (
+          <UploadContainer patientId={visit.patient_id} />
+        ))}
+
+      {/* --- Summary ready: the brief, the values it was built from, and the
+          medicines it points towards. */}
+      {view === "BRIEF_READY" && (
+        <>
+          <CopilotContainer visitId={visit.id} />
+          <LabReportSummary
+            labOrderId={visit.lab_order_id ?? null}
+            documents={visit.documents ?? []}
+          />
+          <MedSuggestionsCard
+            visitId={visit.id}
+            conditions={briefConditions}
+            allergies={allergies}
+            currentMedications={medications}
+          />
+        </>
       )}
 
-      {actions.canBuildBrief && <CopilotContainer visitId={visit.id} />}
+      {/* --- Doctor consulted: the prescription pad. */}
+      {view === "CONSULTED" &&
+        (isClinician ? (
+          <>
+            <PrescriptionEditor
+              visitId={visit.id}
+              patientConditions={briefConditions}
+              patientAllergies={allergies}
+              patientMedications={medications}
+            />
+            {medications.length > 0 && (
+              <SafetyContainer
+                visitId={visit.id}
+                inputs={{ medications, allergies, conditions }}
+              />
+            )}
+            {actions.canPrescribe && (
+              <PrescriptionContainer
+                visitId={visit.id}
+                patientAllergies={allergies}
+                patientConditions={conditions}
+              />
+            )}
+          </>
+        ) : (
+          <Card>
+            <CardHeader>
+              <CardTitle>{t("visit.awaitingPrescription")}</CardTitle>
+            </CardHeader>
+            <CardBody>
+              <p className="text-sm text-fg-muted">{t("visit.awaitingPrescriptionHelp")}</p>
+            </CardBody>
+          </Card>
+        ))}
 
-      {isClinician && medications.length > 0 && (
-        <SafetyContainer
-          visitId={visit.id}
-          inputs={{ medications, allergies, conditions }}
-        />
-      )}
-
-      {isClinician && actions.canPrescribe && (
-        <PrescriptionContainer
-          visitId={visit.id}
-          patientAllergies={allergies}
-          patientConditions={conditions}
-        />
-      )}
+      {/* --- Prescription issued: the handover. */}
+      {view === "PRESCRIBED" && <PrescriptionDownloadCard visitId={visit.id} />}
     </div>
   );
 }

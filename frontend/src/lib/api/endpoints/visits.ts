@@ -67,3 +67,53 @@ export function advanceVisit(visitId: string, target?: VisitState): Promise<Visi
     body: JSON.stringify({ target: target ?? null }),
   });
 }
+
+/**
+ * Send the visit back to an earlier stage -- a report that came back
+ * unreadable, a brief built before the last lab landed. Signed approvals are
+ * never reopened by this; the visit just resumes work at that stage.
+ */
+export function rewindVisit(visitId: string, target: VisitState): Promise<VisitOut> {
+  return request<VisitOut>(`/api/v1/visits/${visitId}/rewind`, {
+    method: "POST",
+    body: JSON.stringify({ target }),
+  });
+}
+
+export interface PrescriptionItem {
+  name: string;
+  dose?: string | null;
+  frequency?: string | null;
+  duration?: string | null;
+  notes?: string | null;
+}
+
+export interface VisitPrescription {
+  id: string;
+  visit_id: string;
+  patient_id: string;
+  items: PrescriptionItem[];
+  locked: boolean;
+  approved_by: string | null;
+  approved_at: string | null;
+  content_hash: string | null;
+}
+
+/**
+ * The visit's working prescription. 404s until one has been drafted, which the
+ * editor treats as an empty draft rather than an error.
+ */
+export function getVisitPrescription(visitId: string): Promise<VisitPrescription> {
+  return request<VisitPrescription>(`/api/v1/visits/${visitId}/prescription`);
+}
+
+/** Creates the draft on first save. 409 LOCKED once it has been signed. */
+export function saveVisitPrescription(
+  visitId: string,
+  items: PrescriptionItem[],
+): Promise<VisitPrescription> {
+  return request<VisitPrescription>(`/api/v1/visits/${visitId}/prescription`, {
+    method: "PUT",
+    body: JSON.stringify({ items }),
+  });
+}

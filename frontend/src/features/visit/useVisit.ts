@@ -4,6 +4,7 @@ import { useSearchParams } from "react-router-dom";
 import {
   advanceVisit,
   getVisit,
+  rewindVisit,
   VISIT_STATES,
   type VisitOut,
   type VisitState,
@@ -66,6 +67,20 @@ export function useVisit(visitId: string | null) {
     },
   });
 
+  const rewind = useMutation({
+    mutationFn: (target: VisitState) => {
+      if (!visitId) throw new Error("no visit in route");
+      return rewindVisit(visitId, target);
+    },
+    onSuccess: (visit) => {
+      queryClient.setQueryData(qk.visit(visit.id), visit);
+      void queryClient.invalidateQueries({ queryKey: qk.visits() });
+    },
+    onError: () => {
+      if (visitId) void queryClient.invalidateQueries({ queryKey: qk.visit(visitId) });
+    },
+  });
+
   const visit = query.data ?? null;
 
   // Each stage deep-links, so a doctor can be sent straight to the brief.
@@ -92,6 +107,8 @@ export function useVisit(visitId: string | null) {
     refetch: query.refetch,
     advance: advance.mutate,
     advancing: advance.isPending,
+    rewind: rewind.mutate,
+    rewinding: rewind.isPending,
     advanceConflict:
       advance.error instanceof ApiError && advance.error.code === "CONFLICT" ? advance.error : null,
   };

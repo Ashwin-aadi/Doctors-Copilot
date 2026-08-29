@@ -59,6 +59,23 @@ _GUARD_MESSAGES: dict[VisitState, str] = {
 }
 
 
+# The forward order, used to tell "earlier" from "later" when a clinician
+# steps a visit back.
+STATE_ORDER: list[VisitState] = [
+    VisitState.TRIAGED,
+    VisitState.LABS_SUGGESTED,
+    VisitState.LABS_APPROVED,
+    VisitState.RESULTS_UPLOADED,
+    VisitState.BRIEF_READY,
+    VisitState.CONSULTED,
+    VisitState.PRESCRIBED,
+]
+
+
+def is_earlier(target: VisitState, current: VisitState) -> bool:
+    return STATE_ORDER.index(target) < STATE_ORDER.index(current)
+
+
 def next_state(current: VisitState) -> VisitState | None:
     return TRANSITIONS.get(current)
 
@@ -98,6 +115,68 @@ async def _guard_satisfied(db: AsyncSession, visit: Visit, target: VisitState) -
         return signed.scalar_one_or_none() is not None
 
     return True
+
+
+async def rewind(
+    db: AsyncSession,
+    visit_id: UUID,
+    target: VisitState,
+    *,
+    actor_id: UUID | None = None,
+) -> Visit:
+    """Step a visit back to an earlier stage.
+
+    Real consultations do not run in one direction: a report comes back
+    unreadable, the brief was built before the second lab arrived, the doctor
+    marked the visit consulted by mistake. Without this the visit is stuck and
+    the only way back is a database edit.
+
+    What this deliberately does NOT do is undo signed work. A locked lab order
+    or prescription stays locked and stays on the record -- an approval carries
+    a practitioner's signature and a content hash, so it is amended, never
+    silently reopened. Moving back only changes which stage the visit is
+    working at; every guard is re-checked on the way forward again.
+    """
+    visit = await _load(db, visit_id)
+    current = VisitState(visit.state)
+
+    if target is current:
+        return visit
+
+    if not is_earlier(target, current):
+        raise ApiError(
+            "CONFLICT",
+            f"{target.value} is not earlier than {current.value}; use advance instead",
+            status_code=409,
+            details={"from": current.value, "to": target.value},
+        )
+
+    visit.state = target.value
+    visit.updated_at = datetime.now(UTC)
+    await db.commit()
+    await db.refresh(visit)
+
+    log.info(
+        "visit_rewound",
+        visit_id=str(visit.id),
+        **{"from": current.value},
+        to=target.value,
+        actor_id=str(actor_id) if actor_id else None,
+    )
+
+    await publish(
+        VISIT_CHANNEL,
+        {
+            "visit_id": str(visit.id),
+            "patient_id": str(visit.patient_id),
+            "doctor_id": str(visit.doctor_id) if visit.doctor_id else None,
+            "from": current.value,
+            "state": target.value,
+            "actor_id": str(actor_id) if actor_id else None,
+            "updated_at": visit.updated_at.isoformat(),
+        },
+    )
+    return visit
 
 
 async def advance(

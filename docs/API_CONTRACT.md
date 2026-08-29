@@ -61,9 +61,13 @@ Codes: `AUTH_INVALID_CREDENTIALS, AUTH_TOKEN_EXPIRED, AUTH_FORBIDDEN, CAPTCHA_RE
 | GET | `/api/v1/kg/patient/{id}/context` | A | doctor | – |
 | GET | `/api/v1/visits/{id}` | A | self/doctor | – |
 | POST | `/api/v1/visits/{id}/advance` | A | doctor/staff | – |
+| POST | `/api/v1/visits/{id}/rewind` | A | doctor/staff | – |
+| GET | `/api/v1/visits/{id}/prescription` | A | self/doctor | – |
+| PUT | `/api/v1/visits/{id}/prescription` | A | doctor | – |
 | WS | `/ws/visit/{id}`, `/ws/queue/{clinic_id}` | A | any/staff | – |
 | POST | `/api/v1/documents/upload` | V | any | ✅ |
 | GET | `/api/v1/documents/{id}` | V | owner/doctor | – |
+| DELETE | `/api/v1/documents/{id}` | V | owner/doctor | – |
 | POST | `/api/v1/ml/entities` | V | doctor/internal | – |
 | POST | `/api/v1/ml/interactions` | V | doctor/internal | – |
 | POST | `/api/v1/ml/labs/flag` | V | doctor/internal | – |
@@ -181,3 +185,21 @@ def queue_channel(clinic_id: str) -> str
 
 The gateway, store and retriever interfaces land in A1.3, the KG queries in A2.2,
 and the guardrail/chat/visit/event interfaces above in A3.2–A3.5.
+
+### Prescription draft
+
+`GET /api/v1/visits/{id}/prescription` returns the visit's working prescription
+and `404 NOT_FOUND` until one exists — the editor treats that as an empty draft,
+not as an error.
+
+`PUT /api/v1/visits/{id}/prescription` replaces the draft's items:
+
+```json
+{"items": [{"name": "Paracetamol 500mg", "dose": "1 tab", "frequency": "TDS", "duration": "5 days", "notes": null}]}
+```
+
+`dose`, `frequency` and `duration` are free text: Indian OPD prescriptions are
+written that way, and a structured vocabulary here would cost more in usability
+than it buys in cleanliness. A prescription a practitioner has already signed
+comes back `409 LOCKED` — the signed content is what the signature covers, so
+changing it means rewinding the visit and writing a new one.
