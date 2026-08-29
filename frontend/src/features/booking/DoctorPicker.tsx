@@ -66,7 +66,7 @@ export function DoctorPicker({
           <Card
             key={doctor.doctor_id}
             variant={selectedDoctorId === doctor.doctor_id ? "raised" : "flat"}
-            className="cursor-pointer"
+            className="cursor-pointer p-4"
           >
             <button
               type="button"

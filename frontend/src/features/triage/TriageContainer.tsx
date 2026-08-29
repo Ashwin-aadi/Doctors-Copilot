@@ -36,7 +36,7 @@ export function TriageContainer() {
 
   if (starting && messages.length === 0) {
     return (
-      <div className="mx-auto flex h-[80vh] max-w-2xl flex-col gap-3 p-4">
+      <div className="page-narrow h-[80vh]">
         <Skeleton className="h-10 w-2/3" />
         <Skeleton className="ml-auto h-10 w-1/2" />
         <Skeleton className="h-10 w-3/4" />
@@ -56,8 +56,8 @@ export function TriageContainer() {
   }
 
   return (
-    <div className="mx-auto grid max-w-4xl gap-4 p-4 md:grid-cols-2">
-      <Card className="flex h-[80vh] flex-col p-0">
+    <div className="mx-auto grid w-full max-w-6xl gap-5 px-4 py-6 sm:px-6 lg:grid-cols-[minmax(0,1fr)_380px]">
+      <Card variant="raised" className="flex h-[80vh] flex-col overflow-hidden p-0">
         <div className="flex-1 overflow-hidden">
           <MessageList messages={messages} typing={sending} />
         </div>

@@ -6,6 +6,8 @@ export * from "./Checkbox";
 export * from "./Radio";
 export * from "./Switch";
 export * from "./Card";
+export * from "./PageHeader";
+export * from "./StatTile";
 export * from "./Modal";
 export * from "./Drawer";
 export * from "./Tabs";

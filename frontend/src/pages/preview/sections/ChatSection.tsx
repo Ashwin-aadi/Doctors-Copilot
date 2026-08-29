@@ -40,7 +40,7 @@ export function ChatSection({ state }: { state: PreviewState }) {
 
   return (
     <div className="grid gap-4 md:grid-cols-2">
-      <Card className="flex h-[26rem] flex-col p-0">
+      <Card className="flex h-[26rem] flex-col overflow-hidden p-0">
         {state === "loading" && (
           <div className="flex flex-1 flex-col gap-3 p-4">
             <Skeleton className="h-10 w-2/3" />

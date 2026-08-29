@@ -1,106 +1,150 @@
 /*
   Doctor's Copilot design tokens.
-  Warm, organic, flat palette for Indian primary care: turmeric/terracotta
-  warmth on paper-like neutrals, no gradients, shadows capped at md.
+
+  The product is a clinical workstation, not a brochure: the chrome recedes
+  into a deep teal rail, the work sits on a near-white ground, and colour is
+  spent almost entirely on clinical meaning (severity, flags, confidence).
+  Warmth stays in the accent and the paper-toned raised surfaces so it still
+  reads as an Indian primary-care tool rather than a generic SaaS dashboard.
 */
 :root {
-  --bg: #FBF7F1;
+  --bg: #F4F6F5;
   --surface: #FFFFFF;
-  --surface-2: #F4EEE3;
-  --border: #E7DCC9;
+  --surface-2: #F1F4F3;
+  --surface-3: #E7ECEA;
+  --border: #DFE5E3;
+  --border-strong: #C6D0CD;
 
-  --fg: #241B12;
-  --fg-muted: #6B5D4B;
-  --fg-subtle: #756956;
+  --fg: #14201C;
+  --fg-muted: #566762;
+  --fg-subtle: #7C8B86;
+
+  /* The navigation rail and any chrome sitting on it. Held apart from the
+     content palette so the shell keeps its identity in both themes. */
+  --rail: #0D3B34;
+  --rail-2: #0A2F29;
+  --rail-fg: #EAF3F0;
+  --rail-muted: #93B3AB;
+  --rail-active: #14554A;
+  --rail-border: #16493F;
 
   --primary: #0F6B5C;
   --primary-hover: #0B5548;
   --primary-fg: #FFFFFF;
-  --primary-soft: #E6F2EF;
-  --primary-soft-fg: #0F6B5C;
+  --primary-soft: #E4F1EE;
+  --primary-soft-fg: #0B5548;
 
   --accent: #C9711A;
   --accent-hover: #A85E14;
   --accent-fg: #FFFFFF;
-  --accent-soft: #FBEADA;
-  --accent-soft-fg: #955413;
+  --accent-soft: #FBEBDB;
+  --accent-soft-fg: #8E4F11;
 
+  /* Each semantic colour carries the two foregrounds that are legible on it:
+     `fg` for text on the solid fill, `soft-fg` for text on the tinted one.
+     Both clear 4.5:1 in either theme -- never dim them with opacity. */
   --critical: #B3261E;
   --critical-fg: #FFFFFF;
-  --critical-soft: #FDECEA;
-  --critical-soft-fg: #B3261E;
+  --critical-soft: #FDEBE9;
+  --critical-soft-fg: #96201A;
   --high: #B15C00;
   --high-fg: #FFFFFF;
-  --high-soft: #FFF2E0;
-  --high-soft-fg: #A15400;
+  --high-soft: #FFF1DF;
+  --high-soft-fg: #8E4A00;
   --moderate: #8A6D00;
   --moderate-fg: #FFFFFF;
-  --moderate-soft: #FFF8DE;
-  --moderate-soft-fg: #836800;
+  --moderate-soft: #FBF5DA;
+  --moderate-soft-fg: #6E5700;
   --normal: #1B6E3C;
   --normal-fg: #FFFFFF;
-  --normal-soft: #E8F5EC;
-  --normal-soft-fg: #1B6E3C;
+  --normal-soft: #E6F4EB;
+  --normal-soft-fg: #165A31;
   --info: #1A5FA8;
   --info-fg: #FFFFFF;
-  --info-soft: #E8F1FB;
-  --info-soft-fg: #1A5FA8;
+  --info-soft: #E7F0FA;
+  --info-soft-fg: #154D88;
 
-  --ring: #0F6B5C40;
+  --ring: #0F6B5C59;
+
+  /* Chart series, ordered so the first three stay distinguishable to the most
+     common colour-vision deficiencies. */
+  --chart-1: #0F6B5C;
+  --chart-2: #C9711A;
+  --chart-3: #1A5FA8;
+  --chart-4: #8A6D00;
+  --chart-5: #7B4EA8;
 
   --radius-sm: 6px;
   --radius-md: 10px;
   --radius-lg: 14px;
+  --radius-xl: 20px;
 
-  --shadow-sm: 0 1px 2px rgb(36 27 18 / 0.07);
-  --shadow-md: 0 4px 12px rgb(36 27 18 / 0.09);
+  --shadow-sm: 0 1px 2px rgb(20 32 28 / 0.06), 0 1px 1px rgb(20 32 28 / 0.04);
+  --shadow-md: 0 2px 4px rgb(20 32 28 / 0.05), 0 8px 20px -6px rgb(20 32 28 / 0.10);
+  --shadow-lg: 0 4px 8px rgb(20 32 28 / 0.06), 0 20px 40px -12px rgb(20 32 28 / 0.16);
 }
 
 [data-theme="dark"] {
-  --bg: #17130D;
-  --surface: #1F1A12;
-  --surface-2: #2A2318;
-  --border: #3A3121;
+  --bg: #0E1513;
+  --surface: #16201D;
+  --surface-2: #1D2926;
+  --surface-3: #253330;
+  --border: #2A3A36;
+  --border-strong: #3A4D48;
 
-  --fg: #F3ECDF;
-  --fg-muted: #B9AA8F;
-  --fg-subtle: #9E947F;
+  --fg: #E9F1EE;
+  --fg-muted: #A2B3AE;
+  --fg-subtle: #859692;
+
+  --rail: #0A1614;
+  --rail-2: #071110;
+  --rail-fg: #E9F1EE;
+  --rail-muted: #7F9A93;
+  --rail-active: #143A33;
+  --rail-border: #1D2E2A;
 
   --primary: #3FA890;
   --primary-hover: #52BCA3;
-  --primary-fg: #0B1A16;
-  --primary-soft: #123029;
-  --primary-soft-fg: #3FA890;
+  --primary-fg: #06201A;
+  --primary-soft: #10302A;
+  --primary-soft-fg: #6FC7B2;
 
   --accent: #E2914A;
   --accent-hover: #EEA766;
   --accent-fg: #241002;
-  --accent-soft: #3A2712;
-  --accent-soft-fg: #E2914A;
+  --accent-soft: #33240F;
+  --accent-soft-fg: #EDA966;
 
   --critical: #F2807A;
-  --critical-fg: #221007;
-  --critical-soft: #3A1A18;
-  --critical-soft-fg: #F2807A;
+  --critical-fg: #2A0B08;
+  --critical-soft: #381917;
+  --critical-soft-fg: #F79A94;
   --high: #E2A155;
-  --high-fg: #221007;
-  --high-soft: #3A2A12;
-  --high-soft-fg: #E2A155;
+  --high-fg: #241206;
+  --high-soft: #362512;
+  --high-soft-fg: #EAB474;
   --moderate: #D8C25E;
-  --moderate-fg: #221007;
-  --moderate-soft: #332E12;
-  --moderate-soft-fg: #D8C25E;
+  --moderate-fg: #221E06;
+  --moderate-soft: #302B12;
+  --moderate-soft-fg: #E0CD79;
   --normal: #5FBE85;
-  --normal-fg: #221007;
-  --normal-soft: #15301F;
-  --normal-soft-fg: #5FBE85;
+  --normal-fg: #06210F;
+  --normal-soft: #142B1D;
+  --normal-soft-fg: #7FD09E;
   --info: #78AEEB;
-  --info-fg: #221007;
-  --info-soft: #122539;
-  --info-soft-fg: #78AEEB;
+  --info-fg: #06182B;
+  --info-soft: #142433;
+  --info-soft-fg: #94C1F1;
 
-  --ring: #3FA89050;
+  --ring: #3FA89066;
 
-  --shadow-sm: 0 1px 2px rgb(0 0 0 / 0.35);
-  --shadow-md: 0 4px 12px rgb(0 0 0 / 0.45);
+  --chart-1: #3FA890;
+  --chart-2: #E2914A;
+  --chart-3: #78AEEB;
+  --chart-4: #D8C25E;
+  --chart-5: #B08BD8;
+
+  --shadow-sm: 0 1px 2px rgb(0 0 0 / 0.4);
+  --shadow-md: 0 2px 4px rgb(0 0 0 / 0.35), 0 8px 20px -6px rgb(0 0 0 / 0.5);
+  --shadow-lg: 0 4px 8px rgb(0 0 0 / 0.4), 0 20px 40px -12px rgb(0 0 0 / 0.6);
 }

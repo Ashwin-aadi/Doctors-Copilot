@@ -52,7 +52,7 @@ export function OnboardingPage({
         currentKey={step}
       />
 
-      <Card>
+      <Card variant="raised" className="p-5">
         {step === "identity" && <IdentityStep values={values} errors={errors} onChange={onChange} />}
         {step === "contact" && <ContactStep values={values} errors={errors} onChange={onChange} />}
         {step === "history" && <HistoryStep values={values} errors={errors} onChange={onChange} />}

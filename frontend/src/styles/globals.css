@@ -8,6 +8,7 @@
 @layer base {
   html {
     font-family: "Inter", ui-sans-serif, system-ui, -apple-system, sans-serif;
+    -webkit-font-smoothing: antialiased;
   }
 
   body {
@@ -15,6 +16,8 @@
     color: var(--fg);
   }
 
+  /* Numbers in a clinical table are read down the column, so they have to line
+     up: lab values, doses, wait times, fees. */
   td,
   th {
     font-variant-numeric: tabular-nums;
@@ -29,6 +32,46 @@
   ::selection {
     background-color: var(--primary-soft);
     color: var(--fg);
+  }
+
+  /* A workstation has several scrolling panes on screen at once; the default
+     chrome bars are loud enough to compete with the content. */
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: var(--border-strong) transparent;
+  }
+
+  *::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+  }
+
+  *::-webkit-scrollbar-thumb {
+    background-color: var(--border-strong);
+    border: 3px solid transparent;
+    background-clip: content-box;
+    border-radius: 999px;
+  }
+
+  *::-webkit-scrollbar-thumb:hover {
+    background-color: var(--fg-subtle);
+  }
+}
+
+@layer components {
+  /* The workspace ground: every routed page sits in one of these so gutters
+     and max width are decided once rather than per screen. */
+  .page {
+    @apply mx-auto flex w-full max-w-[1400px] flex-col gap-5 px-4 py-5 sm:px-6 lg:px-8;
+  }
+
+  .page-narrow {
+    @apply mx-auto flex w-full max-w-3xl flex-col gap-5 px-4 py-6 sm:px-6;
+  }
+
+  /* Sticky panel headers inside scrolling cards. */
+  .panel-sticky {
+    @apply sticky top-0 z-10 bg-surface/95 backdrop-blur;
   }
 }
 
