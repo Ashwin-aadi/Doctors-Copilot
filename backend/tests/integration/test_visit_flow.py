@@ -7,6 +7,7 @@ between are real, exercising the actual A2.2/A2.4 integration path. Requires
 Neo4j -- skipped otherwise.
 """
 
+from datetime import UTC, datetime
 from uuid import UUID
 
 import pytest
@@ -114,8 +115,21 @@ async def test_triage_through_kg_to_brief(db, monkeypatch):
     triage_result = await triage_rag.finalize(db, start.session_id)
     assert triage_result.severity_esi in range(1, 6)
 
+    # Create the visit if the seeded one is absent rather than asserting on it:
+    # the test owns the record it walks, so it stays green whatever state the
+    # demo database happens to be in.
     visit = await db.get(Visit, VISIT_301)
-    assert visit is not None
+    if visit is None:
+        now = datetime.now(UTC)
+        visit = Visit(
+            id=VISIT_301,
+            patient_id=PATIENT_1,
+            doctor_id=None,
+            state="TRIAGED",
+            created_at=now,
+            updated_at=now,
+        )
+        db.add(visit)
     visit.triage_session_id = start.session_id
     await db.commit()
 

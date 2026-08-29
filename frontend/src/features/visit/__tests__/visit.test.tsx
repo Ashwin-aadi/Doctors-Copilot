@@ -102,6 +102,32 @@ function mockComposedSurfaces() {
     http.get(`${env.apiBase}/api/v1/captcha/challenge`, () =>
       HttpResponse.json({ algorithm: "SHA-256", challenge: "x", salt: "s", maxnumber: 1 }),
     ),
+    http.get(`${env.apiBase}/api/v1/visits/:id/transcript`, () =>
+      HttpResponse.json({ visit_id: VISIT_ID, session_id: null, turns: [] }),
+    ),
+    http.get(`${env.apiBase}/api/v1/lab-orders/catalog`, () =>
+      HttpResponse.json([
+        {
+          name: "CBC with platelet count",
+          loinc: "58410-2",
+          default_reason: "Dengue - platelet trend",
+          cghs_code: null,
+          pmjay_package: null,
+        },
+      ]),
+    ),
+    http.get(`${env.apiBase}/api/v1/lab-orders/:id`, () =>
+      HttpResponse.json({
+        id: "lab-1",
+        visit_id: VISIT_ID,
+        patient_id: PATIENT_ID,
+        status: "draft",
+        locked: false,
+        items: [{ name: "CBC with platelet count", reason: "Dengue - platelet trend", source: "rule" }],
+        approved_by: null,
+        approved_at: null,
+      }),
+    ),
   );
 }
 
@@ -158,8 +184,58 @@ describe("VisitContainer", () => {
     mockVisit(visit("LABS_SUGGESTED", { lab_order_id: "lab-1" }));
     renderVisit();
 
-    expect(await screen.findByTestId("visit-lab-order-link")).toBeTruthy();
+    // The order is edited in place on the visit now, not behind a link.
+    expect(await screen.findByTestId("lab-order-items")).toBeTruthy();
+    expect(screen.getByRole("button", { name: /approve lab order/i })).toBeTruthy();
     expect(screen.getByRole("button", { name: /advance to/i })).toBeTruthy();
+  });
+
+  it("shows the patient each ordered test with its own upload, and what is outstanding", async () => {
+    useAuthStore.setState({
+      accessToken: "tok",
+      status: "authenticated",
+      user: { id: "u1", email: "asha@example.in", role: "patient", name: "Asha Kumari" },
+    });
+    mockVisit(
+      visit("LABS_APPROVED", {
+        lab_order_id: "lab-1",
+        documents: [
+          {
+            id: "doc-1",
+            patient_id: PATIENT_ID,
+            file_id: "file-1",
+            status: "done",
+            labs: [],
+            test_name: "CBC with platelet count",
+          },
+        ],
+      } as Partial<VisitOut>),
+    );
+    // A signed order: two tests, one report already in.
+    server.use(
+      http.get(`${env.apiBase}/api/v1/lab-orders/:id`, () =>
+        HttpResponse.json({
+          id: "lab-1",
+          visit_id: VISIT_ID,
+          patient_id: PATIENT_ID,
+          status: "approved",
+          locked: true,
+          items: [
+            { name: "CBC with platelet count", reason: "Dengue - platelet trend", source: "rule" },
+            { name: "Dengue NS1 antigen", reason: "Fever under 5 days", source: "rule" },
+          ],
+          approved_by: "doc-1",
+          approved_at: "2026-08-27T09:00:00Z",
+        }),
+      ),
+    );
+    renderVisit(`/visit/${VISIT_ID}`);
+
+    const rows = await screen.findAllByTestId("lab-order-test-row");
+    expect(rows).toHaveLength(2);
+    expect(screen.getByText("1 of 2 uploaded")).toBeTruthy();
+    // The outstanding test gets its own labelled control, not a shared dropzone.
+    expect(screen.getByLabelText("Upload report for Dengue NS1 antigen")).toBeTruthy();
   });
 
   it("offers the next transition to a clinician", async () => {

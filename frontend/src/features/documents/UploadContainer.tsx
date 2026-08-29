@@ -55,7 +55,8 @@ function UploadRow({ item, onCancel }: { item: UploadItem; onCancel: (clientId: 
       )}
       {item.status === "failed" && (
         <p className="text-xs text-critical">
-          {item.errorCode ? t(`errorCodes.${item.errorCode}`, { defaultValue: t("errorCodes.INTERNAL") }) : null}
+          {item.errorMessage ??
+            (item.errorCode ? t(`errorCodes.${item.errorCode}`, { defaultValue: t("errorCodes.INTERNAL") }) : null)}
         </p>
       )}
       {item.documentId && <DocumentPanel documentId={item.documentId} />}

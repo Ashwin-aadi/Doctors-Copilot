@@ -10,8 +10,9 @@ import { useCaptcha } from "../../hooks/useCaptcha";
 import { ROUTES } from "../../router/routes";
 
 function homeForRole(role: string): string {
-  if (role === "doctor" || role === "staff") return ROUTES.doctorHome;
-  if (role === "admin") return ROUTES.adminRoot;
+  // Admin has no screen of its own yet, so it lands on the clinical home
+  // rather than a route that renders nothing.
+  if (role === "doctor" || role === "staff" || role === "admin") return ROUTES.doctorHome;
   return ROUTES.chat;
 }
 
@@ -25,8 +26,10 @@ export function LoginContainer() {
 
   const mutation = useMutation({
     mutationFn: (values: LoginValues) => {
-      if (!captcha.token) throw new Error("captcha token missing");
-      return login(values, captcha.token);
+      // The server may not be enforcing the captcha; sending an empty token
+      // then is correct, and blocking on one the user was never shown is not.
+      if (captcha.enabled && !captcha.token) throw new Error("captcha token missing");
+      return login(values, captcha.token ?? "");
     },
     onSuccess: async (res) => {
       setSession(
@@ -63,6 +66,7 @@ export function LoginContainer() {
       error={error}
       captchaChallenge={captcha.challenge}
       captchaToken={captcha.token}
+      captchaRequired={captcha.enabled}
       onCaptchaToken={captcha.onToken}
       onCaptchaRefresh={captcha.onRefresh}
     />

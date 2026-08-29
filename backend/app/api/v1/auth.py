@@ -397,7 +397,11 @@ async def me(
 
 @router.get("/captcha/challenge")
 async def captcha_challenge() -> dict:
-    return await create_challenge()
+    # `enabled` lets the client skip the widget entirely when the captcha is
+    # switched off, rather than solving a challenge the server will ignore.
+    challenge = await create_challenge()
+    challenge["enabled"] = get_settings().captcha_enabled
+    return challenge
 
 
 @router.post("/captcha/verify")

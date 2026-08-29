@@ -36,14 +36,50 @@ export interface LabOrderApproved {
   content_hash: string;
 }
 
+export interface LabCatalogEntry {
+  name: string;
+  loinc: string | null;
+  default_reason: string;
+  cghs_code: string | null;
+  pmjay_package: string | null;
+}
+
+/** The tests the rule pack recognises, so the picker can only offer real ones. */
+export function getLabCatalog(): Promise<LabCatalogEntry[]> {
+  return request<LabCatalogEntry[]>("/api/v1/lab-orders/catalog");
+}
+
+/**
+ * Draft a lab order for a visit from the rule engine plus the triage
+ * suggestions. Always comes back `status: "draft"`, `locked: false` -- only a
+ * registered practitioner may actually order a test, which is the captcha-gated
+ * approve call below.
+ */
+export function recommendLabOrder(visitId: string): Promise<LabOrderOut> {
+  return request<LabOrderOut>("/api/v1/lab-orders/recommend", {
+    method: "POST",
+    body: JSON.stringify({ visit_id: visitId }),
+  });
+}
+
 export function getLabOrder(labOrderId: string): Promise<LabOrderOut> {
   return request<LabOrderOut>(`/api/v1/lab-orders/${labOrderId}`);
 }
 
-export function approveLabOrder(labOrderId: string, captchaToken: string): Promise<LabOrderApproved> {
+/**
+ * `items` carries the doctor's edited test list. The server persists it and
+ * hashes it in the same transaction as the lock, so `content_hash` always
+ * covers exactly what was signed for. Omitting it approves the draft as-is.
+ */
+export function approveLabOrder(
+  labOrderId: string,
+  captchaToken: string,
+  items?: LabOrderItem[],
+): Promise<LabOrderApproved> {
   return request<LabOrderApproved>(`/api/v1/approvals/lab-order/${labOrderId}`, {
     method: "POST",
     captchaToken,
+    body: JSON.stringify({ items: items ?? null }),
   });
 }
 

@@ -12,8 +12,15 @@ call). `get_current_user` still does its own DB lookup for that id, so a
 route call still 401s exactly as before if the DB hasn't been seeded.
 """
 
+import os
 from collections.abc import AsyncIterator, Callable
 from uuid import UUID
+
+# The captcha is a deployment toggle (`CAPTCHA_ENABLED`), and a local .env may
+# well have it off. The suite owns tests that assert it is *enforced*, so pin
+# it on here -- before the settings are first read -- rather than letting a
+# machine's configuration decide whether those tests can pass.
+os.environ["CAPTCHA_ENABLED"] = "true"
 
 import pytest
 import pytest_asyncio

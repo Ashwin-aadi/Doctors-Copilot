@@ -18,5 +18,25 @@ export const mockTriageResult: TriageResult = {
     { n: 1, title: "Dengue: Guidelines for management", source: "WHO", url: "https://www.who.int/publications/dengue", snippet: "Warning signs include abdominal pain, persistent vomiting and bleeding.", published: "2023" },
     { n: 2, title: "National Guidelines for Clinical Management of Dengue Fever", source: "NCVBDC / MoHFW", url: "https://ncvbdc.mohfw.gov.in", snippet: "Platelet count should be monitored closely once warning signs appear.", published: "2022" },
   ],
+  differentials: [
+    {
+      condition: "Dengue fever with warning signs",
+      likelihood: "likely",
+      supporting: ["High-grade fever for 4 days", "Bleeding gums", "Monsoon season"],
+      against: [],
+      discriminating_tests: ["Dengue NS1 antigen", "Complete blood count with platelet count"],
+      citation_numbers: [1, 2],
+    },
+    {
+      condition: "Enteric (typhoid) fever",
+      likelihood: "possible",
+      supporting: ["Prolonged fever", "Abdominal pain"],
+      against: ["Bleeding gums are not typical"],
+      discriminating_tests: ["Widal test", "Blood culture"],
+      citation_numbers: [2],
+    },
+  ],
+  uncertainty: ["Platelet trend over the next 24 hours is not yet known"],
+  consistency_notes: [],
   confidence: 0.82,
 };

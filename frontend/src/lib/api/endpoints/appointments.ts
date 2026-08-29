@@ -11,6 +11,9 @@ export interface AppointmentCreatePayload {
   language?: string | null;
   scheme?: string | null;
   severity_esi?: number;
+  /** The triage interview behind this booking. The server links the visit to
+   * it, so the doctor's chart shows this conversation and its rationale. */
+  triage_session_id?: string | null;
 }
 
 export interface AppointmentOut {
@@ -44,6 +47,7 @@ export interface AppointmentCreateResponse {
   appointment: AppointmentOut;
   doctor: DoctorRanked;
   queue: QueueEntryOut;
+  visit_id: string;
 }
 
 export function createAppointment(

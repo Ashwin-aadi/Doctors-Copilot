@@ -1,3 +1,4 @@
+import { useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Wifi, WifiOff } from "lucide-react";
@@ -13,12 +14,22 @@ import { getQueue, nextInQueue, escalateQueue, type QueueEntry } from "../../lib
 import { useAuthStore } from "../../store/auth";
 import { qk } from "../../lib/queryKeys";
 import { useQueueSocket } from "./useQueueSocket";
+import { listVisits } from "../../lib/api/endpoints/visits";
 
 export function QueueBoardContainer() {
   const { t } = useTranslation();
   const clinicId = useAuthStore((s) => s.user?.clinicId) ?? null;
   const queryClient = useQueryClient();
+  const navigate = useNavigate();
   const { status } = useQueueSocket(clinicId);
+
+  // `QueueEntryOut` carries no visit id, so map patient -> visit here to make
+  // the row open the chart. Most recent visit wins; the list comes back
+  // newest-first.
+  const visitsQuery = useQuery({ queryKey: qk.visits(), queryFn: listVisits });
+  const visitByPatient = new Map(
+    [...(visitsQuery.data ?? [])].reverse().map((v) => [v.patient_id, v.id]),
+  );
 
   const queueQuery = useQuery({
     queryKey: qk.queue(clinicId ?? "none"),
@@ -150,6 +161,11 @@ export function QueueBoardContainer() {
                     onEscalate={(id) => escalateMutation.mutate(id)}
                     callingNext={nextMutation.isPending && nextMutation.variables === entry.id}
                     escalating={escalateMutation.isPending && escalateMutation.variables === entry.id}
+                    onOpen={
+                      visitByPatient.has(entry.patient_id)
+                        ? () => navigate(`/doctor/visit/${visitByPatient.get(entry.patient_id)}`)
+                        : undefined
+                    }
                   />
                 ))}
               </TableBody>

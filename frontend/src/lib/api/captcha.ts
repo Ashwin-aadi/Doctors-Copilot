@@ -24,6 +24,9 @@ async function solveCaptcha(challenge: CaptchaChallenge): Promise<string> {
  */
 export async function withCaptcha<T>(fn: (token: string) => Promise<T>): Promise<T> {
   const challenge = await fetchCaptchaChallenge();
+  // The server may not be enforcing the captcha -- burning CPU on a
+  // proof-of-work it will not look at only slows the upload down.
+  if (challenge.enabled === false) return fn("");
   const token = await solveCaptcha(challenge);
   try {
     return await fn(token);

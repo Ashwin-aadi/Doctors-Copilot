@@ -1,21 +1,19 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { ShieldCheck } from "lucide-react";
-import { Card, CardHeader, CardTitle, CardBody } from "../../components/ui/Card";
-import { Badge } from "../../components/ui/Badge";
-import { Button } from "../../components/ui/Button";
-import { Modal } from "../../components/ui/Modal";
-import { Skeleton } from "../../components/ui/Skeleton";
 import { ErrorState } from "../../components/ui/ErrorState";
-import { CaptchaWidget } from "../../components/forms/CaptchaWidget";
-import { FormError } from "../../components/forms/FormError";
+import { LabOrderApprovalPage } from "../../pages/doctor/LabOrderApprovalPage";
 import { useCaptcha } from "../../hooks/useCaptcha";
-import { getLabOrder, approveLabOrder } from "../../lib/api/endpoints/approvals";
+import {
+  getLabOrder,
+  getLabCatalog,
+  approveLabOrder,
+  type LabOrderItem,
+} from "../../lib/api/endpoints/approvals";
 import { ApiError } from "../../lib/api/errors";
 import { qk } from "../../lib/queryKeys";
-import { formatDateTimeIst } from "../../lib/format";
+import { useAuthStore } from "../../store/auth";
 
 export function LabOrderApprovalContainer() {
   const { t } = useTranslation();
@@ -23,7 +21,13 @@ export function LabOrderApprovalContainer() {
   const labOrderId = params.id ?? null;
   const queryClient = useQueryClient();
   const captcha = useCaptcha();
-  const [modalOpen, setModalOpen] = useState(false);
+  const user = useAuthStore((s) => s.user);
+
+  // The doctor's working copy. `items` from the server is the recommendation;
+  // `draft` is what they will actually sign for, so the page can diff the two
+  // and show what was added or dropped.
+  const [draft, setDraft] = useState<LabOrderItem[] | null>(null);
+  const [contentHash, setContentHash] = useState<string | undefined>();
 
   const query = useQuery({
     queryKey: qk.labOrder(labOrderId ?? "none"),
@@ -31,37 +35,44 @@ export function LabOrderApprovalContainer() {
     enabled: Boolean(labOrderId),
   });
 
+  const recommendation = query.data?.items;
+  useEffect(() => {
+    // Seed the working copy once the order arrives, and re-seed if the server
+    // copy changes underneath us (an approval elsewhere, a re-recommend).
+    if (recommendation) setDraft(recommendation);
+  }, [recommendation]);
+
+  const catalogQuery = useQuery({ queryKey: qk.labCatalog(), queryFn: getLabCatalog });
+  const catalog = (catalogQuery.data ?? []).map((entry) => ({
+    name: entry.name,
+    loinc: entry.loinc,
+    defaultReason: entry.default_reason,
+    cghsCode: entry.cghs_code,
+    pmjayPackage: entry.pmjay_package,
+  }));
+
   const approveMutation = useMutation({
-    mutationFn: () => {
+    mutationFn: (token: string) => {
       if (!labOrderId) throw new Error("no lab order in route");
-      if (!captcha.token) throw new Error("captcha token missing");
-      return approveLabOrder(labOrderId, captcha.token);
+      return approveLabOrder(labOrderId, token, draft ?? undefined);
     },
-    onSuccess: () => {
-      setModalOpen(false);
+    onSuccess: (approved) => {
+      setContentHash(approved.content_hash);
       if (labOrderId) void queryClient.invalidateQueries({ queryKey: qk.labOrder(labOrderId) });
       if (query.data?.visit_id) void queryClient.invalidateQueries({ queryKey: qk.visit(query.data.visit_id) });
+      void queryClient.invalidateQueries({ queryKey: qk.visits() });
     },
     onError: (err) => {
-      // A 409 LOCKED here means someone (or a retried request) already
-      // approved this order -- refetch and fall through to the locked
-      // render path. That's a normal race, not an error toast.
+      // A 409 LOCKED means someone (or a retried request) already approved
+      // this order -- refetch and fall through to the locked render path.
+      // That's a normal race, not an error to surface.
       if (err instanceof ApiError && err.code === "LOCKED") {
-        setModalOpen(false);
         if (labOrderId) void queryClient.invalidateQueries({ queryKey: qk.labOrder(labOrderId) });
         return;
       }
       captcha.onRefresh();
     },
   });
-
-  const lockedRace = approveMutation.error instanceof ApiError && approveMutation.error.code === "LOCKED";
-  const otherError =
-    approveMutation.isError && !lockedRace
-      ? approveMutation.error instanceof ApiError
-        ? t(`errorCodes.${approveMutation.error.code}`, { defaultValue: t("errorCodes.INTERNAL") })
-        : t("errorCodes.INTERNAL")
-      : null;
 
   if (!labOrderId) {
     return (
@@ -71,90 +82,38 @@ export function LabOrderApprovalContainer() {
     );
   }
 
+  const lockedRace = approveMutation.error instanceof ApiError && approveMutation.error.code === "LOCKED";
+  const error =
+    query.error || (approveMutation.isError && !lockedRace)
+      ? (query.error ?? approveMutation.error) instanceof ApiError
+        ? t(`errorCodes.${((query.error ?? approveMutation.error) as ApiError).code}`, {
+            defaultValue: t("errorCodes.INTERNAL"),
+          })
+        : t("errorCodes.INTERNAL")
+      : null;
+
+  const order = query.data && draft ? { ...query.data, items: draft } : (query.data ?? null);
+
   return (
     <div className="mx-auto max-w-2xl p-4">
-      {query.isLoading && (
-        <div className="flex flex-col gap-2">
-          <Skeleton className="h-8 w-2/3" />
-          <Skeleton className="h-24 w-full" />
-        </div>
-      )}
-
-      {!query.isLoading && query.error && (
-        <ErrorState
-          title={t("errorCodes.INTERNAL")}
-          action={
-            <Button size="sm" variant="secondary" onClick={() => void query.refetch()}>
-              {t("errors.retry")}
-            </Button>
-          }
-        />
-      )}
-
-      {!query.isLoading && query.data && (
-        <Card>
-          <CardHeader>
-            <CardTitle>{t("approvals.labOrderTitle")}</CardTitle>
-            {query.data.locked ? (
-              <Badge tone="normal">{t("approvals.locked")}</Badge>
-            ) : (
-              <Badge tone="moderate">{t("approvals.draft")}</Badge>
-            )}
-          </CardHeader>
-          <CardBody className="flex flex-col gap-4">
-            {/* TEMP-PLACEHOLDER: replace with abhishek's locked lab-order
-                render path when it ships */}
-            <ul className="flex flex-col gap-2">
-              {query.data.items.map((item, i) => (
-                <li key={`${item.name}-${i}`} className="rounded-md border border-border p-3">
-                  <p className="font-medium text-fg">{item.name}</p>
-                  <p className="text-xs text-fg-muted">{item.reason}</p>
-                  {(item.cghs_code || item.pmjay_package) && (
-                    <Badge tone="primary" className="mt-1">
-                      {t("approvals.covered")}
-                    </Badge>
-                  )}
-                </li>
-              ))}
-            </ul>
-
-            {query.data.locked ? (
-              <div className="flex items-center gap-2 rounded-md border border-normal/30 bg-normal-soft p-3 text-sm text-fg">
-                <ShieldCheck className="h-4 w-4 shrink-0 text-normal" aria-hidden="true" />
-                <div>
-                  <p>{t("approvals.approved")}</p>
-                  {query.data.approved_at && (
-                    <p className="text-xs text-fg-muted">{formatDateTimeIst(query.data.approved_at)}</p>
-                  )}
-                </div>
-              </div>
-            ) : (
-              <>
-                <Button onClick={() => setModalOpen(true)}>{t("approvals.approve")}</Button>
-                {lockedRace && <p className="text-xs text-fg-subtle">{t("approvals.lockedRace")}</p>}
-              </>
-            )}
-          </CardBody>
-        </Card>
-      )}
-
-      <Modal
-        open={modalOpen}
-        onClose={() => setModalOpen(false)}
-        title={t("approvals.captchaTitle")}
-        footer={
-          <Button
-            onClick={() => approveMutation.mutate()}
-            disabled={!captcha.token}
-            loading={approveMutation.isPending}
-          >
-            {t("approvals.confirmApprove")}
-          </Button>
-        }
-      >
-        <CaptchaWidget challenge={captcha.challenge} onToken={captcha.onToken} onRefresh={captcha.onRefresh} />
-        <FormError message={otherError} />
-      </Modal>
+      <LabOrderApprovalPage
+        order={order}
+        originalRecommendation={recommendation}
+        catalog={catalog}
+        approverName={user?.name ?? undefined}
+        approverNmc={user?.nmcRegNo ?? undefined}
+        contentHash={contentHash}
+        onChange={setDraft}
+        onApprove={(token) => approveMutation.mutate(token)}
+        captchaChallenge={captcha.challenge}
+        captchaRequired={captcha.enabled}
+        onCaptchaToken={captcha.onToken}
+        onCaptchaRefresh={captcha.onRefresh}
+        approving={approveMutation.isPending}
+        loading={query.isLoading}
+        error={error}
+        onRetry={() => void query.refetch()}
+      />
     </div>
   );
 }

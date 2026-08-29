@@ -20,6 +20,7 @@ from typing import Any
 from uuid import UUID
 
 from fastapi import APIRouter, Depends
+from pydantic import BaseModel
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -31,6 +32,8 @@ from app.db.models.clinical import LabOrder, Prescription, Visit
 from app.db.models.patient import Patient
 from app.db.models.scheduling import Doctor
 from app.db.session import get_db
+from app.schemas.visit import VisitState
+from app.services import visit as visit_service
 from app.services.notify import notify
 
 router = APIRouter(prefix="/approvals", tags=["approvals"])
@@ -94,9 +97,21 @@ async def _notify_patient_approved(
         pass
 
 
+class ApproveLabOrderIn(BaseModel):
+    """The doctor may add or drop tests on the approval screen. Sending the
+    final list here rather than through a separate PATCH keeps the edit and
+    the lock in one transaction -- `content_hash` then always covers exactly
+    what was signed for, with no window in which a draft could change between
+    the two calls.
+    """
+
+    items: list[dict] | None = None
+
+
 @router.post("/lab-order/{lab_order_id}")
 async def approve_lab_order(
     lab_order_id: UUID,
+    body: ApproveLabOrderIn | None = None,
     user: CurrentUser = Depends(_require_doctor),
     _captcha: None = Depends(require_captcha),
     db: AsyncSession = Depends(get_db),
@@ -120,6 +135,13 @@ async def approve_lab_order(
         raise ApiError(
             "AUTH_FORBIDDEN", "not the doctor assigned to this visit", status_code=403
         )
+
+    if body is not None and body.items is not None:
+        if not body.items:
+            raise ApiError(
+                "VALIDATION_FAILED", "a lab order needs at least one test", status_code=422
+            )
+        lab_order.items = body.items
 
     content_hash = canonical_content_hash(lab_order.items)
     now = datetime.now(UTC)
@@ -147,6 +169,19 @@ async def approve_lab_order(
         json.dumps({"entity": "lab_order", "id": str(lab_order.id), "content_hash": content_hash}),
     )
     await _notify_patient_approved(db, lab_order.patient_id, "lab_order_approved", lab_order.id)
+
+    # The lock is the LABS_SUGGESTED -> LABS_APPROVED trigger in the visit
+    # machine. Advancing here is what puts the visit into the state the
+    # patient's portal reads as "your tests are approved, upload the report".
+    # A visit sitting in some other state is not an error -- the order was
+    # still validly signed -- so a rejected transition is swallowed.
+    if visit.state == VisitState.LABS_SUGGESTED.value:
+        try:
+            await visit_service.advance(
+                db, visit.id, VisitState.LABS_APPROVED, actor_id=user.id
+            )
+        except ApiError:
+            pass
 
     return {
         "id": lab_order.id,

@@ -2,10 +2,10 @@ import { Suspense } from "react";
 import { Routes, Route, Navigate } from "react-router-dom";
 import { RootLayout } from "../app/RootLayout";
 import { NotFound } from "../app/NotFound";
-import { PlaceholderPage } from "../app/PlaceholderPage";
+import { VisitListContainer } from "../features/visits/VisitListContainer";
 import { Skeleton } from "../components/ui/Skeleton";
 import { ProtectedRoute } from "./ProtectedRoute";
-import { ROUTES, PATIENT_ROLES, DOCTOR_STAFF_ROLES, ADMIN_ROLES } from "./routes";
+import { ROUTES, PATIENT_ROLES, DOCTOR_STAFF_ROLES, CLINICAL_ROLES } from "./routes";
 import { LoginContainer } from "../features/auth/LoginContainer";
 import { RegisterContainer } from "../features/auth/RegisterContainer";
 import { ForgotPasswordContainer } from "../features/auth/ForgotPasswordContainer";
@@ -77,7 +77,7 @@ export function AppRouter() {
             path={ROUTES.portal}
             element={
               <ProtectedRoute roles={PATIENT_ROLES}>
-                <PlaceholderPage label="My Visits" />
+                <VisitListContainer />
               </ProtectedRoute>
             }
           />
@@ -89,20 +89,12 @@ export function AppRouter() {
               </ProtectedRoute>
             }
           />
-          <Route
-            path={ROUTES.abha}
-            element={
-              <ProtectedRoute roles={PATIENT_ROLES}>
-                <PlaceholderPage label="ABHA" />
-              </ProtectedRoute>
-            }
-          />
 
           <Route
             path={ROUTES.doctorHome}
             element={
-              <ProtectedRoute roles={DOCTOR_STAFF_ROLES}>
-                <PlaceholderPage label="Doctor home" />
+              <ProtectedRoute roles={CLINICAL_ROLES}>
+                <VisitListContainer />
               </ProtectedRoute>
             }
           />
@@ -129,7 +121,7 @@ export function AppRouter() {
           <Route
             path={ROUTES.doctorQueue}
             element={
-              <ProtectedRoute roles={DOCTOR_STAFF_ROLES}>
+              <ProtectedRoute roles={CLINICAL_ROLES}>
                 <QueueBoardContainer />
               </ProtectedRoute>
             }
@@ -139,15 +131,6 @@ export function AppRouter() {
             element={
               <ProtectedRoute roles={DOCTOR_STAFF_ROLES}>
                 <LabOrderApprovalContainer />
-              </ProtectedRoute>
-            }
-          />
-
-          <Route
-            path="/admin/*"
-            element={
-              <ProtectedRoute roles={ADMIN_ROLES}>
-                <PlaceholderPage label="Admin" />
               </ProtectedRoute>
             }
           />

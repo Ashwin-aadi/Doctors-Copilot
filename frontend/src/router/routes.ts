@@ -17,17 +17,18 @@ export const ROUTES = {
   booking: "/booking",
   portal: "/portal",
   visit: (id: string) => `/visit/${id}`,
-  abha: "/abha",
   doctorHome: "/doctor",
   doctorPatient: (id: string) => `/doctor/patient/${id}`,
   doctorVisit: (id: string) => `/doctor/visit/${id}`,
   doctorQueue: "/doctor/queue",
   doctorLabOrder: (id: string) => `/doctor/lab-order/${id}`,
-  adminRoot: "/admin",
   preview: "/__preview",
 } as const;
 
 export const PATIENT_ROLES: Role[] = ["patient"];
 export const DOCTOR_STAFF_ROLES: Role[] = ["doctor", "staff"];
+/** The clinical screens. Admin is included because there is no separate admin
+ * console -- an admin lands here rather than on a route that renders nothing. */
+export const CLINICAL_ROLES: Role[] = ["doctor", "staff", "admin"];
 export const ADMIN_ROLES: Role[] = ["admin"];
 export const ANY_AUTHENTICATED_ROLE: Role[] = ["patient", "doctor", "staff", "admin"];

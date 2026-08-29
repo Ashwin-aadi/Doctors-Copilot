@@ -6,7 +6,7 @@ import type { LabOrderDiff, LabOrderItem } from "../../components/types";
 
 export interface LabOrderItemRowProps {
   item: LabOrderItem;
-  costInr: number;
+  costInr?: number | null;
   locked: boolean;
   diff?: LabOrderDiff;
   onRemove?: () => void;
@@ -40,7 +40,9 @@ export function LabOrderItemRow({ item, costInr, locked, diff, onRemove }: LabOr
         <p className="truncate text-xs text-fg-muted">{item.reason}</p>
       </div>
       <div className="flex shrink-0 items-center gap-3">
-        <span className="text-sm font-medium tabular-nums text-fg">{formatInr(costInr)}</span>
+        {typeof costInr === "number" && (
+          <span className="text-sm font-medium tabular-nums text-fg">{formatInr(costInr)}</span>
+        )}
         {!locked && onRemove && (
           <button
             type="button"

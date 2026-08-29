@@ -751,6 +751,50 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/visits": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Visits
+         * @description A patient sees their own visits; a clinician sees the ones assigned to
+         *     them. Staff and admin see the whole clinic, since they work the desk for
+         *     every doctor in it.
+         */
+        get: operations["list_visits_api_v1_visits_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/visits/{visit_id}/transcript": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Visit Transcript
+         * @description The triage interview behind a visit. The doctor reads this alongside the
+         *     triage result -- the scored output alone loses the patient's own wording,
+         *     which is often the useful part.
+         */
+        get: operations["get_visit_transcript_api_v1_visits__visit_id__transcript_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/visits/{visit_id}": {
         parameters: {
             query?: never;
@@ -1079,6 +1123,28 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/lab-orders/catalog": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Lab Catalog
+         * @description The tests a doctor may add to an order, straight from the rule pack --
+         *     so the picker can never offer something the recommender itself does not
+         *     recognise.
+         */
+        get: operations["lab_catalog_api_v1_lab_orders_catalog_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/lab-orders/{lab_order_id}": {
         parameters: {
             query?: never;
@@ -1223,6 +1289,18 @@ export interface components {
             target_clinic_id?: string | null;
             /** Reason */
             reason?: string | null;
+        };
+        /**
+         * ApproveLabOrderIn
+         * @description The doctor may add or drop tests on the approval screen. Sending the
+         *     final list here rather than through a separate PATCH keeps the edit and
+         *     the lock in one transaction -- `content_hash` then always covers exactly
+         *     what was signed for, with no window in which a draft could change between
+         *     the two calls.
+         */
+        ApproveLabOrderIn: {
+            /** Items */
+            items?: Record<string, never>[] | null;
         };
         /** AvailabilityIn */
         AvailabilityIn: {
@@ -1534,6 +1612,40 @@ export interface components {
             /** Confidence */
             confidence: number;
         };
+        /**
+         * DifferentialItem
+         * @description A condition worth considering, with what supports and opposes it.
+         */
+        DifferentialItem: {
+            /** Condition */
+            condition: string;
+            /**
+             * Likelihood
+             * @default consider
+             * @enum {string}
+             */
+            likelihood: "consider" | "possible" | "likely";
+            /**
+             * Supporting
+             * @default []
+             */
+            supporting: string[];
+            /**
+             * Against
+             * @default []
+             */
+            against: string[];
+            /**
+             * Discriminating Tests
+             * @default []
+             */
+            discriminating_tests: string[];
+            /**
+             * Citation Numbers
+             * @default []
+             */
+            citation_numbers: number[];
+        };
         /** DoctorIn */
         DoctorIn: {
             /**
@@ -1675,6 +1787,8 @@ export interface components {
             labs: components["schemas"]["LabResultOut"][];
             /** Error */
             error?: string | null;
+            /** Test Name */
+            test_name?: string | null;
         };
         /** DoseInfo */
         DoseInfo: {
@@ -1746,6 +1860,39 @@ export interface components {
         EscalateBody: {
             /** Reason */
             reason: string;
+        };
+        /**
+         * FindingOut
+         * @description One clinical concept as asserted by the patient, with its evidence.
+         */
+        FindingOut: {
+            /** Name */
+            name: string;
+            /** Label */
+            label: string;
+            /**
+             * Category
+             * @default other
+             */
+            category: string;
+            /**
+             * Status
+             * @default unknown
+             * @enum {string}
+             */
+            status: "present" | "absent" | "unknown";
+            /**
+             * Specificity
+             * @default 0.4
+             */
+            specificity: number;
+            /** Severity */
+            severity?: string | null;
+            /**
+             * Evidence
+             * @default
+             */
+            evidence: string;
         };
         /** ForgotPasswordRequest */
         ForgotPasswordRequest: {
@@ -2107,6 +2254,39 @@ export interface components {
             /** Consent At */
             consent_at?: string | null;
         };
+        /**
+         * PatientStateOut
+         * @description The structured state every pipeline stage was given.
+         */
+        PatientStateOut: {
+            /**
+             * Chief Complaint
+             * @default
+             */
+            chief_complaint: string;
+            /** Duration Days */
+            duration_days?: number | null;
+            /**
+             * Present
+             * @default []
+             */
+            present: components["schemas"]["FindingOut"][];
+            /**
+             * Absent
+             * @default []
+             */
+            absent: components["schemas"]["FindingOut"][];
+            /**
+             * Unknown
+             * @default []
+             */
+            unknown: components["schemas"]["FindingOut"][];
+            /**
+             * Discriminating Features
+             * @default []
+             */
+            discriminating_features: string[];
+        };
         /** RecommendIn */
         RecommendIn: {
             /**
@@ -2261,6 +2441,28 @@ export interface components {
             expires_in: number;
             user: components["schemas"]["UserProfile"];
         };
+        /** TranscriptOut */
+        TranscriptOut: {
+            /**
+             * Visit Id
+             * Format: uuid
+             */
+            visit_id: string;
+            /** Session Id */
+            session_id?: string | null;
+            /**
+             * Turns
+             * @default []
+             */
+            turns: components["schemas"]["TranscriptTurn"][];
+        };
+        /** TranscriptTurn */
+        TranscriptTurn: {
+            /** Role */
+            role: string;
+            /** Content */
+            content: string;
+        };
         /** TriageMessageIn */
         TriageMessageIn: {
             /**
@@ -2299,6 +2501,22 @@ export interface components {
             citations: components["schemas"]["Citation"][];
             /** Confidence */
             confidence: number;
+            /**
+             * Differentials
+             * @default []
+             */
+            differentials: components["schemas"]["DifferentialItem"][];
+            patient_state?: components["schemas"]["PatientStateOut"] | null;
+            /**
+             * Uncertainty
+             * @default []
+             */
+            uncertainty: string[];
+            /**
+             * Consistency Notes
+             * @default []
+             */
+            consistency_notes: string[];
         };
         /** TriageTurnOut */
         TriageTurnOut: {
@@ -2388,6 +2606,51 @@ export interface components {
          * @enum {string}
          */
         VisitState: "TRIAGED" | "LABS_SUGGESTED" | "LABS_APPROVED" | "RESULTS_UPLOADED" | "BRIEF_READY" | "CONSULTED" | "PRESCRIBED";
+        /**
+         * VisitSummary
+         * @description Deliberately thinner than `VisitOut`: a list screen wants a row per
+         *     visit, not the assembled brief/safety/document payload for each one.
+         */
+        VisitSummary: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /**
+             * Patient Id
+             * Format: uuid
+             */
+            patient_id: string;
+            /** Patient Name */
+            patient_name?: string | null;
+            /** Doctor Id */
+            doctor_id?: string | null;
+            /** Doctor Name */
+            doctor_name?: string | null;
+            state: components["schemas"]["VisitState"];
+            /** Severity Esi */
+            severity_esi?: number | null;
+            /** Triage Colour */
+            triage_colour?: string | null;
+            /** Lab Order Id */
+            lab_order_id?: string | null;
+            /**
+             * Document Count
+             * @default 0
+             */
+            document_count: number;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /**
+             * Updated At
+             * Format: date-time
+             */
+            updated_at: string;
+        };
         /** WalkInCreate */
         WalkInCreate: {
             /**
@@ -3336,7 +3599,11 @@ export interface operations {
             };
             cookie?: never;
         };
-        requestBody?: never;
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["ApproveLabOrderIn"] | null;
+            };
+        };
         responses: {
             /** @description Successful Response */
             200: {
@@ -4208,6 +4475,70 @@ export interface operations {
             };
         };
     };
+    list_visits_api_v1_visits_get: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["VisitSummary"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_visit_transcript_api_v1_visits__visit_id__transcript_get: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+            };
+            path: {
+                visit_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TranscriptOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     get_visit_api_v1_visits__visit_id__get: {
         parameters: {
             query?: never;
@@ -4890,6 +5221,37 @@ export interface operations {
                 };
                 content: {
                     "application/json": Record<string, never>;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    lab_catalog_api_v1_lab_orders_catalog_get: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": Record<string, never>[];
                 };
             };
             /** @description Validation Error */

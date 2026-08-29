@@ -270,5 +270,41 @@
     "blockedMajor": "Blocked — major interaction",
     "scheduleH": "Schedule H",
     "scheduleH1": "Schedule H1"
+  },
+  "visits": {
+    "title": "My visits",
+    "doctorTitle": "My patients",
+    "empty": "No visits yet",
+    "startTriage": "Start a pre-assessment",
+    "open": "Open visit",
+    "reviewLabOrder": "Review lab order",
+    "started": "Started",
+    "reports": "Reports",
+    "unknownPatient": "Unknown patient",
+    "unassigned": "Not yet assigned",
+    "uploadPrompt": "Your doctor has approved the tests. Upload the lab report here once you collect it.",
+    "transcript": "Pre-assessment conversation",
+    "transcriptEmpty": "No pre-assessment conversation was recorded for this visit.",
+    "you": "Patient",
+    "assistant": "Assistant"
+  },
+  "triage": {
+    "colour": {
+      "red": "Red",
+      "yellow": "Yellow",
+      "green": "Green"
+    }
+  },
+  "labOrder": {
+    "prepare": "Prepare lab order",
+    "noDraft": "No lab order drafted yet",
+    "noDraftHelp": "Draft an order from the triage suggestions and the rule engine, then add or remove tests before signing.",
+    "patientTitle": "Your lab tests",
+    "patientHelp": "Your doctor has ordered these tests. Get them done at any lab, then upload each report here as you receive it.",
+    "uploadProgress": "{{done}} of {{total}} uploaded",
+    "uploadFor": "Upload report",
+    "uploadAnother": "Upload another",
+    "uploaded": "Uploaded",
+    "uploadForTest": "Upload report for {{test}}"
   }
 }

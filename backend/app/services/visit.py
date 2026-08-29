@@ -231,6 +231,7 @@ async def _documents(db: AsyncSession, patient_id: UUID) -> list[DocumentOut]:
             text=doc.text,
             labs=by_document.get(doc.id, []),
             error=doc.error,
+            test_name=doc.test_name,
         )
         for doc in documents
     ]

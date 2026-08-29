@@ -104,6 +104,29 @@ def _rule_matches(
 
 
 @lru_cache(maxsize=1)
+def catalogue() -> tuple[dict, ...]:
+    """Every distinct test the rule pack knows about, for the doctor's
+    "add a test" control on the approval screen. Deduped on name; the first
+    rule that mentions a test supplies its reason and coverage codes, which
+    is good enough because the pack keeps those consistent per test.
+    """
+    seen: dict[str, dict] = {}
+    for rule in _rules():
+        for lab in rule.get("labs", []) or []:
+            name = str(lab.get("name", "")).strip()
+            if not name or name in seen:
+                continue
+            seen[name] = {
+                "name": name,
+                "loinc": lab.get("loinc"),
+                "default_reason": lab.get("reason", ""),
+                "cghs_code": rule.get("cghs_code"),
+                "pmjay_package": rule.get("pmjay_package"),
+            }
+    return tuple(sorted(seen.values(), key=lambda item: item["name"]))
+
+
+@lru_cache(maxsize=1)
 def _symptom_vocabulary() -> tuple[str, ...]:
     """Every distinct `symptoms_any`/`symptoms_all` phrase across the pack,
     longest first so a substring match prefers the more specific phrase

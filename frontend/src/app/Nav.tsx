@@ -15,7 +15,6 @@ const LINKS_BY_ROLE: Record<Role, NavItem[]> = {
     { to: ROUTES.chat, labelKey: "nav.chat" },
     { to: ROUTES.booking, labelKey: "nav.booking" },
     { to: ROUTES.portal, labelKey: "nav.portal" },
-    { to: ROUTES.abha, labelKey: "nav.abha" },
   ],
   doctor: [
     { to: ROUTES.doctorHome, labelKey: "nav.doctorHome" },
@@ -25,7 +24,7 @@ const LINKS_BY_ROLE: Record<Role, NavItem[]> = {
     { to: ROUTES.doctorHome, labelKey: "nav.doctorHome" },
     { to: ROUTES.doctorQueue, labelKey: "nav.doctorQueue" },
   ],
-  admin: [{ to: ROUTES.adminRoot, labelKey: "nav.admin" }],
+  admin: [],
 };
 
 /**

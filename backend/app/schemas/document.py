@@ -27,3 +27,4 @@ class DocumentOut(BaseModel):
     text: str | None = None
     labs: list[LabResultOut] = []
     error: str | None = None
+    test_name: str | None = None

@@ -65,7 +65,7 @@ export function PrescriptionContainer({
   const lockMutation = useMutation({
     mutationFn: () => {
       if (!prescriptionId) throw new Error("no prescription resolved for this visit");
-      if (!captcha.token) throw new Error("captcha token missing");
+      if (captcha.enabled && !captcha.token) throw new Error("captcha token missing");
       return approvePrescription(prescriptionId, captcha.token, acknowledge.acknowledged);
     },
     onSuccess: () => {
@@ -192,11 +192,13 @@ export function PrescriptionContainer({
 
       <Modal open={modalOpen} onClose={() => setModalOpen(false)} title={t("prescription.lock")}>
         <div className="flex flex-col gap-3">
-          <CaptchaWidget
-            challenge={captcha.challenge}
-            onToken={captcha.onToken}
-            onRefresh={captcha.onRefresh}
-          />
+          {captcha.enabled && (
+            <CaptchaWidget
+              challenge={captcha.challenge}
+              onToken={captcha.onToken}
+              onRefresh={captcha.onRefresh}
+            />
+          )}
           {otherError && (
             <FormError
               message={
@@ -209,7 +211,7 @@ export function PrescriptionContainer({
             />
           )}
           <Button
-            disabled={!captcha.token || lockMutation.isPending}
+            disabled={(captcha.enabled && !captcha.token) || lockMutation.isPending}
             data-testid="confirm-lock-prescription"
             onClick={() => lockMutation.mutate()}
           >

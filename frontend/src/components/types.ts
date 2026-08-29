@@ -129,7 +129,9 @@ export interface LabCatalogItem {
   name: string;
   loinc?: string | null;
   defaultReason: string;
-  costInr: number;
+  /** Omitted when no published tariff is known for the test. The screen shows
+   * no price at all rather than an invented one. */
+  costInr?: number | null;
   pmjayPackage?: string | null;
   cghsCode?: string | null;
 }

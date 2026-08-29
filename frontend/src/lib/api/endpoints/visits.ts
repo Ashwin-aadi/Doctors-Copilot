@@ -14,6 +14,44 @@ export const VISIT_STATES: VisitState[] = [
   "PRESCRIBED",
 ];
 
+export interface VisitSummary {
+  id: string;
+  patient_id: string;
+  patient_name: string | null;
+  doctor_id: string | null;
+  doctor_name: string | null;
+  state: VisitState;
+  severity_esi: number | null;
+  triage_colour: "red" | "yellow" | "green" | null;
+  lab_order_id: string | null;
+  document_count: number;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface TranscriptTurn {
+  role: string;
+  content: string;
+}
+
+export interface TranscriptOut {
+  visit_id: string;
+  session_id: string | null;
+  turns: TranscriptTurn[];
+}
+
+/**
+ * Scoped server-side by role: a patient gets their own visits, a doctor the
+ * ones assigned to them, staff and admin the whole clinic.
+ */
+export function listVisits(): Promise<VisitSummary[]> {
+  return request<VisitSummary[]>("/api/v1/visits");
+}
+
+export function getVisitTranscript(visitId: string): Promise<TranscriptOut> {
+  return request<TranscriptOut>(`/api/v1/visits/${visitId}/transcript`);
+}
+
 export function getVisit(visitId: string): Promise<VisitOut> {
   return request<VisitOut>(`/api/v1/visits/${visitId}`);
 }

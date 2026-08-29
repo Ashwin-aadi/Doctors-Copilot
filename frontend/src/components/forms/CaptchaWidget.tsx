@@ -8,6 +8,10 @@ export interface CaptchaChallenge {
   challenge: string;
   salt: string;
   maxnumber: number;
+  /** False when the server has the captcha switched off, in which case a
+   * caller should skip the widget rather than solve a challenge that will be
+   * ignored. Absent on older responses, which always enforced it. */
+  enabled?: boolean;
 }
 
 export type CaptchaState = "idle" | "solving" | "solved" | "expired" | "failed";

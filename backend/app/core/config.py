@@ -51,6 +51,10 @@ class Settings(BaseSettings):
 
     storage_root: str = "./infra/storage"
 
+    # Proof-of-work captcha on approvals and auth. It is a placeholder in this
+    # deployment, so it can be switched off without touching the routes that
+    # depend on it -- the dependency stays wired, it just stops enforcing.
+    captcha_enabled: bool = True
     captcha_ttl_seconds: int = 120
     captcha_difficulty: int = 50000
 

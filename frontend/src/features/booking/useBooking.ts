@@ -4,6 +4,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { searchDoctors, type DoctorRanked } from "../../lib/api/endpoints/doctors";
 import { createAppointment, type AppointmentCreateResponse } from "../../lib/api/endpoints/appointments";
 import { useAuthStore } from "../../store/auth";
+import { useSessionStore } from "../../store/session";
 import { useCaptcha } from "../../hooks/useCaptcha";
 import { qk } from "../../lib/queryKeys";
 import { isValidPincode } from "../../lib/format";
@@ -12,6 +13,7 @@ import { ApiError } from "../../lib/api/errors";
 interface LocationState {
   specialty?: string;
   severityEsi?: number;
+  triageSessionId?: string;
 }
 
 export function useBooking() {
@@ -22,6 +24,11 @@ export function useBooking() {
   const captcha = useCaptcha();
 
   const [specialty] = useState(state.specialty ?? "general_medicine");
+  // Router state is lost on a reload, so fall back to the session the triage
+  // store still holds -- otherwise a refreshed booking page silently books
+  // with no interview attached.
+  const storedSessionId = useSessionStore((s) => s.triageSessionId);
+  const triageSessionId = state.triageSessionId ?? storedSessionId ?? null;
   const [pincode, setPincode] = useState("");
   const [coords, setCoords] = useState<{ lat: number; lng: number } | null>(null);
   const [locationDenied, setLocationDenied] = useState(false);
@@ -49,7 +56,7 @@ export function useBooking() {
   const bookMutation = useMutation({
     mutationFn: async (doctor: DoctorRanked) => {
       if (!patientId) throw new Error("no patient profile");
-      if (!captcha.token) throw new Error("captcha token missing");
+      if (captcha.enabled && !captcha.token) throw new Error("captcha token missing");
       return createAppointment(
         {
           patient_id: patientId,
@@ -58,6 +65,7 @@ export function useBooking() {
           lng: coords?.lng,
           doctor_id: doctor.doctor_id,
           severity_esi: state.severityEsi ?? 4,
+          triage_session_id: triageSessionId,
         },
         captcha.token,
       );

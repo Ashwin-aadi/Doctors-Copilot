@@ -4,10 +4,19 @@ import type { components } from "../../types";
 export type DocumentOut = components["schemas"]["DocumentOut"];
 export type LabResult = components["schemas"]["LabResultOut"];
 
-export function startDocumentUpload(fileId: string, patientId: string): Promise<DocumentOut> {
+/**
+ * `testName` ties the report to the line of the lab order it answers, so the
+ * visit screen can show which ordered tests are still outstanding. Omitted for
+ * a loose upload that does not belong to an order.
+ */
+export function startDocumentUpload(
+  fileId: string,
+  patientId: string,
+  testName?: string | null,
+): Promise<DocumentOut> {
   return request<DocumentOut>("/api/v1/documents/upload", {
     method: "POST",
-    body: JSON.stringify({ file_id: fileId, patient_id: patientId }),
+    body: JSON.stringify({ file_id: fileId, patient_id: patientId, test_name: testName ?? null }),
   });
 }
 

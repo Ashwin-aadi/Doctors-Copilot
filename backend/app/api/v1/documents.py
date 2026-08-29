@@ -22,6 +22,9 @@ router = APIRouter(prefix="/documents", tags=["documents"])
 class DocumentUploadIn(BaseModel):
     file_id: UUID
     patient_id: UUID
+    # Which line of the lab order this report answers, when the patient
+    # uploaded it from the order itself rather than as a loose file.
+    test_name: str | None = None
 
 
 @router.post("/upload", response_model=DocumentOut)
@@ -39,10 +42,12 @@ async def upload_document(
         form = await request.form()
         upload = form.get("file")
         raw_patient_id = form.get("patient_id")
+        raw_test_name = form.get("test_name")
         if upload is None or raw_patient_id is None:
             raise ApiError("VALIDATION_FAILED", "file and patient_id are required", 422)
 
         patient_id = UUID(str(raw_patient_id))
+        test_name = str(raw_test_name) if raw_test_name else None
         data = await upload.read()
 
         settings = get_settings()
@@ -68,11 +73,14 @@ async def upload_document(
         body = DocumentUploadIn.model_validate(await request.json())
         patient_id = body.patient_id
         file_id = body.file_id
+        test_name = body.test_name
         file_obj = await db.get(FileObject, file_id)
         if file_obj is None:
             raise ApiError("NOT_FOUND", "file not found", status_code=404)
 
-    document = Document(patient_id=patient_id, file_id=file_id, status="queued")
+    document = Document(
+        patient_id=patient_id, file_id=file_id, status="queued", test_name=test_name
+    )
     db.add(document)
     await db.commit()
     await db.refresh(document)
@@ -84,6 +92,7 @@ async def upload_document(
         patient_id=document.patient_id,
         file_id=document.file_id,
         status=document.status,
+        test_name=document.test_name,
     )
 
 
@@ -124,4 +133,5 @@ async def get_document(
         text=document.text,
         labs=labs,
         error=document.error,
+        test_name=document.test_name,
     )

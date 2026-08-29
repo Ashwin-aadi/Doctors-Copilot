@@ -14,8 +14,11 @@ import { qk } from "../../lib/queryKeys";
 import { useAuthStore } from "../../store/auth";
 import { CopilotContainer } from "../copilot/CopilotContainer";
 import { UploadContainer } from "../documents/UploadContainer";
+import { LabOrderUploadPanel } from "../documents/LabOrderUploadPanel";
+import { VisitLabOrderPanel } from "../approvals/VisitLabOrderPanel";
 import { SafetyContainer } from "../safety/SafetyContainer";
 import { PrescriptionContainer } from "../prescription/PrescriptionContainer";
+import { TranscriptCard } from "./TranscriptCard";
 import { useVisit, nextState } from "./useVisit";
 import { useVisitSocket } from "./useVisitSocket";
 
@@ -26,7 +29,7 @@ export function VisitContainer() {
   const role = useAuthStore((s) => s.user?.role);
   const isClinician = role === "doctor" || role === "staff";
 
-  const { visit, stage, setStage, actions, loading, error, advance, advancing } = useVisit(visitId);
+  const { visit, setStage, actions, loading, error, advance, advancing } = useVisit(visitId);
   useVisitSocket(visitId);
 
   const patientQuery = useQuery({
@@ -56,7 +59,6 @@ export function VisitContainer() {
   const allergies = names(patientQuery.data?.allergies);
   const conditions = names(patientQuery.data?.conditions);
   const medications = names(patientQuery.data?.medications);
-  const shown = stage ?? visit.state;
   const target = nextState(visit.state);
 
   return (
@@ -82,22 +84,36 @@ export function VisitContainer() {
         </CardBody>
       </Card>
 
-      {shown === "TRIAGED" && visit.triage && <TriageResultCard result={visit.triage} />}
+      {/* The triage result and the interview behind it are the context for the
+          whole visit, not an artefact of its first stage -- a doctor reviewing
+          labs or writing a prescription still needs the rationale and what the
+          patient actually said. Both stay on screen for every stage. */}
+      {visit.triage && <TriageResultCard result={visit.triage} />}
 
-      {actions.canApproveLabOrder && visit.lab_order_id && (
-        <Card>
-          <CardHeader>
-            <CardTitle>{t("visit.labOrderPending")}</CardTitle>
-          </CardHeader>
-          <CardBody>
-            <a data-testid="visit-lab-order-link" href={`/doctor/lab-order/${visit.lab_order_id}`}>
-              {t("visit.openLabOrder")}
-            </a>
-          </CardBody>
-        </Card>
+      <TranscriptCard visitId={visit.id} />
+
+      {/* Choosing the tests is the doctor's decision and belongs next to the
+          triage that prompted it, so the order is edited and signed here
+          rather than behind a link to a separate screen. */}
+      {isClinician && (actions.canApproveLabOrder || visit.lab_order_id) && (
+        <VisitLabOrderPanel visitId={visit.id} labOrderId={visit.lab_order_id ?? null} />
       )}
 
-      {actions.canUploadDocuments && <UploadContainer patientId={visit.patient_id} />}
+      {/* Collecting the reports is the patient's job, so the signed order is
+          shown to them test by test with its own upload control -- they can
+          see what is still outstanding instead of guessing. The loose dropzone
+          stays for anything that does not belong to an order. */}
+      {actions.canUploadDocuments && visit.lab_order_id && (
+        <LabOrderUploadPanel
+          patientId={visit.patient_id}
+          labOrderId={visit.lab_order_id}
+          documents={visit.documents ?? []}
+        />
+      )}
+
+      {actions.canUploadDocuments && !visit.lab_order_id && (
+        <UploadContainer patientId={visit.patient_id} />
+      )}
 
       {actions.canBuildBrief && <CopilotContainer visitId={visit.id} />}
 

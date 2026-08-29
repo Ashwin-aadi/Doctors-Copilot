@@ -209,23 +209,87 @@ def _coverage_gaps(state: PatientState) -> list[str]:
     return gaps
 
 
+# One plain fallback per coverage category, used when the model insists on
+# repeating itself. Better a slightly blunt question than the same one twice.
+_GAP_QUESTIONS = {
+    "duration": "How many days have you had these symptoms?",
+    "exposure": "Has anyone at home or work had similar symptoms, or have you travelled recently?",
+    "constitutional": "Have you had fever, chills, or unusual tiredness?",
+    "renal": "Have you noticed any change in how often you pass urine, or its colour?",
+    "hepatic": "Have you noticed yellowing of your eyes or skin, or pain on the right side of your abdomen?",
+    "respiratory": "Are you having any cough or difficulty breathing?",
+    "neurological": "Have you had any confusion, fits, or weakness in an arm or leg?",
+}
+
+
+def _asked_questions(transcript: list[dict]) -> list[str]:
+    return [t["content"] for t in transcript if t.get("role") == "assistant"]
+
+
+def _question_key(text: str) -> str:
+    """Loose identity for a question, so a reworded repeat still counts as one."""
+    return re.sub(r"[^a-z ]", " ", text.lower()).split("?")[0].strip()
+
+
+def _is_repeat(question: str, asked: list[str]) -> bool:
+    key = _question_key(question)
+    if not key:
+        return True
+    words = set(key.split())
+    for previous in asked:
+        prev = _question_key(previous)
+        if not prev:
+            continue
+        if key == prev or key in prev or prev in key:
+            return True
+        if len(words & set(prev.split())) >= 6:
+            return True
+    return False
+
+
 async def _ask_question(transcript: list[dict]) -> str:
     state = extract_deterministic(transcript)
     gaps = _coverage_gaps(state)
+    asked = _asked_questions(transcript)
     gap_hint = (
         f"\nStill unassessed and worth asking about: {', '.join(gaps[:3])}."
         if gaps
         else ""
     )
+    # The model sees the extracted state, not the transcript, so a question the
+    # patient sidestepped stays "unknown" and gets asked again word for word.
+    # Listing what has already been put to them is what breaks that loop.
+    asked_hint = (
+        "\nAlready asked (do not repeat or rephrase any of these):\n"
+        + "\n".join(f"- {q}" for q in asked)
+        if asked
+        else ""
+    )
     prompt = (
         "Structured patient state so far:\n"
         f"{state.as_prompt_block()}\n"
-        f"{gap_hint}\n\n"
+        f"{gap_hint}"
+        f"{asked_hint}\n\n"
         "Ask the single next most useful triage question. Do not ask about anything "
-        "already listed as PRESENT or EXPLICITLY DENIED above."
+        "already listed as PRESENT or EXPLICITLY DENIED above, and do not ask "
+        "anything already listed as asked."
     )
-    question = await complete(prompt, system=TRIAGE_QUESTION_SYSTEM, max_tokens=80, temperature=0.3)
-    return question.strip()
+    question = (
+        await complete(prompt, system=TRIAGE_QUESTION_SYSTEM, max_tokens=80, temperature=0.3)
+    ).strip()
+
+    if not _is_repeat(question, asked):
+        return question
+
+    # Fall back to the first uncovered category rather than asking twice.
+    for gap in gaps:
+        candidate = _GAP_QUESTIONS.get(gap)
+        if candidate and not _is_repeat(candidate, asked):
+            return candidate
+    for candidate in _GAP_QUESTIONS.values():
+        if not _is_repeat(candidate, asked):
+            return candidate
+    return "Is there anything else about your symptoms you think the doctor should know?"
 
 
 async def start(db: AsyncSession, patient_id: UUID | None) -> TriageTurnOut:

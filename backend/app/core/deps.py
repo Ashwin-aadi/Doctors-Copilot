@@ -109,6 +109,10 @@ def require_self_or_role(param: str, *roles: str) -> Callable:
 
 async def require_captcha(x_captcha_token: str | None = Header(default=None)) -> None:
     from app.core.captcha import verify_captcha_token
+    from app.core.config import get_settings
+
+    if not get_settings().captcha_enabled:
+        return
 
     if not x_captcha_token:
         raise ApiError("CAPTCHA_REQUIRED", "X-Captcha-Token header is required", status_code=400)

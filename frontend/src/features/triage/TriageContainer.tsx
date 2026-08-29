@@ -81,7 +81,16 @@ export function TriageContainer() {
             <TriageResultCard result={result} onCitationClick={() => {}} />
             <Button
               onClick={() =>
-                navigate(ROUTES.booking, { state: { specialty: result.specialty, severityEsi: result.severity_esi } })
+                navigate(ROUTES.booking, {
+                  // The session id has to travel with the booking: it is what
+                  // ties the visit the doctor opens to this interview rather
+                  // than to whatever triage ran on this patient before.
+                  state: {
+                    specialty: result.specialty,
+                    severityEsi: result.severity_esi,
+                    triageSessionId: result.session_id,
+                  },
+                })
               }
             >
               Find a doctor for {result.specialty}

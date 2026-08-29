@@ -25,9 +25,11 @@ export function SlotPicker({ doctor, captcha, booking, bookingError, onBook }: S
           <p className="font-medium text-fg">{doctor.name}</p>
           <p className="text-sm text-fg-muted">{formatDateTimeIst(doctor.next_slot)}</p>
         </div>
-        <CaptchaWidget challenge={captcha.challenge} onToken={captcha.onToken} onRefresh={captcha.onRefresh} />
+        {captcha.enabled && (
+          <CaptchaWidget challenge={captcha.challenge} onToken={captcha.onToken} onRefresh={captcha.onRefresh} />
+        )}
         <FormError message={bookingError ?? undefined} />
-        <Button onClick={onBook} loading={booking} disabled={!captcha.token}>
+        <Button onClick={onBook} loading={booking} disabled={captcha.enabled && !captcha.token}>
           {t("booking.book")}
         </Button>
       </CardBody>

@@ -14,9 +14,12 @@ interface QueueRowProps {
   onEscalate: (entryId: string) => void;
   callingNext: boolean;
   escalating: boolean;
+  /** Opens this patient's visit. Omitted when no visit has been matched to
+   * the queue entry yet, in which case the name stays plain text. */
+  onOpen?: () => void;
 }
 
-export function QueueRow({ entry, isHead, onCallNext, onEscalate, callingNext, escalating }: QueueRowProps) {
+export function QueueRow({ entry, isHead, onCallNext, onEscalate, callingNext, escalating, onOpen }: QueueRowProps) {
   const { t } = useTranslation();
 
   return (
@@ -29,7 +32,18 @@ export function QueueRow({ entry, isHead, onCallNext, onEscalate, callingNext, e
     >
       <TableCell>{entry.position}</TableCell>
       <TableCell className="font-medium text-fg">
-        {entry.patient_name}
+        {onOpen ? (
+          <button
+            type="button"
+            className="text-primary underline underline-offset-2 hover:no-underline"
+            data-testid="queue-open-visit"
+            onClick={onOpen}
+          >
+            {entry.patient_name}
+          </button>
+        ) : (
+          entry.patient_name
+        )}
         {entry.emergency && (
           <Badge tone="critical" className="ml-2">
             <Siren className="h-3 w-3" aria-hidden="true" />

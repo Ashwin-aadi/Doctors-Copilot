@@ -28,3 +28,7 @@ class Document(Base, UUIDPKMixin):
     mean_confidence: Mapped[float | None] = mapped_column(Float, nullable=True)
     text: Mapped[str | None] = mapped_column(Text, nullable=True)
     error: Mapped[str | None] = mapped_column(String(1000), nullable=True)
+    # The ordered test this report answers, when the patient uploaded it
+    # against a line of the doctor's lab order. Null for anything brought in
+    # outside an order.
+    test_name: Mapped[str | None] = mapped_column(String(200), nullable=True)

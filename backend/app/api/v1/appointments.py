@@ -1,6 +1,7 @@
 from datetime import UTC, datetime, timedelta
 from uuid import UUID, uuid4
 
+import structlog
 from fastapi import APIRouter, Depends
 from pydantic import BaseModel
 from sqlalchemy import select
@@ -8,6 +9,7 @@ from sqlalchemy.exc import IntegrityError
 
 from app.core.deps import CurrentUser, get_current_user, require_captcha
 from app.core.errors import ApiError
+from app.db.models.clinical import TriageSession, Visit
 from app.db.models.scheduling import Appointment, QueueEntry
 from app.db.session import SessionLocal
 from app.services.queueing.pq import enqueue
@@ -17,6 +19,8 @@ from app.services.scheduling.optimizer import rank_doctors
 from app.services.scheduling.repo import booked_slots as repo_booked_slots
 from app.services.scheduling.schemas import DoctorRankedOut
 from app.services.scheduling.slots import free_slots
+
+log = structlog.get_logger(__name__)
 
 router = APIRouter(prefix="/appointments", tags=["appointments"])
 
@@ -87,6 +91,86 @@ async def list_appointments(
     async with SessionLocal() as session:
         rows = (await session.execute(stmt)).scalars().all()
         return [_appointment_dict(a) for a in rows]
+
+
+async def _ensure_triage_finalized(triage_session_id: UUID) -> None:
+    """A patient can book the moment they are happy with the interview, without
+    running it to the eight-question limit -- in which case `finalize` has never
+    run and the session carries a transcript but no result. The doctor would
+    then open the chart to a conversation with no severity, no rationale and no
+    suggested labs. Finalizing here is what makes the booking produce a
+    complete record.
+    """
+    from app.rag.triage_rag import finalize
+
+    async with SessionLocal() as session:
+        record = await session.get(TriageSession, triage_session_id)
+        if record is None or record.result:
+            return
+        if not (record.transcript or []):
+            return
+        try:
+            await finalize(session, triage_session_id)
+        except Exception as exc:  # noqa: BLE001
+            # A failed finalize must not cost the patient their appointment --
+            # the booking is already committed by this point.
+            log.warning(
+                "triage_finalize_on_booking_failed",
+                session_id=str(triage_session_id),
+                error=str(exc),
+            )
+
+
+async def _open_visit(
+    *, patient_id: UUID, doctor_id: UUID, triage_session_id: UUID | None, now: datetime
+) -> UUID:
+    """Re-use the patient's visit only while it is still at TRIAGED -- that is
+    a booking that has not started any clinical work yet, so pointing it at
+    this doctor and this triage session is right. A visit that has moved on
+    (labs ordered, results in, brief built) belongs to an earlier episode of
+    care; a new booking opens a new record rather than reopening that one and
+    showing the doctor a chart that does not match what the patient just said.
+    """
+    if triage_session_id:
+        await _ensure_triage_finalized(triage_session_id)
+
+    async with SessionLocal() as session:
+        existing = (
+            await session.execute(
+                select(Visit)
+                .where(Visit.patient_id == patient_id, Visit.state == "TRIAGED")
+                .order_by(Visit.created_at.desc())
+            )
+        ).scalars().first()
+
+        # Never let a booking inherit an earlier interview. If this booking
+        # carries no triage session and the open visit already has one, that
+        # visit belongs to a different conversation -- reusing it would show
+        # the doctor a transcript and rationale the patient never gave for
+        # this appointment. Open a fresh record instead.
+        if existing is not None and not triage_session_id and existing.triage_session_id:
+            existing = None
+
+        if existing is not None:
+            existing.doctor_id = doctor_id
+            if triage_session_id:
+                existing.triage_session_id = triage_session_id
+            existing.updated_at = now
+            await session.commit()
+            return existing.id
+
+        visit = Visit(
+            id=uuid4(),
+            patient_id=patient_id,
+            doctor_id=doctor_id,
+            state="TRIAGED",
+            triage_session_id=triage_session_id,
+            created_at=now,
+            updated_at=now,
+        )
+        session.add(visit)
+        await session.commit()
+        return visit.id
 
 
 @router.post("", status_code=201)
@@ -177,7 +261,23 @@ async def create_appointment(
     )
     queue_out: QueueEntryOut = await enqueue(queue_entry, now=now)
 
-    return {"appointment": _appointment_dict(appt), "doctor": chosen, "queue": queue_out}
+    # Open the clinical record for this booking. Without it the doctor gets a
+    # queue row with nothing behind it -- no triage, no transcript, nowhere to
+    # order labs. The visit carries the triage session so the chart opens on
+    # what the patient actually said.
+    visit_id = await _open_visit(
+        patient_id=body.patient_id,
+        doctor_id=chosen.doctor_id,
+        triage_session_id=body.triage_session_id,
+        now=now,
+    )
+
+    return {
+        "appointment": _appointment_dict(appt),
+        "doctor": chosen,
+        "queue": queue_out,
+        "visit_id": visit_id,
+    }
 
 
 @router.post("/simulate", response_model=list[DoctorRankedOut])

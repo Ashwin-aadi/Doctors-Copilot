@@ -27,6 +27,9 @@ export interface LabOrderApprovalPageProps {
   onChange: (items: LabOrderItem[]) => void;
   onApprove: (captchaToken: string) => void;
   captchaChallenge: CaptchaChallenge | null;
+  /** When the server is not enforcing the captcha, approving is a single
+   * confirmation step instead of a verification puzzle. */
+  captchaRequired?: boolean;
   onCaptchaToken: (token: string) => void;
   onCaptchaRefresh: () => void;
   approving?: boolean;
@@ -35,8 +38,8 @@ export interface LabOrderApprovalPageProps {
   onRetry?: () => void;
 }
 
-function costFor(item: LabOrderItem, catalog: LabCatalogItem[]): number {
-  return catalog.find((c) => c.name === item.name)?.costInr ?? 0;
+function costFor(item: LabOrderItem, catalog: LabCatalogItem[]): number | null {
+  return catalog.find((c) => c.name === item.name)?.costInr ?? null;
 }
 
 function diffFor(item: LabOrderItem, original: LabOrderItem[] | undefined): LabOrderDiff {
@@ -54,6 +57,7 @@ export function LabOrderApprovalPage({
   onChange,
   onApprove,
   captchaChallenge,
+  captchaRequired = true,
   onCaptchaToken,
   onCaptchaRefresh,
   approving,
@@ -66,7 +70,7 @@ export function LabOrderApprovalPage({
   const [addQuery, setAddQuery] = useState("");
 
   const total = useMemo(
-    () => (order ? order.items.reduce((sum, item) => sum + costFor(item, catalog), 0) : 0),
+    () => (order ? order.items.reduce((sum, item) => sum + (costFor(item, catalog) ?? 0), 0) : 0),
     [order, catalog],
   );
 
@@ -124,8 +128,8 @@ export function LabOrderApprovalPage({
   }
 
   function handleApproveConfirm() {
-    if (!captchaToken) return;
-    onApprove(captchaToken);
+    if (captchaRequired && !captchaToken) return;
+    onApprove(captchaToken ?? "");
   }
 
   return (
@@ -135,14 +139,23 @@ export function LabOrderApprovalPage({
         {order.locked ? <Badge tone="normal">Approved</Badge> : <Badge tone="moderate">Draft</Badge>}
       </CardHeader>
       <CardBody className="flex flex-col gap-4">
-        {order.locked && approverName && approverNmc && order.approved_at && (
-          <LockedRecordBanner
-            approverName={approverName}
-            nmcRegNo={approverNmc}
-            approvedAt={order.approved_at}
-            contentHash={contentHash ?? order.id}
-          />
-        )}
+        {order.locked &&
+          (approverName && approverNmc && order.approved_at ? (
+            <LockedRecordBanner
+              approverName={approverName}
+              nmcRegNo={approverNmc}
+              approvedAt={order.approved_at}
+              contentHash={contentHash ?? order.id}
+            />
+          ) : (
+            // The full banner needs the approver's NMC registration, which
+            // isn't on every account. The record is still locked either way,
+            // and saying so matters more than the provenance detail.
+            <div className="flex items-start gap-3 rounded-md border border-normal/30 bg-normal-soft p-3 text-sm text-fg">
+              <ShieldCheck className="mt-0.5 h-4 w-4 shrink-0 text-normal" aria-hidden="true" />
+              <p>Approved and locked — create an amendment instead.</p>
+            </div>
+          ))}
 
         <ul role="list" aria-label="Recommended tests" className="flex flex-col gap-2" data-testid="lab-order-items">
           {order.items.length === 0 && <EmptyState title="No tests recommended yet" />}
@@ -183,24 +196,34 @@ export function LabOrderApprovalPage({
           </div>
         )}
 
-        <div className="flex items-center justify-between border-t border-border pt-3">
-          <span className="text-sm text-fg-muted">Order total</span>
-          <span className="text-lg font-semibold tabular-nums text-fg">{formatInr(total)}</span>
-        </div>
+        {total > 0 && (
+          <div className="flex items-center justify-between border-t border-border pt-3">
+            <span className="text-sm text-fg-muted">Order total</span>
+            <span className="text-lg font-semibold tabular-nums text-fg">{formatInr(total)}</span>
+          </div>
+        )}
 
         {!order.locked && (
-          <Button onClick={() => setModalOpen(true)} leftIcon={<ShieldCheck className="h-4 w-4" />}>
+          <Button
+            onClick={() => (captchaRequired ? setModalOpen(true) : onApprove(""))}
+            loading={!captchaRequired && approving}
+            leftIcon={<ShieldCheck className="h-4 w-4" />}
+          >
             Approve lab order
           </Button>
         )}
       </CardBody>
 
       <Modal
-        open={modalOpen}
+        open={modalOpen && captchaRequired}
         onClose={() => setModalOpen(false)}
         title="Verify to approve"
         footer={
-          <Button onClick={handleApproveConfirm} disabled={!captchaToken} loading={approving}>
+          <Button
+            onClick={handleApproveConfirm}
+            disabled={captchaRequired && !captchaToken}
+            loading={approving}
+          >
             Confirm approval
           </Button>
         }

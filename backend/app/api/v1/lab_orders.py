@@ -17,7 +17,12 @@ from app.core.errors import ApiError
 from app.db.models.clinical import LabOrder, Visit
 from app.db.models.patient import Patient
 from app.db.session import SessionLocal
-from app.services.rules.lab_rules import extract_symptom_keywords, merge_with_rag, recommend_labs
+from app.services.rules.lab_rules import (
+    catalogue,
+    extract_symptom_keywords,
+    merge_with_rag,
+    recommend_labs,
+)
 
 router = APIRouter(prefix="/lab-orders", tags=["lab-orders"])
 
@@ -128,6 +133,12 @@ async def recommend_lab_order(
             locked=False,
         )
         session.add(order)
+        # Point the visit at its current draft so the doctor's visit screen can
+        # link straight through to the approval page. A visit only ever has one
+        # order open at a time; a re-recommend supersedes the previous draft.
+        visit_row = await session.get(Visit, body.visit_id)
+        if visit_row is not None:
+            visit_row.lab_order_id = order.id
         await session.commit()
         order_id = order.id
 
@@ -138,6 +149,15 @@ async def recommend_lab_order(
         "locked": False,
         "items": [item.model_dump(mode="json") for item in merged],
     }
+
+
+@router.get("/catalog")
+async def lab_catalog(_user: CurrentUser = Depends(get_current_user)) -> list[dict]:
+    """The tests a doctor may add to an order, straight from the rule pack --
+    so the picker can never offer something the recommender itself does not
+    recognise.
+    """
+    return [dict(item) for item in catalogue()]
 
 
 @router.get("/{lab_order_id}")

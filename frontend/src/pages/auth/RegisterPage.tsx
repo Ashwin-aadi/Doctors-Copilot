@@ -23,6 +23,9 @@ export interface RegisterPageProps {
   error?: string | null;
   captchaChallenge: CaptchaChallenge | null;
   captchaToken: string | null;
+  /** False when the server is not enforcing the captcha, so the step is not
+   * shown and submission is not gated on solving it. */
+  captchaRequired?: boolean;
   onCaptchaToken: (token: string) => void;
   onCaptchaRefresh: () => void;
 }
@@ -33,6 +36,7 @@ export function RegisterPage({
   error,
   captchaChallenge,
   captchaToken,
+  captchaRequired = true,
   onCaptchaToken,
   onCaptchaRefresh,
 }: RegisterPageProps) {
@@ -78,15 +82,17 @@ export function RegisterPage({
 
           <PasswordField value={password} onChange={setPassword} />
 
-          <CaptchaWidget
-            challenge={captchaChallenge}
-            onToken={onCaptchaToken}
-            onRefresh={onCaptchaRefresh}
-          />
+          {captchaRequired && (
+            <CaptchaWidget
+              challenge={captchaChallenge}
+              onToken={onCaptchaToken}
+              onRefresh={onCaptchaRefresh}
+            />
+          )}
 
           <FormError message={error} />
 
-          <Button type="submit" loading={loading} disabled={!captchaToken}>
+          <Button type="submit" loading={loading} disabled={captchaRequired && !captchaToken}>
             Create account
           </Button>
         </form>

@@ -15,6 +15,12 @@ export interface UploadItem {
   progress: number;
   documentId: string | null;
   errorCode: ErrorCode | null;
+  /** The server's own explanation, which for a rejected upload says which
+   * rule the file broke ("unsupported file type", "20MB limit"). Far more
+   * use to the person holding the file than a generic failure code. */
+  errorMessage: string | null;
+  /** The ordered test this file was uploaded against, if any. */
+  testName: string | null;
 }
 
 /**
@@ -50,7 +56,7 @@ export function useUpload(patientId: string | null) {
           return;
         }
 
-        const doc = await startDocumentUpload(result.id, forPatientId);
+        const doc = await startDocumentUpload(result.id, forPatientId, item.testName);
         updateItem(item.clientId, { status: "uploaded", documentId: doc.id, progress: 100 });
         void queryClient.invalidateQueries({ queryKey: qk.documents(forPatientId) });
       } catch (err) {
@@ -62,6 +68,7 @@ export function useUpload(patientId: string | null) {
         updateItem(item.clientId, {
           status: "failed",
           errorCode: err instanceof ApiError ? err.code : "INTERNAL",
+          errorMessage: err instanceof ApiError ? err.message : null,
         });
       }
     },
@@ -69,7 +76,7 @@ export function useUpload(patientId: string | null) {
   );
 
   const addFiles = useCallback(
-    (fileList: FileList | null) => {
+    (fileList: FileList | null, testName?: string | null) => {
       if (!fileList || fileList.length === 0 || !patientId) return;
       const newItems: UploadItem[] = Array.from(fileList).map((file) => ({
         clientId: crypto.randomUUID(),
@@ -78,6 +85,8 @@ export function useUpload(patientId: string | null) {
         progress: 0,
         documentId: null,
         errorCode: null,
+        errorMessage: null,
+        testName: testName ?? null,
       }));
       setItems((prev) => [...prev, ...newItems]);
       newItems.forEach((item) => void uploadOne(item, patientId));

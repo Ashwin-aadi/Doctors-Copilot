@@ -5,6 +5,9 @@ import { qk } from "../lib/queryKeys";
 import type { CaptchaChallenge } from "../components/forms/CaptchaWidget";
 
 export interface UseCaptchaResult {
+  /** False when the server is not enforcing the captcha; screens skip the
+   * verification step entirely rather than showing a no-op widget. */
+  enabled: boolean;
   challenge: CaptchaChallenge | null;
   token: string | null;
   onToken: (token: string) => void;
@@ -29,5 +32,12 @@ export function useCaptcha(): UseCaptchaResult {
 
   const reset = onRefresh;
 
-  return { challenge: data ?? null, token, onToken: setToken, onRefresh, reset };
+  return {
+    enabled: data?.enabled !== false,
+    challenge: data ?? null,
+    token,
+    onToken: setToken,
+    onRefresh,
+    reset,
+  };
 }

@@ -17,10 +17,10 @@ class Visit(Base, UUIDPKMixin):
     )
     state: Mapped[str] = mapped_column(String(32), default="TRIAGED")
     triage_session_id: Mapped[uuid.UUID | None] = mapped_column(
-        UUID(as_uuid=True), ForeignKey("triage_sessions.id"), nullable=True
+        UUID(as_uuid=True), ForeignKey("triage_sessions.id", ondelete="SET NULL"), nullable=True
     )
     lab_order_id: Mapped[uuid.UUID | None] = mapped_column(
-        UUID(as_uuid=True), ForeignKey("lab_orders.id"), nullable=True
+        UUID(as_uuid=True), ForeignKey("lab_orders.id", ondelete="SET NULL"), nullable=True
     )
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))

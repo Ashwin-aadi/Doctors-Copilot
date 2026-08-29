@@ -23,8 +23,10 @@ export function RegisterContainer() {
 
   const mutation = useMutation({
     mutationFn: (values: RegisterValues) => {
-      if (!captcha.token) throw new Error("captcha token missing");
-      return register({ email: values.email, password: values.password, role: values.role, phone: "", name: "" }, captcha.token);
+      // The server may not be enforcing the captcha; sending an empty token
+      // then is correct, and blocking on one the user was never shown is not.
+      if (captcha.enabled && !captcha.token) throw new Error("captcha token missing");
+      return register({ email: values.email, password: values.password, role: values.role, phone: "", name: "" }, captcha.token ?? "");
     },
     onSuccess: (res) => {
       setSession(
@@ -55,6 +57,7 @@ export function RegisterContainer() {
       error={error}
       captchaChallenge={captcha.challenge}
       captchaToken={captcha.token}
+      captchaRequired={captcha.enabled}
       onCaptchaToken={captcha.onToken}
       onCaptchaRefresh={captcha.onRefresh}
     />
