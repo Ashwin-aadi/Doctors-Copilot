@@ -25,6 +25,14 @@ export function getDocument(documentId: string): Promise<DocumentOut> {
 }
 
 /**
+ * Withdraw an uploaded report. The extracted lab values go with it, so a
+ * document the patient retracts stops informing the doctor's brief.
+ */
+export function deleteDocument(documentId: string): Promise<void> {
+  return request<void>(`/api/v1/documents/${documentId}`, { method: "DELETE" });
+}
+
+/**
  * Not yet implemented on the backend (see docs/DECISIONS.md, B2.4):
  * `/api/v1/documents/{document_id}` only exposes GET today, so this 404s
  * until a correction endpoint ships. Callers must treat that as a

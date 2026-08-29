@@ -45,6 +45,46 @@ async def test_upload_multipart_creates_queued_document(client, auth_headers):
     assert body["labs"] == []
 
 
+async def test_delete_document_removes_it(client, auth_headers):
+    """A patient can withdraw a report they uploaded by mistake, and it stops
+    being readable straight away."""
+    created = await client.post(
+        "/api/v1/documents/upload",
+        headers=auth_headers("doctor"),
+        data={"patient_id": SEEDED_PATIENT_ID, "test_name": "CBC"},
+        files=_cbc_file(),
+    )
+    document_id = created.json()["id"]
+    assert created.json()["test_name"] == "CBC"
+
+    resp = await client.delete(f"/api/v1/documents/{document_id}", headers=auth_headers("doctor"))
+    assert resp.status_code == 204, resp.text
+
+    gone = await client.get(f"/api/v1/documents/{document_id}", headers=auth_headers("doctor"))
+    assert gone.status_code == 404
+
+
+async def test_delete_document_requires_auth(client, auth_headers):
+    created = await client.post(
+        "/api/v1/documents/upload",
+        headers=auth_headers("doctor"),
+        data={"patient_id": SEEDED_PATIENT_ID},
+        files=_cbc_file(),
+    )
+    document_id = created.json()["id"]
+
+    resp = await client.delete(f"/api/v1/documents/{document_id}")
+    assert resp.status_code == 401
+    # ...and it is still there afterwards.
+    still = await client.get(f"/api/v1/documents/{document_id}", headers=auth_headers("doctor"))
+    assert still.status_code == 200
+
+
+async def test_delete_unknown_document_404s(client, auth_headers):
+    resp = await client.delete(f"/api/v1/documents/{uuid4()}", headers=auth_headers("doctor"))
+    assert resp.status_code == 404
+
+
 async def test_get_unknown_document_404s(client, auth_headers):
     resp = await client.get(f"/api/v1/documents/{uuid4()}", headers=auth_headers("doctor"))
     assert resp.status_code == 404

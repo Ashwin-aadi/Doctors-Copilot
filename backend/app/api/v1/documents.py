@@ -2,21 +2,25 @@ import hashlib
 from pathlib import Path
 from uuid import UUID, uuid4
 
-from fastapi import APIRouter, Depends, Request
+from fastapi import APIRouter, Depends, Request, Response
 from pydantic import BaseModel
-from sqlalchemy import select
+from sqlalchemy import delete, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import get_settings
 from app.core.deps import CurrentUser, get_current_user
 from app.core.errors import ApiError
+from app.core.logging import get_logger
 from app.db.models.clinical import LabResult
 from app.db.models.document import Document, FileObject
+from app.db.models.patient import Patient
 from app.db.session import get_db
 from app.schemas.document import DocumentOut, LabResultOut
 from app.workers.queue import enqueue_process_document
 
 router = APIRouter(prefix="/documents", tags=["documents"])
+
+log = get_logger(__name__)
 
 
 class DocumentUploadIn(BaseModel):
@@ -94,6 +98,81 @@ async def upload_document(
         status=document.status,
         test_name=document.test_name,
     )
+
+
+async def _authorize_document_access(
+    db: AsyncSession, user: CurrentUser, patient_id: UUID
+) -> None:
+    """Who may act on a patient's document: the patient themself, a doctor with
+    a visit/appointment relationship to them, or staff/admin. Mirrors the
+    upload gate in `app/api/v1/files.py` -- a wrong photo is the patient's to
+    withdraw, so this is deliberately not doctor-only.
+    """
+    if user.role in ("staff", "admin"):
+        return
+    if user.role == "patient":
+        owned = (
+            await db.execute(select(Patient.id).where(Patient.user_id == user.id))
+        ).scalar_one_or_none()
+        if owned is not None and owned == patient_id:
+            return
+        raise ApiError("AUTH_FORBIDDEN", "not permitted", status_code=403)
+    if user.role == "doctor":
+        from app.api.v1.patients import _doctor_has_relationship
+
+        if await _doctor_has_relationship(db, user.id, patient_id):
+            return
+    raise ApiError("AUTH_FORBIDDEN", "not permitted", status_code=403)
+
+
+@router.delete("/{document_id}", status_code=204)
+async def delete_document(
+    document_id: UUID,
+    db: AsyncSession = Depends(get_db),
+    current_user: CurrentUser = Depends(get_current_user),
+) -> Response:
+    """Withdraw an uploaded report: the wrong file, the wrong patient's report,
+    a scan too poor to read. Removes the extracted lab values with it -- values
+    read out of a document the patient has retracted must not keep informing
+    the brief -- and the stored file when nothing else references it.
+    """
+    document = await db.get(Document, document_id)
+    if document is None:
+        raise ApiError("NOT_FOUND", "document not found", status_code=404)
+    await _authorize_document_access(db, current_user, document.patient_id)
+
+    patient_id = document.patient_id
+    file_id = document.file_id
+    await db.execute(delete(LabResult).where(LabResult.document_id == document.id))
+    await db.delete(document)
+    await db.flush()
+
+    # The same bytes can back more than one document (uploads dedupe on
+    # sha256), so the file only goes when the last reference to it does.
+    others = (
+        await db.execute(select(Document.id).where(Document.file_id == file_id).limit(1))
+    ).scalar_one_or_none()
+    if others is None:
+        file_obj = await db.get(FileObject, file_id)
+        if file_obj is not None:
+            path = Path(file_obj.path)
+            await db.delete(file_obj)
+            if path.exists():
+                path.unlink(missing_ok=True)
+
+    await db.commit()
+
+    # The graph is a projection of Postgres, so it has to be rebuilt once the
+    # rows are gone -- otherwise the withdrawn report's values keep reaching
+    # the copilot brief through `patient_context`.
+    try:
+        from app.kg.ingest import sync_patient
+
+        await sync_patient(patient_id)
+    except Exception as exc:  # noqa: BLE001
+        log.warning("kg_resync_after_delete_failed", patient_id=str(patient_id), error=str(exc))
+
+    return Response(status_code=204)
 
 
 @router.get("/{document_id}", response_model=DocumentOut)
