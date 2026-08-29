@@ -402,7 +402,12 @@ async def assemble(db: AsyncSession, visit_id: UUID, *, with_brief: bool = True)
         try:
             from app.rag.clinical_rag import build_brief
 
-            brief = await build_brief(visit.id, db)
+            # Read, never generate. This runs on every page load and every
+            # socket update, and building here cost the caller a full
+            # retrieval and generation -- around twenty seconds -- which made
+            # advancing a visit feel broken. `POST /copilot/brief` builds it;
+            # this serves what that produced.
+            brief = await build_brief(visit.id, db, allow_build=False)
         except Exception as exc:  # noqa: BLE001
             log.warning("brief_assembly_failed", visit_id=str(visit.id), error=str(exc))
 

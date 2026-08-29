@@ -24,6 +24,7 @@ from app.rag.retriever import hybrid
 from app.rag.store import Hit
 from app.rag.tool_bridge import flag_labs
 from app.schemas.common import Citation
+from app.core.cache import fingerprint, get_json, set_json
 from app.schemas.copilot import CopilotBrief
 
 log = get_logger(__name__)
@@ -151,8 +152,65 @@ def _ungrounded_summary(measured_labs: list[dict], triage: dict | None) -> str:
     return " ".join(parts)
 
 
-async def build_brief(visit_id: UUID, db: AsyncSession) -> CopilotBrief:
+# A grounded brief costs a full retrieval plus a generation -- tens of seconds.
+# It is also stable: nothing about it changes until a new lab result lands or
+# the visit moves. So it is cached against a fingerprint of exactly those
+# inputs, and the TTL is only a backstop.
+_BRIEF_TTL_SECONDS = 6 * 60 * 60
+
+
+async def _brief_cache_key(db: AsyncSession, visit: Visit) -> str:
+    """Keyed on what the brief was actually derived from: the set of lab
+    results behind it.
+
+    Deliberately NOT keyed on the visit's state. The brief is built while the
+    visit sits at RESULTS_UPLOADED and read back after it advances to
+    BRIEF_READY; including the state meant advancing invalidated the brief the
+    doctor had just waited a minute for. A new report changes the key, a stage
+    change does not.
+    """
+    rows = (
+        await db.execute(
+            select(LabResult.id, LabResult.observed_at)
+            .where(LabResult.patient_id == visit.patient_id)
+            .order_by(LabResult.id)
+        )
+    ).all()
+    return "brief:{}:{}".format(
+        visit.id,
+        fingerprint(len(rows), *(f"{r[0]}@{r[1]}" for r in rows)),
+    )
+
+
+async def build_brief(
+    visit_id: UUID, db: AsyncSession, *, allow_build: bool = True
+) -> CopilotBrief | None:
+    """The cited clinical brief for a visit.
+
+    `allow_build=False` returns the cached brief or None without generating
+    one. Assembling a visit uses that: `GET /visits/{id}` runs on every socket
+    update and every page load, and paying for a generation there made the
+    whole workspace feel broken. The brief has its own endpoint, which builds.
+    """
+
     visit = await _load_visit(db, visit_id)
+    cache_key = await _brief_cache_key(db, visit)
+
+    cached = await get_json(cache_key)
+    if cached is not None:
+        try:
+            return CopilotBrief.model_validate(cached)
+        except Exception:  # noqa: BLE001
+            pass
+    if not allow_build:
+        return None
+
+    return await _generate_brief(visit_id, db, visit, cache_key)
+
+
+async def _generate_brief(
+    visit_id: UUID, db: AsyncSession, visit: Visit, cache_key: str
+) -> CopilotBrief:
     patient = await db.get(Patient, visit.patient_id)
     if patient is None:
         raise ApiError("NOT_FOUND", "patient not found for visit", status_code=404)
@@ -263,6 +321,9 @@ async def build_brief(visit_id: UUID, db: AsyncSession) -> CopilotBrief:
     )
 
     if not hits:
+        # Not cached: retrieval returning nothing is a transient corpus or
+        # infrastructure problem, and storing that for six hours would keep
+        # showing the failure long after it cleared.
         return CopilotBrief(
             visit_id=visit_id,
             summary=_ungrounded_summary(measured_labs, triage),
@@ -333,10 +394,19 @@ async def build_brief(visit_id: UUID, db: AsyncSession) -> CopilotBrief:
         confidence=confidence,
     )
 
+    # Only a grounded brief is worth keeping. An ungrounded one is the product
+    # of a rate-limited or unreachable model, and caching it would leave the
+    # doctor staring at the failure long after the model came back.
+    if kept_citations:
+        await set_json(
+            cache_key, brief.model_dump(mode="json"), ttl_seconds=_BRIEF_TTL_SECONDS
+        )
+
     log.info(
         "clinical_brief_built",
         visit_id=str(visit_id),
         citations=len(kept_citations),
         confidence=confidence,
+        cached=bool(kept_citations),
     )
     return brief
