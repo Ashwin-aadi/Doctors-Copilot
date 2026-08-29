@@ -14,6 +14,22 @@ export interface VisitStepperProps {
   className?: string;
 }
 
+type StagePhase = "done" | "current" | "previewed" | "upcoming";
+
+const MARKER_CLASS: Record<StagePhase, string> = {
+  done: "border-primary bg-primary text-primary-fg",
+  current: "border-primary bg-surface text-primary",
+  previewed: "border-primary/40 bg-surface text-primary",
+  upcoming: "border-border bg-surface text-fg-subtle",
+};
+
+const CONNECTOR_CLASS: Record<StagePhase, string> = {
+  done: "bg-primary",
+  current: "bg-primary",
+  previewed: "bg-primary/35",
+  upcoming: "bg-border",
+};
+
 /**
  * The spine of the visit workspace.
  *
@@ -36,14 +52,20 @@ export function VisitStepper({ state, viewing, onStageClick, className }: VisitS
       )}
     >
       {VISIT_STATES.map((s, i) => {
-        const done = i < currentIndex;
-        const current = i === currentIndex;
+        // One position on the track per stage. A stage past the visit's own
+        // state but not past what is on screen is "previewed": the user walked
+        // forward to look at it. Drawing that stretch as untouched track made
+        // the stepper look stuck at the visit's own state.
+        const phase: StagePhase =
+          i < currentIndex
+            ? "done"
+            : i === currentIndex
+              ? "current"
+              : i <= viewingIndex
+                ? "previewed"
+                : "upcoming";
+        // Orthogonal to the phase -- any stage can be the one on screen.
         const viewed = i === viewingIndex;
-        const reachable = i <= currentIndex;
-        // Stages between where the visit is and what is on screen: the user
-        // walked forward to preview them. Drawing that stretch as untouched
-        // track made the stepper look stuck at the visit's own state.
-        const previewed = i > currentIndex && i <= viewingIndex;
         const label = VISIT_STATE_LABELS[s];
 
         const marker = (
@@ -51,14 +73,11 @@ export function VisitStepper({ state, viewing, onStageClick, className }: VisitS
             aria-hidden="true"
             className={cn(
               "flex h-7 w-7 shrink-0 items-center justify-center rounded-full border-2 text-[11px] font-semibold transition-colors",
-              done && "border-primary bg-primary text-primary-fg",
-              current && "border-primary bg-surface text-primary",
-              previewed && "border-primary/40 bg-surface text-primary",
-              !done && !current && !previewed && "border-border bg-surface text-fg-subtle",
+              MARKER_CLASS[phase],
               viewed && "ring-2 ring-ring ring-offset-2 ring-offset-surface",
             )}
           >
-            {done ? <Check className="h-3.5 w-3.5" /> : i + 1}
+            {phase === "done" ? <Check className="h-3.5 w-3.5" /> : i + 1}
           </span>
         );
 
@@ -67,7 +86,7 @@ export function VisitStepper({ state, viewing, onStageClick, className }: VisitS
             <span
               className={cn(
                 "truncate text-xs font-medium",
-                reachable || previewed ? "text-fg" : "text-fg-subtle",
+                phase === "upcoming" ? "text-fg-subtle" : "text-fg",
                 viewed && "font-semibold text-primary",
               )}
             >
@@ -91,22 +110,18 @@ export function VisitStepper({ state, viewing, onStageClick, className }: VisitS
         return (
           <li
             key={s}
-            aria-current={current ? "step" : undefined}
+            aria-current={phase === "current" ? "step" : undefined}
             className="relative flex min-w-0 flex-1 items-center md:flex-col"
           >
-            {/* Connector, drawn behind the markers. It is filled only as far as
-                the visit has actually reached. */}
+            {/* Connector, drawn behind the markers. Solid as far as the visit
+                has actually reached, faded across a previewed stretch. */}
             {i > 0 && (
               <span
                 aria-hidden="true"
                 className={cn(
                   "absolute hidden h-0.5 md:block",
                   "left-[-50%] right-[50%] top-[13px]",
-                  i <= currentIndex
-                    ? "bg-primary"
-                    : i <= viewingIndex
-                      ? "bg-primary/35"
-                      : "bg-border",
+                  CONNECTOR_CLASS[phase],
                 )}
               />
             )}

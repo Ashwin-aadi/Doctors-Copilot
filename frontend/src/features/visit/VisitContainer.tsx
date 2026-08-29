@@ -2,10 +2,10 @@ import { useState } from "react";
 import { useParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { useQuery } from "@tanstack/react-query";
-import { ArrowRight, History } from "lucide-react";
+import { ArrowRight, FastForward, History } from "lucide-react";
 import { Card, CardHeader, CardTitle, CardBody } from "../../components/ui/Card";
 import { Button } from "../../components/ui/Button";
-import { Badge } from "../../components/ui/Badge";
+import { Badge, type BadgeTone } from "../../components/ui/Badge";
 import { Modal } from "../../components/ui/Modal";
 import { Skeleton } from "../../components/ui/Skeleton";
 import { ErrorState } from "../../components/ui/ErrorState";
@@ -15,7 +15,6 @@ import { VisitStepper } from "../../components/timeline/VisitStepper";
 import { VISIT_STATES, VISIT_STATE_LABELS } from "../../components/timeline/visitStates";
 import { ApiError } from "../../lib/api/errors";
 import { getPatient } from "../../lib/api/endpoints/patients";
-import { buildBrief } from "../../lib/api/endpoints/copilot";
 import { qk } from "../../lib/queryKeys";
 import { useAuthStore } from "../../store/auth";
 import { CopilotContainer } from "../copilot/CopilotContainer";
@@ -33,6 +32,14 @@ import { TranscriptCard } from "./TranscriptCard";
 import { useVisit, nextState } from "./useVisit";
 import type { VisitState } from "../../lib/api/endpoints/visits";
 import { useVisitSocket } from "./useVisitSocket";
+
+// How the stage on screen relates to the stage the visit is actually at,
+// keyed by the sign of their difference. No entry for 0: the two agree and the
+// header says nothing.
+const DRIFT: Record<number, { tone: BadgeTone; key: string; icon: typeof History } | undefined> = {
+  [-1]: { tone: "info", key: "visit.viewingPast", icon: History },
+  [1]: { tone: "moderate", key: "visit.viewingAhead", icon: FastForward },
+};
 
 /**
  * One stage, one job.
@@ -57,21 +64,6 @@ export function VisitContainer() {
   // is confirmed rather than fired on a stray click in the stepper.
   const [pendingRewind, setPendingRewind] = useState<VisitState | null>(null);
   useVisitSocket(visitId);
-
-  // The brief shown on this screen is built by its own panel, not carried on
-  // the visit record -- `visit.brief` stays null until the visit is advanced.
-  // Reading the same cache here is what lets the medicine suggestions see the
-  // differentials the doctor is looking at. Same query key, so this rides the
-  // panel's fetch rather than starting a second expensive build, and it is
-  // only enabled on the two stages that actually use it.
-  const briefStage = stage === "BRIEF_READY" || stage === "CONSULTED";
-  const briefQuery = useQuery({
-    queryKey: qk.brief(visitId ?? "none"),
-    queryFn: () => buildBrief(visitId as string),
-    enabled: Boolean(visitId) && briefStage,
-    retry: false,
-    staleTime: Infinity,
-  });
 
   const patientQuery = useQuery({
     queryKey: qk.patient(visit?.patient_id ?? "none"),
@@ -114,19 +106,18 @@ export function VisitContainer() {
   // stepper deep-links backwards without moving the visit.
   const view: VisitState = stage ?? visit.state;
   const label = VISIT_STATE_LABELS[view];
-  const viewedIndex = VISIT_STATES.indexOf(view);
   const liveIndex = VISIT_STATES.indexOf(visit.state);
-  const viewingPast = viewedIndex < liveIndex;
-  // Walking forward past the visit's own state is a preview, not progress, and
-  // saying so is what stops the stepper reading as stuck.
-  const viewingAhead = viewedIndex > liveIndex;
+  // Where the view sits relative to the visit itself. Walking forward past the
+  // visit's own state is a preview, not progress, and saying so is what stops
+  // the header reading as if the visit had moved.
+  const drift = DRIFT[Math.sign(VISIT_STATES.indexOf(view) - liveIndex)];
   // Differentials are the closest thing to a working diagnosis the visit has;
-  // the patient's own recorded conditions stand in until a brief exists.
-  const differentials =
-    briefQuery.data?.differentials?.length
-      ? briefQuery.data.differentials
-      : (visit.brief?.differentials ?? []);
-  const briefConditions = differentials.length ? differentials : conditions;
+  // the patient's own recorded conditions stand in until a brief exists. The
+  // visit payload carries the brief from BRIEF_READY onwards, so the medicine
+  // suggestions read it from there rather than paying for a second build.
+  const briefConditions = visit.brief?.differentials?.length
+    ? visit.brief.differentials
+    : conditions;
 
   return (
     <div className="page">
@@ -135,12 +126,10 @@ export function VisitContainer() {
         titleAlt={label.hi}
         description={t(`visit.stageHelp.${view}`, { defaultValue: "" }) || undefined}
         meta={
-          viewingPast || viewingAhead ? (
-            <Badge tone={viewingPast ? "info" : "moderate"}>
-              <History className="h-3 w-3" aria-hidden="true" />
-              {t(viewingPast ? "visit.viewingPast" : "visit.viewingAhead", {
-                state: VISIT_STATE_LABELS[visit.state].en,
-              })}
+          drift ? (
+            <Badge tone={drift.tone}>
+              <drift.icon className="h-3 w-3" aria-hidden="true" />
+              {t(drift.key, { state: VISIT_STATE_LABELS[visit.state].en })}
             </Badge>
           ) : undefined
         }
@@ -168,7 +157,7 @@ export function VisitContainer() {
             state={visit.state}
             viewing={view}
             onStageClick={(clicked) => {
-              const isEarlier = VISIT_STATES.indexOf(clicked) < VISIT_STATES.indexOf(visit.state);
+              const isEarlier = VISIT_STATES.indexOf(clicked) < liveIndex;
               if (isClinician && isEarlier) setPendingRewind(clicked);
               else setStage(clicked);
             }}
