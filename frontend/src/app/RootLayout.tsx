@@ -1,50 +1,85 @@
-import { Outlet, Link } from "react-router-dom";
-import { useTranslation } from "react-i18next";
-import { Stethoscope, Globe } from "lucide-react";
+import { useEffect, useState } from "react";
+import { Outlet, useLocation } from "react-router-dom";
 import { useAuth } from "../hooks/useAuth";
 import { useTheme } from "../hooks/useTheme";
-import { changeLanguage, type SupportedLanguage } from "../lib/i18n";
-import { Button } from "../components/ui/Button";
+import { cn } from "../lib/cn";
 import { ErrorBoundary } from "./ErrorBoundary";
-import { Nav } from "./Nav";
-import { NotificationsContainer } from "../features/notifications/NotificationsContainer";
+import { Sidebar } from "./Sidebar";
+import { Topbar } from "./Topbar";
 
+/**
+ * Two layouts, one route tree.
+ *
+ * Signed in, the app is a workstation: a fixed rail, a sticky bar and a
+ * scrolling work area. Signed out, there is nothing to navigate, so the auth
+ * screens get the whole viewport and render their own centred panel rather
+ * than a shell wrapped around an empty rail.
+ */
 export function RootLayout() {
-  const { t, i18n } = useTranslation();
-  const { user, isAuthenticated, logout } = useAuth();
+  const { isAuthenticated, user } = useAuth();
+  const location = useLocation();
+  const [collapsed, setCollapsed] = useState(false);
+  const [drawerOpen, setDrawerOpen] = useState(false);
   useTheme();
 
-  function toggleLanguage() {
-    const next: SupportedLanguage = i18n.language === "hi" ? "en" : "hi";
-    changeLanguage(next);
-  }
+  // A route change while the mobile drawer is open would otherwise leave it
+  // covering the page the user just asked for.
+  useEffect(() => {
+    setDrawerOpen(false);
+  }, [location.pathname]);
 
-  return (
-    <div className="flex min-h-screen flex-col bg-bg text-fg">
-      <header className="flex items-center justify-between border-b border-border px-4 py-3">
-        <Link to="/" className="flex items-center gap-2 font-semibold">
-          <Stethoscope className="h-5 w-5 text-primary" aria-hidden="true" />
-          {t("app.name")}
-        </Link>
-        {isAuthenticated && user && <Nav />}
-        <div className="flex items-center gap-3 text-sm">
-          <span className="hidden text-fg-muted sm:inline">{t("nav.emergency")}</span>
-          <Button variant="ghost" size="sm" leftIcon={<Globe className="h-4 w-4" />} onClick={toggleLanguage}>
-            {i18n.language === "hi" ? "EN" : "हि"}
-          </Button>
-          {isAuthenticated && user && <NotificationsContainer />}
-          {isAuthenticated && user && (
-            <Button variant="ghost" size="sm" onClick={logout}>
-              {t("nav.logout")}
-            </Button>
-          )}
-        </div>
-      </header>
-      <main className="flex-1">
+  if (!isAuthenticated || !user) {
+    return (
+      <div className="min-h-screen bg-bg text-fg">
         <ErrorBoundary>
           <Outlet />
         </ErrorBoundary>
-      </main>
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex min-h-screen bg-bg text-fg">
+      <aside
+        className={cn(
+          "fixed inset-y-0 left-0 z-40 hidden shrink-0 border-r border-rail-border transition-[width] duration-200 lg:block",
+          collapsed ? "w-rail-sm" : "w-rail",
+        )}
+      >
+        <Sidebar collapsed={collapsed} onToggleCollapsed={() => setCollapsed((c) => !c)} />
+      </aside>
+
+      {/* Mobile: the same rail, as a dismissible drawer. */}
+      {drawerOpen && (
+        <>
+          <div
+            className="fixed inset-0 z-40 bg-black/40 lg:hidden"
+            aria-hidden="true"
+            onClick={() => setDrawerOpen(false)}
+          />
+          <aside className="fixed inset-y-0 left-0 z-50 w-rail animate-fade-in lg:hidden">
+            <Sidebar
+              collapsed={false}
+              onToggleCollapsed={() => setDrawerOpen(false)}
+              onNavigate={() => setDrawerOpen(false)}
+            />
+          </aside>
+        </>
+      )}
+
+      <div
+        className={cn(
+          "flex min-w-0 flex-1 flex-col transition-[padding] duration-200",
+          collapsed ? "lg:pl-rail-sm" : "lg:pl-rail",
+        )}
+      >
+        <Topbar onOpenSidebar={() => setDrawerOpen(true)} />
+        <main className="min-w-0 flex-1">
+          <ErrorBoundary>
+            <Outlet />
+          </ErrorBoundary>
+        </main>
+      </div>
     </div>
   );
 }

@@ -76,7 +76,7 @@ export function LabOrderApprovalContainer() {
 
   if (!labOrderId) {
     return (
-      <div className="p-4">
+      <div className="page-narrow">
         <ErrorState title={t("approvals.noLabOrder")} />
       </div>
     );
@@ -95,7 +95,7 @@ export function LabOrderApprovalContainer() {
   const order = query.data && draft ? { ...query.data, items: draft } : (query.data ?? null);
 
   return (
-    <div className="mx-auto max-w-2xl p-4">
+    <div className="page-narrow">
       <LabOrderApprovalPage
         order={order}
         originalRecommendation={recommendation}

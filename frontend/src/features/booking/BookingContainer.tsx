@@ -50,7 +50,7 @@ export function BookingContainer() {
   }
 
   return (
-    <div className="mx-auto grid max-w-3xl gap-6 p-4 md:grid-cols-[2fr_1fr]">
+    <div className="mx-auto grid w-full max-w-5xl gap-5 px-4 py-6 sm:px-6 md:grid-cols-[2fr_1fr]">
       <DoctorPicker
         pincode={pincode}
         onPincodeChange={setPincode}

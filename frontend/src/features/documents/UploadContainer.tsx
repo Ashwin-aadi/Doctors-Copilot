@@ -207,7 +207,7 @@ export function UploadContainer({ patientId: patientIdProp }: UploadContainerPro
   const inputRef = useRef<HTMLInputElement>(null);
 
   return (
-    <div className="mx-auto flex max-w-2xl flex-col gap-4 p-4">
+    <div className="page-narrow">
       <Card>
         <CardHeader>
           <CardTitle>{t("documents.title")}</CardTitle>
