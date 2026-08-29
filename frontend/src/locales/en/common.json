@@ -235,7 +235,8 @@
       "BRIEF_READY": "The clinical summary built from this patient's own results.",
       "CONSULTED": "Write the prescription and check it for interactions.",
       "PRESCRIBED": "The signed prescription, ready to hand over."
-    }
+    },
+    "viewingAhead": "Previewing ahead — visit is still at {{state}}"
   },
   "portal": {
     "heading": "Your care",

@@ -15,6 +15,7 @@ import { VisitStepper } from "../../components/timeline/VisitStepper";
 import { VISIT_STATES, VISIT_STATE_LABELS } from "../../components/timeline/visitStates";
 import { ApiError } from "../../lib/api/errors";
 import { getPatient } from "../../lib/api/endpoints/patients";
+import { buildBrief } from "../../lib/api/endpoints/copilot";
 import { qk } from "../../lib/queryKeys";
 import { useAuthStore } from "../../store/auth";
 import { CopilotContainer } from "../copilot/CopilotContainer";
@@ -57,6 +58,21 @@ export function VisitContainer() {
   const [pendingRewind, setPendingRewind] = useState<VisitState | null>(null);
   useVisitSocket(visitId);
 
+  // The brief shown on this screen is built by its own panel, not carried on
+  // the visit record -- `visit.brief` stays null until the visit is advanced.
+  // Reading the same cache here is what lets the medicine suggestions see the
+  // differentials the doctor is looking at. Same query key, so this rides the
+  // panel's fetch rather than starting a second expensive build, and it is
+  // only enabled on the two stages that actually use it.
+  const briefStage = stage === "BRIEF_READY" || stage === "CONSULTED";
+  const briefQuery = useQuery({
+    queryKey: qk.brief(visitId ?? "none"),
+    queryFn: () => buildBrief(visitId as string),
+    enabled: Boolean(visitId) && briefStage,
+    retry: false,
+    staleTime: Infinity,
+  });
+
   const patientQuery = useQuery({
     queryKey: qk.patient(visit?.patient_id ?? "none"),
     queryFn: () => getPatient(visit?.patient_id as string),
@@ -98,12 +114,19 @@ export function VisitContainer() {
   // stepper deep-links backwards without moving the visit.
   const view: VisitState = stage ?? visit.state;
   const label = VISIT_STATE_LABELS[view];
-  const viewingPast = VISIT_STATES.indexOf(view) < VISIT_STATES.indexOf(visit.state);
-  // Differentials from the brief are the closest thing to a working diagnosis
-  // the visit has; the patient's own conditions stand in until it is built.
-  const briefConditions = visit.brief?.differentials?.length
-    ? visit.brief.differentials
-    : conditions;
+  const viewedIndex = VISIT_STATES.indexOf(view);
+  const liveIndex = VISIT_STATES.indexOf(visit.state);
+  const viewingPast = viewedIndex < liveIndex;
+  // Walking forward past the visit's own state is a preview, not progress, and
+  // saying so is what stops the stepper reading as stuck.
+  const viewingAhead = viewedIndex > liveIndex;
+  // Differentials are the closest thing to a working diagnosis the visit has;
+  // the patient's own recorded conditions stand in until a brief exists.
+  const differentials =
+    briefQuery.data?.differentials?.length
+      ? briefQuery.data.differentials
+      : (visit.brief?.differentials ?? []);
+  const briefConditions = differentials.length ? differentials : conditions;
 
   return (
     <div className="page">
@@ -112,10 +135,12 @@ export function VisitContainer() {
         titleAlt={label.hi}
         description={t(`visit.stageHelp.${view}`, { defaultValue: "" }) || undefined}
         meta={
-          viewingPast ? (
-            <Badge tone="info">
+          viewingPast || viewingAhead ? (
+            <Badge tone={viewingPast ? "info" : "moderate"}>
               <History className="h-3 w-3" aria-hidden="true" />
-              {t("visit.viewingPast", { state: VISIT_STATE_LABELS[visit.state].en })}
+              {t(viewingPast ? "visit.viewingPast" : "visit.viewingAhead", {
+                state: VISIT_STATE_LABELS[visit.state].en,
+              })}
             </Badge>
           ) : undefined
         }

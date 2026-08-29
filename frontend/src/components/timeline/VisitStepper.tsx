@@ -40,6 +40,10 @@ export function VisitStepper({ state, viewing, onStageClick, className }: VisitS
         const current = i === currentIndex;
         const viewed = i === viewingIndex;
         const reachable = i <= currentIndex;
+        // Stages between where the visit is and what is on screen: the user
+        // walked forward to preview them. Drawing that stretch as untouched
+        // track made the stepper look stuck at the visit's own state.
+        const previewed = i > currentIndex && i <= viewingIndex;
         const label = VISIT_STATE_LABELS[s];
 
         const marker = (
@@ -49,8 +53,9 @@ export function VisitStepper({ state, viewing, onStageClick, className }: VisitS
               "flex h-7 w-7 shrink-0 items-center justify-center rounded-full border-2 text-[11px] font-semibold transition-colors",
               done && "border-primary bg-primary text-primary-fg",
               current && "border-primary bg-surface text-primary",
-              !done && !current && "border-border bg-surface text-fg-subtle",
-              viewed && !current && "ring-2 ring-ring ring-offset-2 ring-offset-surface",
+              previewed && "border-primary/40 bg-surface text-primary",
+              !done && !current && !previewed && "border-border bg-surface text-fg-subtle",
+              viewed && "ring-2 ring-ring ring-offset-2 ring-offset-surface",
             )}
           >
             {done ? <Check className="h-3.5 w-3.5" /> : i + 1}
@@ -62,8 +67,8 @@ export function VisitStepper({ state, viewing, onStageClick, className }: VisitS
             <span
               className={cn(
                 "truncate text-xs font-medium",
-                reachable ? "text-fg" : "text-fg-subtle",
-                viewed && "text-primary",
+                reachable || previewed ? "text-fg" : "text-fg-subtle",
+                viewed && "font-semibold text-primary",
               )}
             >
               {label.en}
@@ -97,7 +102,11 @@ export function VisitStepper({ state, viewing, onStageClick, className }: VisitS
                 className={cn(
                   "absolute hidden h-0.5 md:block",
                   "left-[-50%] right-[50%] top-[13px]",
-                  i <= currentIndex ? "bg-primary" : "bg-border",
+                  i <= currentIndex
+                    ? "bg-primary"
+                    : i <= viewingIndex
+                      ? "bg-primary/35"
+                      : "bg-border",
                 )}
               />
             )}
