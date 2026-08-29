@@ -11,6 +11,7 @@ import { Skeleton } from "../../components/ui/Skeleton";
 import { ErrorState } from "../../components/ui/ErrorState";
 import { PageHeader } from "../../components/ui/PageHeader";
 import { TriageResultCard } from "../../components/chat/TriageResultCard";
+import { SuggestedLabsTable } from "../../components/chat/SuggestedLabsTable";
 import { VisitStepper } from "../../components/timeline/VisitStepper";
 import { VISIT_STATES, VISIT_STATE_LABELS } from "../../components/timeline/visitStates";
 import { ApiError } from "../../lib/api/errors";
@@ -199,7 +200,8 @@ export function VisitContainer() {
       <div className="grid min-w-0 items-start gap-5 lg:grid-cols-[minmax(0,1fr)_320px]">
         <div className="flex min-w-0 animate-rise-in flex-col gap-5" key={view}>
           {/* --- Symptoms checked: the interview and the reasoning over it. The
-              suggested-lab table belongs to the next stage, where it is acted on. */}
+              suggested-lab table itself is shown at the next stage, which is
+              where it is acted on. */}
           {view === "TRIAGED" && (
             <>
               {visit.triage && <TriageResultCard result={visit.triage} showSuggestedLabs={false} />}
@@ -207,11 +209,25 @@ export function VisitContainer() {
             </>
           )}
 
-          {/* --- Tests suggested: choosing and signing the order, nothing else.
-              The reasoning behind it stays one click back in the stepper. */}
+          {/* --- Tests suggested: what triage recommends, then the order the
+              doctor actually signs. The full triage reasoning stays one click
+              back in the stepper; only the recommendation itself comes forward,
+              because this is the stage that acts on it. */}
           {view === "LABS_SUGGESTED" &&
             (isClinician ? (
-              <VisitLabOrderPanel visitId={visit.id} labOrderId={visit.lab_order_id ?? null} />
+              <>
+                {visit.triage && visit.triage.suggested_labs.length > 0 && (
+                  <Card variant="raised">
+                    <CardHeader>
+                      <CardTitle>{t("visit.suggestedLabs")}</CardTitle>
+                    </CardHeader>
+                    <CardBody>
+                      <SuggestedLabsTable labs={visit.triage.suggested_labs} />
+                    </CardBody>
+                  </Card>
+                )}
+                <VisitLabOrderPanel visitId={visit.id} labOrderId={visit.lab_order_id ?? null} />
+              </>
             ) : (
               <Card variant="raised">
                 <CardHeader>

@@ -223,6 +223,7 @@
     "rewindConfirm": "Move back",
     "rewindCancel": "Cancel",
     "awaitingOrder": "Waiting for the doctor to order your tests",
+    "suggestedLabs": "Suggested tests",
     "awaitingOrderHelp": "Your symptoms have been assessed. The doctor is choosing which tests you need; you will be able to upload the reports here once the order is signed.",
     "awaitingPrescription": "Waiting for the doctor to write your prescription",
     "awaitingPrescriptionHelp": "The doctor is reviewing your reports. Your prescription will appear here once it is signed.",

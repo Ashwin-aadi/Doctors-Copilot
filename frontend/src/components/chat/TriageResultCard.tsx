@@ -1,16 +1,7 @@
 import { AlertTriangle, PhoneCall } from "lucide-react";
 import { Card, CardHeader, CardTitle, CardBody } from "../ui/Card";
 import { SeverityPill } from "../ui/SeverityPill";
-import { Badge } from "../ui/Badge";
-import {
-  Table,
-  TableHead,
-  TableBody,
-  TableRow,
-  TableHeaderCell,
-  TableCell,
-  TableCaption,
-} from "../ui/Table";
+import { SuggestedLabsTable } from "./SuggestedLabsTable";
 import { cn } from "../../lib/cn";
 import type { TriageResult } from "../types";
 
@@ -30,8 +21,6 @@ const colourBadge: Record<TriageResult["triage_colour"], { label: string; classN
   yellow: { label: "Yellow — urgent", className: "bg-high text-high-fg" },
   green: { label: "Green — non-urgent", className: "bg-normal text-normal-fg" },
 };
-
-const sourceLabel: Record<string, string> = { rule: "Rule", rag: "Guideline", both: "Rule + guideline" };
 
 export function TriageResultCard({
   result,
@@ -76,29 +65,7 @@ export function TriageResultCard({
         {showSuggestedLabs && result.suggested_labs.length > 0 && (
           <div>
             <h4 className="mb-2 text-sm font-semibold text-fg">Suggested labs</h4>
-            <Table>
-              <TableCaption>Suggested lab tests</TableCaption>
-              <TableHead>
-                <TableRow>
-                  <TableHeaderCell>Test</TableHeaderCell>
-                  <TableHeaderCell>Reason</TableHeaderCell>
-                  <TableHeaderCell>Source</TableHeaderCell>
-                </TableRow>
-              </TableHead>
-              <TableBody>
-                {result.suggested_labs.map((lab) => (
-                  <TableRow key={lab.name} zebra>
-                    <TableCell className="font-medium">{lab.name}</TableCell>
-                    <TableCell className="text-fg-muted">{lab.reason}</TableCell>
-                    <TableCell>
-                      <Badge tone={lab.source === "both" ? "primary" : "neutral"}>
-                        {sourceLabel[lab.source]}
-                      </Badge>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
+            <SuggestedLabsTable labs={result.suggested_labs} />
           </div>
         )}
 
