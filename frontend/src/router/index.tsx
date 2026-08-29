@@ -1,32 +1,85 @@
-import { Suspense } from "react";
+import { Suspense, lazy, type ComponentType } from "react";
 import { Routes, Route, Navigate } from "react-router-dom";
 import { RootLayout } from "../app/RootLayout";
 import { NotFound } from "../app/NotFound";
-import { VisitListContainer } from "../features/visits/VisitListContainer";
 import { Skeleton } from "../components/ui/Skeleton";
 import { ProtectedRoute } from "./ProtectedRoute";
 import { ROUTES, PATIENT_ROLES, DOCTOR_STAFF_ROLES, CLINICAL_ROLES } from "./routes";
-import { LoginContainer } from "../features/auth/LoginContainer";
-import { RegisterContainer } from "../features/auth/RegisterContainer";
-import { ForgotPasswordContainer } from "../features/auth/ForgotPasswordContainer";
-import { ResetPasswordContainer } from "../features/auth/ResetPasswordContainer";
-import { OnboardingContainer } from "../features/onboarding/OnboardingContainer";
-import { TriageContainer } from "../features/triage/TriageContainer";
-import { BookingContainer } from "../features/booking/BookingContainer";
-import { QueueBoardContainer } from "../features/queue/QueueBoardContainer";
-import { UploadContainer } from "../features/documents/UploadContainer";
-import { LabOrderApprovalContainer } from "../features/approvals/LabOrderApprovalContainer";
-import { ChatbotContainer } from "../features/chatbot/ChatbotContainer";
-import { VisitContainer } from "../features/visit/VisitContainer";
-import { PreviewPage } from "../pages/preview/PreviewPage";
 
 const isDev = import.meta.env.DEV;
 
+/**
+ * Every screen is loaded on demand.
+ *
+ * Bundled eagerly, the whole product shipped on first paint -- a doctor
+ * opening the login page downloaded the upload pipeline, the OCR review
+ * editor and the charting libraries before typing a password. Each route is
+ * its own chunk now, so first paint carries the shell and the screen actually
+ * asked for; the rest arrives while the user is reading.
+ *
+ * The containers are named exports, hence the `.then` unwrap.
+ */
+function route<T extends Record<string, unknown>, K extends keyof T>(
+  loader: () => Promise<T>,
+  name: K,
+) {
+  return lazy(async () => ({ default: (await loader())[name] as ComponentType }));
+}
+
+const LoginContainer = route(() => import("../features/auth/LoginContainer"), "LoginContainer");
+const RegisterContainer = route(
+  () => import("../features/auth/RegisterContainer"),
+  "RegisterContainer",
+);
+const ForgotPasswordContainer = route(
+  () => import("../features/auth/ForgotPasswordContainer"),
+  "ForgotPasswordContainer",
+);
+const ResetPasswordContainer = route(
+  () => import("../features/auth/ResetPasswordContainer"),
+  "ResetPasswordContainer",
+);
+const OnboardingContainer = route(
+  () => import("../features/onboarding/OnboardingContainer"),
+  "OnboardingContainer",
+);
+const TriageContainer = route(
+  () => import("../features/triage/TriageContainer"),
+  "TriageContainer",
+);
+const ChatbotContainer = route(
+  () => import("../features/chatbot/ChatbotContainer"),
+  "ChatbotContainer",
+);
+const BookingContainer = route(
+  () => import("../features/booking/BookingContainer"),
+  "BookingContainer",
+);
+const VisitListContainer = route(
+  () => import("../features/visits/VisitListContainer"),
+  "VisitListContainer",
+);
+const VisitContainer = route(() => import("../features/visit/VisitContainer"), "VisitContainer");
+const QueueBoardContainer = route(
+  () => import("../features/queue/QueueBoardContainer"),
+  "QueueBoardContainer",
+);
+const UploadContainer = route(
+  () => import("../features/documents/UploadContainer"),
+  "UploadContainer",
+);
+const LabOrderApprovalContainer = route(
+  () => import("../features/approvals/LabOrderApprovalContainer"),
+  "LabOrderApprovalContainer",
+);
+const PreviewPage = route(() => import("../pages/preview/PreviewPage"), "PreviewPage");
+
 function SuspenseFallback() {
   return (
-    <div className="flex flex-col gap-3 p-6">
-      <Skeleton className="h-10 w-2/3" />
-      <Skeleton className="h-10 w-1/2" />
+    <div className="page">
+      <Skeleton className="h-8 w-1/3" />
+      <Skeleton className="h-24 w-full" />
+      <Skeleton className="h-24 w-full" />
     </div>
   );
 }
