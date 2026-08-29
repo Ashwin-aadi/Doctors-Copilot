@@ -67,7 +67,7 @@ export function useBooking() {
           severity_esi: state.severityEsi ?? 4,
           triage_session_id: triageSessionId,
         },
-        captcha.token,
+        captcha.token ?? "",
       );
     },
     onSuccess: (res) => {

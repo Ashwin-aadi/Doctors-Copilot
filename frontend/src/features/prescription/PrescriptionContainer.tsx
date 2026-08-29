@@ -66,7 +66,7 @@ export function PrescriptionContainer({
     mutationFn: () => {
       if (!prescriptionId) throw new Error("no prescription resolved for this visit");
       if (captcha.enabled && !captcha.token) throw new Error("captcha token missing");
-      return approvePrescription(prescriptionId, captcha.token, acknowledge.acknowledged);
+      return approvePrescription(prescriptionId, captcha.token ?? "", acknowledge.acknowledged);
     },
     onSuccess: () => {
       setLocked(true);
