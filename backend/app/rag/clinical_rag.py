@@ -13,6 +13,7 @@ from pydantic import BaseModel
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.cache import fingerprint, get_json, set_json
 from app.core.errors import ApiError
 from app.core.logging import get_logger
 from app.db.models.clinical import LabResult, TriageSession, Visit
@@ -24,7 +25,6 @@ from app.rag.retriever import hybrid
 from app.rag.store import Hit
 from app.rag.tool_bridge import flag_labs
 from app.schemas.common import Citation
-from app.core.cache import fingerprint, get_json, set_json
 from app.schemas.copilot import CopilotBrief
 
 log = get_logger(__name__)

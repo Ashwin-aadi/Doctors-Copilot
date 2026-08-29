@@ -12,6 +12,7 @@ Revises: f2c8a4e11d63
 from __future__ import annotations
 
 import sqlalchemy as sa
+
 from alembic import op
 
 revision: str = "a3d7c1b58e94"
