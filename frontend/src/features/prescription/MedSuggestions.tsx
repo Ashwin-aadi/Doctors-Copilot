@@ -60,7 +60,14 @@ export function MedSuggestionsCard({
       <CardBody className="flex flex-col gap-2">
         <p className="text-xs text-fg-subtle">{t("prescriptionEditor.suggestionsHelp")}</p>
         {query.isLoading && conditions.length > 0 && <Skeleton className="h-20 w-full" />}
-        {!query.isLoading && candidates.length === 0 && (
+        {/* Nothing to suggest against is a different situation from nothing
+            found, and the doctor can act on the first one: build the brief, or
+            record the patient's conditions. Saying only "no suggestions" hid
+            that the query was never sent. */}
+        {conditions.length === 0 && (
+          <p className="text-sm text-fg-muted">{t("prescriptionEditor.noWorkingDiagnosis")}</p>
+        )}
+        {conditions.length > 0 && !query.isLoading && candidates.length === 0 && (
           <p className="text-sm text-fg-muted">{t("prescriptionEditor.noSuggestions")}</p>
         )}
         {candidates.map((candidate) => (

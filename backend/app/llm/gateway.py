@@ -22,6 +22,11 @@ class LlmEmptyResponse(RuntimeError):
 settings = get_settings()
 
 _TIMEOUT = 30.0
+# The local tier is a 7B model on the demo machine's own CPU/GPU. A clinical
+# brief is a long generation and routinely takes over a minute there; timing it
+# out at the hosted provider's budget threw away the one tier that still works
+# when the hosted free-tier quota is spent.
+_OLLAMA_TIMEOUT = 180.0
 # Past this, waiting is worse than answering from the next tier: the caller is
 # a doctor with a patient in front of them, not a batch job.
 _MAX_RATE_LIMIT_WAIT = 20.0
@@ -129,7 +134,7 @@ async def _ollama_chat(
     }
     if json_mode:
         payload["format"] = "json"
-    async with httpx.AsyncClient(timeout=_TIMEOUT) as client:
+    async with httpx.AsyncClient(timeout=_OLLAMA_TIMEOUT) as client:
         resp = await client.post(f"{settings.ollama_url}/api/chat", json=payload)
         resp.raise_for_status()
         data = resp.json()
@@ -182,6 +187,21 @@ async def stream(
         yield text[i : i + chunk_size]
 
 
+def _field_hint(schema: type[BaseModel]) -> str:
+    """The schema's keys and shapes, as a one-line hint for the model.
+
+    Small local models are the ones that get the shape wrong -- a 7B asked for
+    `differentials` will happily return `differential1`, `differential2` -- and
+    naming the keys up front costs a handful of tokens against a whole retry.
+    """
+    parts = []
+    for name, field in schema.model_fields.items():
+        ann = field.annotation
+        kind = getattr(ann, "__name__", None) or str(ann).replace("typing.", "")
+        parts.append(f"{name} ({kind})")
+    return ", ".join(parts)
+
+
 def _fallback_instance(schema: type[ModelT]) -> ModelT:
     defaults: dict[str, Any] = {}
     for name, field in schema.model_fields.items():
@@ -208,7 +228,9 @@ async def json_complete(
     retries: int = 2,
 ) -> ModelT:
     sys_prompt = (system or "") + (
-        "\nRespond with a single valid JSON object matching the required schema. "
+        "\nRespond with a single valid JSON object with exactly these keys: "
+        f"{_field_hint(schema)}. "
+        "Use those key names verbatim -- not numbered variants, not synonyms. "
         "No prose, no markdown fences."
     )
     last_error: str | None = None

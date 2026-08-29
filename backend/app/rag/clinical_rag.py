@@ -29,7 +29,7 @@ from app.schemas.copilot import CopilotBrief
 log = get_logger(__name__)
 
 _K_PER_AXIS = 8
-_TOP_K = 12
+_TOP_K = 10
 
 # A plain `[n]` marker, and the wrappers models put around one. Smaller local
 # models routinely emit `[cite [2]]` or `(ref: 3)` where the prompt asked for
@@ -88,11 +88,19 @@ async def _retrieve_deduped(queries: list[str]) -> list[Hit]:
 
 
 class _RawBrief(BaseModel):
+    """What the model is actually asked for.
+
+    Deliberately narrower than `CopilotBrief`: citations are rebuilt from the
+    `[n]` markers against the hits we retrieved, so asking the model to echo a
+    dozen citation objects back only spends completion tokens -- enough to push
+    the request past a free-tier per-minute budget -- and gives a small local
+    model one more shape to get wrong and fail validation on.
+    """
+
     summary: str = ""
     differentials: list[str] = []
     recommended_procedures: list[str] = []
     cautions: list[str] = []
-    citations: list[Citation] = []
     confidence: float = 0.0
 
 
@@ -199,7 +207,7 @@ async def build_brief(visit_id: UUID, db: AsyncSession) -> CopilotBrief:
 
     context_block = "\n".join(
         f"[{i + 1}] {h.metadata.get('title', 'untitled')} ({h.metadata.get('region', 'INTL')}): "
-        f"{h.text[:400]}"
+        f"{h.text[:300]}"
         for i, h in enumerate(hits)
     )
     patient_block = (
@@ -237,7 +245,7 @@ async def build_brief(visit_id: UUID, db: AsyncSession) -> CopilotBrief:
         f"{lab_block}\n\n"
         f"Retrieved clinical excerpts (cite as [n]):\n{context_block or '(none retrieved)'}\n\n"
         "Produce a CopilotBrief JSON with fields: summary, differentials, "
-        "recommended_procedures, cautions, citations, confidence (0-1).\n"
+        "recommended_procedures, cautions, confidence (0-1).\n"
         "`summary` must be four to six sentences and must read as a note about "
         "THIS patient: quote the measured values that matter by name, number and "
         "unit, say which fall outside the reference range and in which direction, "
@@ -250,8 +258,8 @@ async def build_brief(visit_id: UUID, db: AsyncSession) -> CopilotBrief:
         "repeat and when, which examination, which referral -- not general advice.\n"
         "`cautions` covers interactions, allergy conflicts, contraindications, "
         "and any value needing same-day action.\n"
-        "`citations` is a list of {n, title, source, url, snippet, published} "
-        "matching the excerpts above."
+        "Do not emit a citations field; the [n] markers in the prose are the "
+        "citations."
     )
 
     if not hits:
@@ -278,8 +286,6 @@ async def build_brief(visit_id: UUID, db: AsyncSession) -> CopilotBrief:
     cited: set[int] = {
         int(n) for text in (summary, *cautions) for n in _CITE_MARKER.findall(text)
     }
-    cited.update(c.n for c in raw.citations if isinstance(c.n, int))
-
     # An excerpt number is only usable if it indexes a hit we actually retrieved.
     resolved = sorted(n for n in cited if 1 <= n <= len(hits))
     renumber = {old: new for new, old in enumerate(resolved, start=1)}
