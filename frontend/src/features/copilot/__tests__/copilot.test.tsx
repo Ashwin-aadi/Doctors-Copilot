@@ -102,7 +102,10 @@ describe("CopilotContainer", () => {
     );
 
     renderContainer("v1");
-    expect(await screen.findByText(/no external sources/i)).toBeTruthy();
+    // An ungrounded brief is reported as a failure with a way out of it, not
+    // as a footnote under text the doctor might otherwise trust.
+    expect(await screen.findByText(/could not be grounded/i)).toBeTruthy();
+    expect(screen.getByTestId("rebuild-brief")).toBeTruthy();
   });
 
   it("shows a retry action instead of crashing when the model is unavailable", async () => {

@@ -16,7 +16,12 @@ export function useBrief(visitId: string | null) {
     queryFn: () => buildBrief(visitId as string),
     enabled: Boolean(visitId),
     retry: false,
-    staleTime: Infinity,
+    // A grounded brief is expensive and stable, so it is kept for the session.
+    // An ungrounded one is the product of a transient failure -- a rate-limited
+    // model, an unreachable one -- and caching it forever leaves the doctor
+    // staring at the failure long after it has cleared.
+    staleTime: (query) =>
+      (query.state.data?.citations.length ?? 0) > 0 ? Infinity : 0,
   });
 
   const [stage, setStage] = useState<BriefStage>("skeleton");
@@ -31,8 +36,11 @@ export function useBrief(visitId: string | null) {
     return () => timers.forEach(clearTimeout);
   }, [query.isFetching]);
 
+  const ungrounded = query.data != null && query.data.citations.length === 0;
+
   return {
     brief: query.data,
+    ungrounded,
     stage,
     loading: query.isFetching,
     error: query.error,

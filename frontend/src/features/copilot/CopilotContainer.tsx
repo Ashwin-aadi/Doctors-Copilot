@@ -52,11 +52,10 @@ export function CopilotContainer({ visitId: visitIdProp }: CopilotContainerProps
   const { t } = useTranslation();
   const params = useParams<{ id: string }>();
   const visitId = visitIdProp ?? params.id ?? null;
-  const { brief, stage, loading, error, refetch } = useBrief(visitId);
+  const { brief, stage, loading, error, refetch, ungrounded } = useBrief(visitId);
   const { selected, onCitationClick, closeCitation } = useCitations(brief?.citations ?? []);
 
   const lowConfidence = brief != null && brief.confidence < 0.4;
-  const noCitations = brief != null && brief.citations.length === 0;
 
   return (
     <div className="flex flex-col gap-3 p-4">
@@ -148,7 +147,26 @@ export function CopilotContainer({ visitId: visitIdProp }: CopilotContainerProps
               </div>
             )}
 
-            {noCitations && <p className="text-xs italic text-fg-subtle">{t("copilot.extractiveFallback")}</p>}
+            {/* Not a footnote: an ungrounded brief is a failed one, and the
+                doctor needs to know that and be able to ask for it again. */}
+            {ungrounded && (
+              <div
+                role="status"
+                className="flex flex-wrap items-center justify-between gap-2 rounded-md border border-moderate/40 bg-moderate-soft p-3"
+              >
+                <p className="text-xs text-fg">{t("copilot.extractiveFallback")}</p>
+                <Button
+                  size="sm"
+                  variant="secondary"
+                  leftIcon={<RefreshCw className="h-4 w-4" />}
+                  loading={loading}
+                  data-testid="rebuild-brief"
+                  onClick={() => refetch()}
+                >
+                  {t("copilot.rebuild")}
+                </Button>
+              </div>
+            )}
           </CardBody>
         </Card>
       )}

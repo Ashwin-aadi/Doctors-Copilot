@@ -96,6 +96,53 @@ class _RawBrief(BaseModel):
     confidence: float = 0.0
 
 
+def _ungrounded_summary(measured_labs: list[dict], triage: dict | None) -> str:
+    """What can honestly be said when the model or the corpus let us down.
+
+    Only facts we hold directly: the values read off this patient's reports and
+    the triage score. No guideline claim, because nothing here is cited.
+    """
+    parts: list[str] = [
+        "Guideline grounding was unavailable, so this is a factual readout of "
+        "the visit record rather than a clinical brief."
+    ]
+
+    abnormal = [lab for lab in measured_labs if lab.get("flag") in ("critical", "high", "low")]
+    if abnormal:
+        listed = "; ".join(
+            "{name} {value}{unit} ({flag}, ref {low}-{high})".format(
+                name=lab["test_name"],
+                value=lab["value"],
+                unit=f" {lab['unit']}" if lab.get("unit") else "",
+                flag=lab.get("flag"),
+                low=lab.get("ref_low") if lab.get("ref_low") is not None else "?",
+                high=lab.get("ref_high") if lab.get("ref_high") is not None else "?",
+            )
+            for lab in abnormal[:8]
+        )
+        parts.append(f"Values outside the reference range: {listed}.")
+        normal = len(measured_labs) - len(abnormal)
+        if normal:
+            parts.append(f"{normal} further value(s) read within range.")
+    elif measured_labs:
+        parts.append(
+            f"All {len(measured_labs)} value(s) read from the uploaded reports are "
+            "within their reference ranges."
+        )
+    else:
+        parts.append("No lab values have been extracted from this patient's reports yet.")
+
+    if triage:
+        parts.append(
+            f"Triage recorded ESI {triage.get('severity_esi', 'n/a')} "
+            f"({triage.get('triage_colour', 'n/a')}), suggested specialty "
+            f"{triage.get('specialty', 'n/a')}."
+        )
+
+    parts.append("Rebuild the brief once the language model is reachable again.")
+    return " ".join(parts)
+
+
 async def build_brief(visit_id: UUID, db: AsyncSession) -> CopilotBrief:
     visit = await _load_visit(db, visit_id)
     patient = await db.get(Patient, visit.patient_id)
@@ -111,8 +158,25 @@ async def build_brief(visit_id: UUID, db: AsyncSession) -> CopilotBrief:
             triage = triage_session.result
 
     lab_rows = (
-        await db.execute(select(LabResult).where(LabResult.patient_id == visit.patient_id))
+        await db.execute(
+            select(LabResult)
+            .where(LabResult.patient_id == visit.patient_id)
+            .order_by(LabResult.observed_at.desc().nullslast())
+        )
     ).scalars().all()
+    # Every measured value, not only the flagged ones: a normal platelet count
+    # is what rules dengue out, and a brief that never saw it cannot say so.
+    measured_labs = [
+        {
+            "test_name": lab.test_name,
+            "value": lab.value_num if lab.value_num is not None else lab.value_text,
+            "unit": lab.unit,
+            "ref_low": lab.ref_low,
+            "ref_high": lab.ref_high,
+            "flag": lab.flag,
+        }
+        for lab in lab_rows
+    ]
     abnormal_labs = [
         {
             "test_name": lab.test_name,
@@ -147,21 +211,53 @@ async def build_brief(visit_id: UUID, db: AsyncSession) -> CopilotBrief:
         f"specialty={triage.get('specialty') if triage else 'n/a'}"
     )
 
+    # The measured values are the part of the brief that is about this patient
+    # rather than about the literature, so they go in verbatim -- value, unit
+    # and the lab's own reference range -- instead of a bare flag word.
+    if measured_labs:
+        lines = [
+            "{name}: {value}{unit} (ref {low}-{high}) [{flag}]".format(
+                name=lab["test_name"],
+                value=lab["value"],
+                unit=f" {lab['unit']}" if lab.get("unit") else "",
+                low=lab.get("ref_low") if lab.get("ref_low") is not None else "?",
+                high=lab.get("ref_high") if lab.get("ref_high") is not None else "?",
+                flag=lab.get("flag") or "unknown",
+            )
+            for lab in measured_labs
+        ]
+        lab_block = "Measured lab values from this patient's uploaded reports:\n" + "\n".join(
+            lines
+        )
+    else:
+        lab_block = "No lab values have been extracted from this patient's reports yet."
+
     prompt = (
         f"Patient context:\n{patient_block}\n\n"
+        f"{lab_block}\n\n"
         f"Retrieved clinical excerpts (cite as [n]):\n{context_block or '(none retrieved)'}\n\n"
-        "Produce a CopilotBrief JSON with fields: summary (cite [n] for every "
-        "clinical claim), differentials (list of strings), recommended_procedures "
-        "(list of strings), cautions (list of strings covering interactions, "
-        "allergy conflicts, and contraindications), citations (list of {n, title, "
-        "source, url, snippet, published} matching the excerpts above), "
-        "confidence (0-1)."
+        "Produce a CopilotBrief JSON with fields: summary, differentials, "
+        "recommended_procedures, cautions, citations, confidence (0-1).\n"
+        "`summary` must be four to six sentences and must read as a note about "
+        "THIS patient: quote the measured values that matter by name, number and "
+        "unit, say which fall outside the reference range and in which direction, "
+        "name the pattern they form, and state what the normal values rule out. "
+        "Cite [n] for every claim taken from the excerpts; the patient's own "
+        "measured value needs no citation.\n"
+        "`differentials` are ordered most to least likely, each naming the "
+        "specific finding that supports it.\n"
+        "`recommended_procedures` are concrete next steps -- which test to "
+        "repeat and when, which examination, which referral -- not general advice.\n"
+        "`cautions` covers interactions, allergy conflicts, contraindications, "
+        "and any value needing same-day action.\n"
+        "`citations` is a list of {n, title, source, url, snippet, published} "
+        "matching the excerpts above."
     )
 
     if not hits:
         return CopilotBrief(
             visit_id=visit_id,
-            summary="Insufficient retrieved clinical context to generate a grounded brief.",
+            summary=_ungrounded_summary(measured_labs, triage),
             differentials=[],
             recommended_procedures=[],
             cautions=[],
@@ -214,9 +310,12 @@ async def build_brief(visit_id: UUID, db: AsyncSession) -> CopilotBrief:
 
     confidence = raw.confidence if kept_citations else 0.0
     if not kept_citations:
-        summary = "Extractive summary (unable to ground a generated brief): " + " ".join(
-            h.text[:200] for h in hits[:3]
-        )
+        # Concatenating retrieved snippets here used to produce a "brief" that
+        # spliced a dengue fact sheet into an amoxicillin interaction into a TB
+        # abstract -- unreadable, and about no patient in particular. When the
+        # generation cannot be grounded, report the patient's own measurements,
+        # which are certain, and say plainly that the guidance is missing.
+        summary = _ungrounded_summary(measured_labs, triage)
 
     brief = CopilotBrief(
         visit_id=visit_id,

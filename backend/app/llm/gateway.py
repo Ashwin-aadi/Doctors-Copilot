@@ -1,5 +1,6 @@
 """LLM gateway: Groq -> Ollama -> extractive fallback. Never raises to the caller."""
 
+import asyncio
 import json
 from collections.abc import AsyncIterator
 from typing import Any, TypeVar
@@ -21,7 +22,25 @@ class LlmEmptyResponse(RuntimeError):
 settings = get_settings()
 
 _TIMEOUT = 30.0
+# Past this, waiting is worse than answering from the next tier: the caller is
+# a doctor with a patient in front of them, not a batch job.
+_MAX_RATE_LIMIT_WAIT = 20.0
 ModelT = TypeVar("ModelT", bound=BaseModel)
+
+
+def _retry_after_seconds(resp: httpx.Response) -> float | None:
+    """Seconds Groq asked us to wait, or None if it did not say."""
+    raw = resp.headers.get("retry-after") or resp.headers.get("x-ratelimit-reset-tokens")
+    if not raw:
+        return None
+    try:
+        # Groq sends plain seconds on Retry-After and suffixed values like
+        # "7.66s" or "2m59s" on the x-ratelimit-reset-* headers.
+        if raw.endswith("s") and "m" not in raw:
+            return float(raw[:-1])
+        return float(raw)
+    except ValueError:
+        return None
 
 
 def _groq_headers() -> dict[str, str]:
@@ -58,6 +77,20 @@ async def _groq_chat(
             headers=_groq_headers(),
             json=payload,
         )
+        # Groq's free tier rate-limits in bursts and says exactly how long to
+        # wait. Sitting out a short cooldown costs seconds; falling through to
+        # the extractive tier costs the caller a generated answer entirely, and
+        # for a brief that means an ungrounded one the doctor cannot use.
+        if resp.status_code == 429:
+            wait = _retry_after_seconds(resp)
+            if wait is not None and wait <= _MAX_RATE_LIMIT_WAIT:
+                log.warning("llm_rate_limited", provider="groq", retry_after=wait)
+                await asyncio.sleep(wait)
+                resp = await client.post(
+                    "https://api.groq.com/openai/v1/chat/completions",
+                    headers=_groq_headers(),
+                    json=payload,
+                )
         resp.raise_for_status()
         data = resp.json()
         usage = data.get("usage", {})
