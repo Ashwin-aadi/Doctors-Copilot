@@ -2,10 +2,19 @@ FROM node:24-alpine AS build
 
 WORKDIR /app
 
-COPY package.json package-lock.json* ./
+# The build context is the repository root, not frontend/, because the nginx
+# config that the serving stage needs lives under infra/.
+COPY frontend/package.json frontend/package-lock.json* ./
 RUN npm ci || npm install
 
-COPY . .
+COPY frontend .
+
+# Vite inlines this at build time. Empty means the browser calls /api on its own
+# origin, which is what nginx below proxies -- baking an absolute host in here
+# would send the browser past the proxy to a URL only the developer's machine
+# resolves.
+ARG VITE_API_BASE=""
+ENV VITE_API_BASE=$VITE_API_BASE
 RUN npm run build
 
 FROM nginx:1.27-alpine AS prod

@@ -32,5 +32,14 @@ guard:     ## run the footprint guard
 	./scripts/guard.sh
 prod-up:   ## build and start the production stack
 	docker compose -f infra/docker-compose.prod.yml up -d --build
+prod-down: ## stop the production stack
+	docker compose -f infra/docker-compose.prod.yml down
+prod-logs: ## tail production backend logs
+	docker compose -f infra/docker-compose.prod.yml logs -f backend
+prod-seed: ## seed demo data into the running production stack
+	docker compose -f infra/docker-compose.prod.yml exec backend python ../scripts/seed.py
+	docker compose -f infra/docker-compose.prod.yml exec backend python ../scripts/seed_doctors.py
+deploy-check: ## assert the production stack is actually serving
+	./scripts/deploy_check.sh
 
-.PHONY: up down logs install migrate revision api web worker test lint openapi smoke seed kb guard prod-up
+.PHONY: up down logs install migrate revision api web worker test lint openapi smoke seed kb guard prod-up prod-down prod-logs prod-seed deploy-check

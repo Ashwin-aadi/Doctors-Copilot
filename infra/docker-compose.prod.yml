@@ -1,3 +1,8 @@
+# A distinct project name: the dev stack in docker-compose.yml defaults to the
+# directory name ("infra"), and sharing it would make an up here adopt and
+# replace the running dev containers.
+name: doctors-copilot-prod
+
 services:
   postgres:
     image: postgres:16-alpine
@@ -27,7 +32,7 @@ services:
     image: neo4j:5.26-community
     restart: unless-stopped
     environment:
-      NEO4J_AUTH: neo4j/copilot123
+      NEO4J_AUTH: neo4j/${NEO4J_PASSWORD:-copilot123}
     volumes:
       - neo4jdata:/data
     healthcheck:
@@ -40,9 +45,13 @@ services:
     build:
       context: ..
       dockerfile: infra/Dockerfile.backend
+      target: prod
     restart: unless-stopped
+    # Order matters: prod.env overrides the localhost hosts in .env with the
+    # compose service names. Secrets (GROQ_API_KEY, SECRET_KEY) come from .env.
     env_file:
       - ../.env
+      - prod.env
     depends_on:
       postgres:
         condition: service_healthy
@@ -51,24 +60,37 @@ services:
       neo4j:
         condition: service_healthy
     ports:
-      - "8000:8000"
+      - "${API_HOST_PORT:-8000}:8000"
     volumes:
       - storage:/app/infra/storage
+      # The retrieval index and the model weights are large and slow to rebuild.
+      # Bind them so a rebuilt image reuses whatever the host already has, and
+      # falls back to ingesting/downloading when the host has nothing.
+      - ./chroma:/app/infra/chroma
+      - ../ml/.cache:/app/ml/.cache
     healthcheck:
-      test: ["CMD-SHELL", "wget -q --spider http://localhost:8000/health || exit 1"]
+      test: ["CMD-SHELL", "curl -fsS http://localhost:8000/health || exit 1"]
       interval: 10s
       timeout: 5s
-      retries: 10
+      retries: 20
+      start_period: 60s
 
   frontend:
     build:
-      context: ../frontend
-      dockerfile: ../infra/Dockerfile.frontend
+      # Repository root, so the image can copy both frontend/ and infra/nginx.conf.
+      context: ..
+      dockerfile: infra/Dockerfile.frontend
+      target: prod
+      args:
+        # Empty on purpose: the browser calls /api on its own origin and nginx
+        # proxies it to the backend.
+        VITE_API_BASE: ""
     restart: unless-stopped
     depends_on:
-      - backend
+      backend:
+        condition: service_healthy
     ports:
-      - "80:80"
+      - "${WEB_HOST_PORT:-80}:80"
 
 volumes:
   pgdata:

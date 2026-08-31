@@ -1,0 +1,32 @@
+# The build context is the repository root (both images need paths outside their
+# own directory), so everything that must not be baked into a layer is listed
+# here. ml/.cache alone is over a gigabyte of downloaded model weights -- it is
+# mounted at runtime instead.
+.git
+.github
+.env
+.env.*
+!.env.example
+*.local.md
+
+**/__pycache__/
+**/*.pyc
+**/.pytest_cache/
+**/.ruff_cache/
+**/node_modules/
+**/dist/
+.venv/
+venv/
+*.egg-info/
+
+ml/.cache/
+infra/chroma/
+infra/storage/
+infra/corpus_cache/
+infra/exports/
+infra/mail/
+infra/sms/
+backend/infra/
+
+coverage/
+*.log
