@@ -41,8 +41,7 @@ export const Card = forwardRef<HTMLDivElement, CardProps>(
         "rounded-lg border",
         toneClasses[tone],
         variantClasses[variant],
-        interactive &&
-          "cursor-pointer transition-shadow duration-150 hover:border-border-strong hover:shadow-md",
+        interactive && "lift cursor-pointer",
         className,
       )}
       {...rest}
@@ -64,6 +63,7 @@ export function CardHeader({ divided = true, className, ...rest }: CardHeaderPro
       className={cn(
         "flex flex-wrap items-center justify-between gap-3 px-5 py-3.5",
         divided && "border-b border-border",
+        "rounded-t-lg",
         className,
       )}
       {...rest}

@@ -25,6 +25,12 @@ export function useToast(): ToastContextValue {
   return ctx;
 }
 
+const toneBar: Record<ToastTone, string> = {
+  success: "before:bg-normal",
+  error: "before:bg-critical",
+  info: "before:bg-info",
+};
+
 const toneIcon: Record<ToastTone, ReactNode> = {
   success: <CheckCircle2 className="h-5 w-5 text-normal" aria-hidden="true" />,
   error: <AlertCircle className="h-5 w-5 text-critical" aria-hidden="true" />,
@@ -45,7 +51,13 @@ function ToastCard({ toast, onDismiss }: { toast: ToastItem; onDismiss: (id: str
       role="status"
       onMouseEnter={() => setPaused(true)}
       onMouseLeave={() => setPaused(false)}
-      className="flex w-80 items-start gap-2 rounded-md border border-border bg-surface p-3 shadow-md"
+      className={cn(
+        "flex w-80 animate-slide-in-right items-start gap-2 overflow-hidden rounded-lg border border-border bg-surface p-3 pl-4 shadow-lg",
+        // A colour bar rather than a tinted card: a toast that fills with red
+        // reads as an alert the user has to act on.
+        "relative before:absolute before:inset-y-0 before:left-0 before:w-1",
+        toneBar[toast.tone ?? "info"],
+      )}
     >
       {toneIcon[toast.tone ?? "info"]}
       <div className="flex-1">
@@ -56,7 +68,7 @@ function ToastCard({ toast, onDismiss }: { toast: ToastItem; onDismiss: (id: str
         type="button"
         aria-label="Dismiss notification"
         onClick={() => onDismiss(toast.id)}
-        className="rounded p-0.5 text-fg-subtle hover:bg-surface-2"
+        className="rounded p-0.5 text-fg-subtle transition-colors hover:bg-surface-2 hover:text-fg"
       >
         <X className="h-4 w-4" />
       </button>

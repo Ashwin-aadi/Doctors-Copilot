@@ -15,10 +15,11 @@ export interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
 }
 
 const variantClasses: Record<ButtonVariant, string> = {
-  primary: "bg-primary text-primary-fg hover:bg-primary-hover",
-  secondary: "bg-surface text-fg border border-border hover:bg-surface-2",
+  primary: "bg-primary text-primary-fg shadow-primary hover:bg-primary-hover hover:shadow-hover",
+  secondary:
+    "bg-surface text-fg border border-border shadow-xs hover:bg-surface-2 hover:border-border-strong",
   ghost: "bg-transparent text-fg hover:bg-surface-2",
-  danger: "bg-critical text-critical-fg hover:opacity-90",
+  danger: "bg-critical text-critical-fg shadow-xs hover:opacity-90 hover:shadow-md",
   link: "bg-transparent text-primary underline-offset-4 hover:underline p-0 h-auto",
 };
 
@@ -49,8 +50,12 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
         aria-busy={loading || undefined}
         disabled={disabled || loading}
         className={cn(
-          "inline-flex items-center justify-center rounded-md font-medium transition-colors duration-150",
-          "disabled:opacity-50 disabled:pointer-events-none",
+          "inline-flex items-center justify-center rounded-md font-medium",
+          // Colour, depth and the press all move together, so the button reads
+          // as one physical object rather than a tint that happens to change.
+          "transition-[background-color,box-shadow,transform,opacity,border-color] duration-150 ease-out",
+          variant !== "link" && "active:translate-y-px active:shadow-xs",
+          "disabled:opacity-50 disabled:pointer-events-none disabled:shadow-none",
           variant !== "link" && sizeClasses[size],
           variantClasses[variant],
           className,

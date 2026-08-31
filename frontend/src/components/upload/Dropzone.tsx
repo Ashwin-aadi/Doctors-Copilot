@@ -1,4 +1,4 @@
-import { useEffect, useId, useReducer, useRef } from "react";
+import { useEffect, useId, useReducer, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Camera, UploadCloud } from "lucide-react";
 import { cn } from "../../lib/cn";
@@ -53,6 +53,9 @@ export function Dropzone({ files, onFilesSelected, onCancel, onRetry, disabled, 
   const filePickerId = useId();
   const cameraId = useId();
   const stalledIds = useStallDetection(files);
+  // Dragging over the label is the moment the user most needs an answer to
+  // "will it accept this?", and the box gave none.
+  const [dragging, setDragging] = useState(false);
 
   function pick(list: FileList | null) {
     if (!list || list.length === 0) return;
@@ -67,19 +70,43 @@ export function Dropzone({ files, onFilesSelected, onCancel, onRetry, disabled, 
           Drag-and-drop still lands on the label, which is where users aim. */}
       <label
         htmlFor={filePickerId}
-        onDragOver={(e) => e.preventDefault()}
+        onDragOver={(e) => {
+          e.preventDefault();
+          if (!disabled) setDragging(true);
+        }}
+        onDragLeave={() => setDragging(false)}
         onDrop={(e) => {
           e.preventDefault();
+          setDragging(false);
           if (!disabled) pick(e.dataTransfer.files);
         }}
         className={cn(
-          "flex flex-col items-center gap-2 rounded-lg border-2 border-dashed border-border p-8 text-center transition-colors",
+          "flex flex-col items-center gap-2 rounded-lg border-2 border-dashed p-8 text-center",
+          "transition-[border-color,background-color,transform] duration-200 ease-out",
           "focus-within:border-primary focus-within:outline focus-within:outline-2 focus-within:outline-offset-2 focus-within:outline-ring",
-          !disabled && "cursor-pointer hover:border-primary",
+          dragging
+            ? "scale-[1.01] border-primary bg-primary-soft"
+            : "border-border bg-surface-2/40",
+          !disabled && !dragging && "cursor-pointer hover:border-primary hover:bg-primary-soft/40",
           disabled && "opacity-50",
         )}
       >
-        <UploadCloud className="h-8 w-8 text-fg-subtle" aria-hidden="true" />
+        <span
+          aria-hidden="true"
+          className={cn(
+            "flex h-14 w-14 items-center justify-center rounded-full ring-1 transition-colors duration-200",
+            dragging
+              ? "bg-primary text-primary-fg ring-primary"
+              : "bg-surface text-fg-subtle ring-border",
+          )}
+        >
+          <UploadCloud
+            className={cn(
+              "h-6 w-6 transition-transform duration-200 ease-out",
+              dragging && "-translate-y-0.5",
+            )}
+          />
+        </span>
         <span className="text-sm font-medium text-fg">
           {t("upload.dropLabel", { defaultValue: "Drag reports here, or tap to choose photos / PDFs" })}
         </span>
@@ -108,7 +135,7 @@ export function Dropzone({ files, onFilesSelected, onCancel, onRetry, disabled, 
         <label
           htmlFor={cameraId}
           className={cn(
-            "inline-flex min-h-[44px] cursor-pointer items-center gap-2 rounded-md border border-border bg-surface px-4 text-sm font-medium text-fg transition-colors hover:bg-surface-2",
+            "inline-flex min-h-[44px] cursor-pointer items-center gap-2 rounded-md border border-border bg-surface px-4 text-sm font-medium text-fg shadow-xs transition-colors duration-150 hover:border-border-strong hover:bg-surface-2",
             "focus-within:outline focus-within:outline-2 focus-within:outline-offset-2 focus-within:outline-ring",
             disabled && "pointer-events-none opacity-50",
           )}
@@ -131,7 +158,7 @@ export function Dropzone({ files, onFilesSelected, onCancel, onRetry, disabled, 
       </div>
 
       {files.length > 0 && (
-        <div className="flex flex-col gap-2">
+        <div className="stagger flex flex-col gap-2">
           {files.map((f) => (
             <FileRow
               key={f.clientId}

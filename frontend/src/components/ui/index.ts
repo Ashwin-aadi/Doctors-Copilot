@@ -12,6 +12,7 @@ export * from "./Modal";
 export * from "./Drawer";
 export * from "./Tabs";
 export * from "./Badge";
+export * from "./Filters";
 export * from "./SeverityPill";
 export * from "./Table";
 export * from "./Toast";

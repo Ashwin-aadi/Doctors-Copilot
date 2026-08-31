@@ -61,7 +61,9 @@ export function Timeline({ entries, loading, error, onOpen, className }: Timelin
     <div className={cn("flex flex-col gap-5", className)}>
       {groupByMonth(entries).map(([month, group]) => (
         <section key={month}>
-          <h2 className="mb-2 text-xs font-semibold uppercase tracking-wide text-fg-muted">
+          {/* The month sticks while its own entries scroll past, so a long
+              history never leaves the reader without a date anchor. */}
+          <h2 className="panel-sticky mb-2 py-1 text-xs font-semibold uppercase tracking-wide text-fg-muted">
             {month}
           </h2>
           <ul className="flex flex-col">

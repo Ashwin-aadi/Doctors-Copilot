@@ -76,11 +76,12 @@ export function Nav({ collapsed = false, onNavigate }: NavProps) {
             title={collapsed ? label : undefined}
             className={({ isActive }) =>
               cn(
-                "group relative flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-colors",
+                "group relative flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium",
+                "transition-[background-color,color,transform] duration-150 ease-out",
                 collapsed && "justify-center px-0",
                 isActive
-                  ? "bg-rail-active text-rail-fg"
-                  : "text-rail-muted hover:bg-rail-active/60 hover:text-rail-fg",
+                  ? "bg-rail-active text-rail-fg shadow-xs"
+                  : "text-rail-muted hover:translate-x-0.5 hover:bg-rail-active/60 hover:text-rail-fg",
               )
             }
           >
@@ -92,11 +93,16 @@ export function Nav({ collapsed = false, onNavigate }: NavProps) {
                 <span
                   aria-hidden="true"
                   className={cn(
-                    "absolute left-0 h-5 w-0.5 rounded-r bg-primary transition-opacity",
-                    isActive ? "opacity-100" : "opacity-0",
+                    "absolute left-0 w-0.5 rounded-r bg-primary transition-all duration-200 ease-out",
+                    isActive ? "h-5 opacity-100" : "h-0 opacity-0",
                   )}
                 />
-                <Icon className="h-[18px] w-[18px] shrink-0" />
+                <Icon
+                  className={cn(
+                    "h-[18px] w-[18px] shrink-0 transition-transform duration-150 ease-out",
+                    isActive && "scale-110",
+                  )}
+                />
                 {!collapsed && <span className="truncate">{label}</span>}
               </>
             )}

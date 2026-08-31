@@ -54,16 +54,24 @@ export function StatTile({
       onClick={onClick}
       className={cn(
         "relative flex items-center gap-3 overflow-hidden rounded-lg border border-border bg-surface px-4 py-3.5 text-left shadow-sm",
-        onClick && "transition-shadow hover:border-border-strong hover:shadow-md",
+        onClick && "lift cursor-pointer",
         className,
       )}
     >
-      <span aria-hidden="true" className={cn("absolute inset-y-0 left-0 w-1", barClasses[tone])} />
+      {/* The bar grows in on mount: on a row of four tiles that reads as the
+          numbers landing, and it is the only motion the tile carries. */}
+      <span
+        aria-hidden="true"
+        className={cn(
+          "absolute inset-y-0 left-0 w-1 origin-bottom animate-bar-grow",
+          barClasses[tone],
+        )}
+      />
       {icon && (
         <span
           aria-hidden="true"
           className={cn(
-            "ml-1 flex h-9 w-9 shrink-0 items-center justify-center rounded-md",
+            "ml-1 flex h-9 w-9 shrink-0 items-center justify-center rounded-lg",
             accentClasses[tone],
           )}
         >

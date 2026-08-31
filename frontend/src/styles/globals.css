@@ -12,8 +12,8 @@
   }
 
   body {
-    background-color: var(--bg);
-    color: var(--fg);
+    background-color: rgb(var(--bg));
+    color: rgb(var(--fg));
   }
 
   /* Numbers in a clinical table are read down the column, so they have to line
@@ -24,21 +24,21 @@
   }
 
   :focus-visible {
-    outline: 2px solid var(--ring);
+    outline: 2px solid rgb(var(--ring) / 0.55);
     outline-offset: 2px;
     border-radius: var(--radius-sm);
   }
 
   ::selection {
-    background-color: var(--primary-soft);
-    color: var(--fg);
+    background-color: rgb(var(--primary-soft));
+    color: rgb(var(--fg));
   }
 
   /* A workstation has several scrolling panes on screen at once; the default
      chrome bars are loud enough to compete with the content. */
   * {
     scrollbar-width: thin;
-    scrollbar-color: var(--border-strong) transparent;
+    scrollbar-color: rgb(var(--border-strong)) transparent;
   }
 
   *::-webkit-scrollbar {
@@ -47,14 +47,14 @@
   }
 
   *::-webkit-scrollbar-thumb {
-    background-color: var(--border-strong);
+    background-color: rgb(var(--border-strong));
     border: 3px solid transparent;
     background-clip: content-box;
     border-radius: 999px;
   }
 
   *::-webkit-scrollbar-thumb:hover {
-    background-color: var(--fg-subtle);
+    background-color: rgb(var(--fg-subtle));
   }
 }
 
@@ -73,9 +73,95 @@
   .panel-sticky {
     @apply sticky top-0 z-10 bg-surface/95 backdrop-blur;
   }
+
+  /* Every routed page arrives the same way: a short rise, once, so moving
+     between the queue and a chart feels continuous rather than cut. */
+  .page,
+  .page-narrow {
+    animation: page-enter 280ms var(--ease-out) both;
+  }
+
+  /* Children of a `.stagger` list arrive in sequence. Capped at eight so a
+     long queue does not take a second and a half to appear. */
+  .stagger > * {
+    animation: page-enter 260ms var(--ease-out) both;
+  }
+  .stagger > *:nth-child(1) { animation-delay: 0ms; }
+  .stagger > *:nth-child(2) { animation-delay: 40ms; }
+  .stagger > *:nth-child(3) { animation-delay: 80ms; }
+  .stagger > *:nth-child(4) { animation-delay: 120ms; }
+  .stagger > *:nth-child(5) { animation-delay: 160ms; }
+  .stagger > *:nth-child(6) { animation-delay: 200ms; }
+  .stagger > *:nth-child(7) { animation-delay: 240ms; }
+  .stagger > *:nth-child(n + 8) { animation-delay: 280ms; }
+
+  /* A skeleton that sweeps rather than blinks: at a glance it reads as work in
+     progress instead of a broken panel. */
+  .skeleton-sheen {
+    position: relative;
+    overflow: hidden;
+  }
+
+  .skeleton-sheen::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    transform: translateX(-100%);
+    background-image: linear-gradient(
+      90deg,
+      transparent 0%,
+      var(--skeleton-sheen) 50%,
+      transparent 100%
+    );
+    animation: sheen-sweep 1.6s infinite;
+  }
+
+  /* A card that is itself a target. Lift and shadow only -- never a colour
+     change, which on this palette would read as a clinical state. */
+  .lift {
+    @apply transition-[transform,box-shadow,border-color] duration-200 ease-out;
+  }
+
+  .lift:hover {
+    @apply -translate-y-0.5 border-border-strong shadow-hover;
+  }
+
+  .lift:active {
+    @apply translate-y-0 shadow-sm;
+  }
+}
+
+/* Declared here rather than leaned on from the Tailwind animation utilities:
+   Tailwind only emits a @keyframes block when the matching utility class is
+   found in the markup, and these are used from CSS. */
+@keyframes page-enter {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes sheen-sweep {
+  to {
+    transform: translateX(100%);
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {
+  .page,
+  .page-narrow,
+  .stagger > * {
+    animation: none !important;
+  }
+
+  .lift:hover {
+    transform: none !important;
+  }
+
   *,
   *::before,
   *::after {

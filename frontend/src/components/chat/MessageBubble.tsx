@@ -19,7 +19,7 @@ function renderWithCitations(text: string, onCitationClick?: (n: number) => void
         key={i}
         type="button"
         onClick={() => onCitationClick?.(n)}
-        className="mx-0.5 align-super text-[0.7em] font-semibold text-primary underline-offset-2 hover:underline"
+        className="mx-0.5 inline-flex align-super text-[0.7em] font-semibold text-primary underline-offset-2 transition-colors hover:text-primary-hover hover:underline"
         aria-label={`View source ${n}`}
       >
         [{n}]
@@ -28,22 +28,28 @@ function renderWithCitations(text: string, onCitationClick?: (n: number) => void
   });
 }
 
+// The corner opposite the speaker stays square: that squared corner is what
+// makes a column of bubbles read as a conversation with two sides.
 const bubbleClasses: Record<ChatMessage["role"], string> = {
-  patient: "ml-auto bg-primary text-primary-fg",
-  assistant: "mr-auto bg-surface-2 text-fg",
+  patient: "ml-auto rounded-br-sm bg-primary text-primary-fg shadow-primary",
+  assistant: "mr-auto rounded-bl-sm bg-surface-2 text-fg shadow-xs ring-1 ring-inset ring-border",
   system: "mx-auto bg-transparent text-fg-subtle text-xs italic",
-  emergency: "mr-auto border border-critical bg-critical-soft text-fg",
+  emergency: "mr-auto rounded-bl-sm border border-critical bg-critical-soft text-fg shadow-sm",
 };
 
 export function MessageBubble({ message, onCitationClick }: MessageBubbleProps) {
   if (message.role === "system") {
-    return <p className={cn("max-w-[80%] py-1 text-center", bubbleClasses.system)}>{message.content}</p>;
+    return (
+      <p className={cn("max-w-[80%] animate-fade-in py-1 text-center", bubbleClasses.system)}>
+        {message.content}
+      </p>
+    );
   }
 
   return (
     <div
       className={cn(
-        "flex max-w-[80%] flex-col gap-1 rounded-lg px-3 py-2 text-sm",
+        "flex max-w-[80%] animate-rise-in flex-col gap-1 rounded-lg px-3.5 py-2.5 text-sm",
         bubbleClasses[message.role],
       )}
     >

@@ -30,7 +30,10 @@ export function TableCaption({ className, ...rest }: HTMLAttributes<HTMLTableCap
 export function TableHead({ className, ...rest }: HTMLAttributes<HTMLTableSectionElement>) {
   return (
     <thead
-      className={cn("sticky top-0 z-10 bg-surface-2 text-left text-xs font-semibold text-fg-muted", className)}
+      className={cn(
+        "sticky top-0 z-10 border-b border-border bg-surface-2 text-left text-xs font-semibold uppercase tracking-wide text-fg-muted",
+        className,
+      )}
       {...rest}
     />
   );
@@ -51,6 +54,7 @@ export function TableRow({
       tabIndex={interactive ? 0 : undefined}
       className={cn(
         zebra && "odd:bg-surface even:bg-surface-2/40",
+        "transition-colors duration-150",
         interactive && "cursor-pointer hover:bg-primary-soft focus-visible:bg-primary-soft",
         className,
       )}
@@ -60,9 +64,9 @@ export function TableRow({
 }
 
 export function TableHeaderCell({ className, ...rest }: ThHTMLAttributes<HTMLTableCellElement>) {
-  return <th scope="col" className={cn("px-3 py-2 tabular-nums", className)} {...rest} />;
+  return <th scope="col" className={cn("px-3 py-2.5 tabular-nums", className)} {...rest} />;
 }
 
 export function TableCell({ className, ...rest }: TdHTMLAttributes<HTMLTableCellElement>) {
-  return <td className={cn("px-3 py-2 tabular-nums text-fg", className)} {...rest} />;
+  return <td className={cn("px-3 py-2.5 tabular-nums text-fg", className)} {...rest} />;
 }

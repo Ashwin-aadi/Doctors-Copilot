@@ -27,8 +27,11 @@ export function Stepper({ steps, currentKey, className }: StepperProps) {
                 aria-current={active ? "step" : undefined}
                 className={cn(
                   "flex h-7 w-7 items-center justify-center rounded-full border text-xs font-semibold",
-                  done && "border-primary bg-primary text-primary-fg",
-                  active && "border-primary text-primary",
+                  "transition-[background-color,border-color,color,box-shadow] duration-300 ease-out",
+                  done && "border-primary bg-primary text-primary-fg shadow-primary",
+                  // The current step gets a ring rather than a fill, so "here"
+                  // and "done" are never mistaken for one another.
+                  active && "border-primary text-primary ring-4 ring-primary/15",
                   !done && !active && "border-border text-fg-subtle",
                 )}
               >
@@ -46,7 +49,10 @@ export function Stepper({ steps, currentKey, className }: StepperProps) {
             {i < steps.length - 1 && (
               <span
                 aria-hidden="true"
-                className={cn("mx-2 h-px flex-1", done ? "bg-primary" : "bg-border")}
+                className={cn(
+                  "mx-2 h-0.5 flex-1 rounded-full transition-colors duration-300",
+                  done ? "bg-primary" : "bg-border",
+                )}
               />
             )}
           </li>

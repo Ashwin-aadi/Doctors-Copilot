@@ -7,72 +7,78 @@
   Warmth stays in the accent and the paper-toned raised surfaces so it still
   reads as an Indian primary-care tool rather than a generic SaaS dashboard.
 */
+/*
+  Colours are stored as bare `R G B` channels, not hex, so every Tailwind
+  utility can take an opacity modifier -- `bg-surface/80`, `ring-primary/20`.
+  Consume one outside Tailwind as `rgb(var(--token))`, or
+  `rgb(var(--token) / 0.4)` for a tint.
+*/
 :root {
-  --bg: #F4F6F5;
-  --surface: #FFFFFF;
-  --surface-2: #F1F4F3;
-  --surface-3: #E7ECEA;
-  --border: #DFE5E3;
-  --border-strong: #C6D0CD;
+  --bg: 244 246 245;
+  --surface: 255 255 255;
+  --surface-2: 241 244 243;
+  --surface-3: 231 236 234;
+  --border: 223 229 227;
+  --border-strong: 198 208 205;
 
-  --fg: #14201C;
-  --fg-muted: #566762;
-  --fg-subtle: #7C8B86;
+  --fg: 20 32 28;
+  --fg-muted: 86 103 98;
+  --fg-subtle: 124 139 134;
 
   /* The navigation rail and any chrome sitting on it. Held apart from the
      content palette so the shell keeps its identity in both themes. */
-  --rail: #0D3B34;
-  --rail-2: #0A2F29;
-  --rail-fg: #EAF3F0;
-  --rail-muted: #93B3AB;
-  --rail-active: #14554A;
-  --rail-border: #16493F;
+  --rail: 13 59 52;
+  --rail-2: 10 47 41;
+  --rail-fg: 234 243 240;
+  --rail-muted: 147 179 171;
+  --rail-active: 20 85 74;
+  --rail-border: 22 73 63;
 
-  --primary: #0F6B5C;
-  --primary-hover: #0B5548;
-  --primary-fg: #FFFFFF;
-  --primary-soft: #E4F1EE;
-  --primary-soft-fg: #0B5548;
+  --primary: 15 107 92;
+  --primary-hover: 11 85 72;
+  --primary-fg: 255 255 255;
+  --primary-soft: 228 241 238;
+  --primary-soft-fg: 11 85 72;
 
-  --accent: #C9711A;
-  --accent-hover: #A85E14;
-  --accent-fg: #FFFFFF;
-  --accent-soft: #FBEBDB;
-  --accent-soft-fg: #8E4F11;
+  --accent: 201 113 26;
+  --accent-hover: 168 94 20;
+  --accent-fg: 255 255 255;
+  --accent-soft: 251 235 219;
+  --accent-soft-fg: 142 79 17;
 
   /* Each semantic colour carries the two foregrounds that are legible on it:
      `fg` for text on the solid fill, `soft-fg` for text on the tinted one.
      Both clear 4.5:1 in either theme -- never dim them with opacity. */
-  --critical: #B3261E;
-  --critical-fg: #FFFFFF;
-  --critical-soft: #FDEBE9;
-  --critical-soft-fg: #96201A;
-  --high: #B15C00;
-  --high-fg: #FFFFFF;
-  --high-soft: #FFF1DF;
-  --high-soft-fg: #8E4A00;
-  --moderate: #8A6D00;
-  --moderate-fg: #FFFFFF;
-  --moderate-soft: #FBF5DA;
-  --moderate-soft-fg: #6E5700;
-  --normal: #1B6E3C;
-  --normal-fg: #FFFFFF;
-  --normal-soft: #E6F4EB;
-  --normal-soft-fg: #165A31;
-  --info: #1A5FA8;
-  --info-fg: #FFFFFF;
-  --info-soft: #E7F0FA;
-  --info-soft-fg: #154D88;
+  --critical: 179 38 30;
+  --critical-fg: 255 255 255;
+  --critical-soft: 253 235 233;
+  --critical-soft-fg: 150 32 26;
+  --high: 177 92 0;
+  --high-fg: 255 255 255;
+  --high-soft: 255 241 223;
+  --high-soft-fg: 142 74 0;
+  --moderate: 138 109 0;
+  --moderate-fg: 255 255 255;
+  --moderate-soft: 251 245 218;
+  --moderate-soft-fg: 110 87 0;
+  --normal: 27 110 60;
+  --normal-fg: 255 255 255;
+  --normal-soft: 230 244 235;
+  --normal-soft-fg: 22 90 49;
+  --info: 26 95 168;
+  --info-fg: 255 255 255;
+  --info-soft: 231 240 250;
+  --info-soft-fg: 21 77 136;
 
-  --ring: #0F6B5C59;
+  --ring: 15 107 92;
 
   /* Chart series, ordered so the first three stay distinguishable to the most
      common colour-vision deficiencies. */
-  --chart-1: #0F6B5C;
-  --chart-2: #C9711A;
-  --chart-3: #1A5FA8;
-  --chart-4: #8A6D00;
-  --chart-5: #7B4EA8;
+  --chart-1: 15 107 92;
+  --chart-2: 201 113 26;
+  --chart-3: 26 95 168;
+  --chart-4: 138 109 0;
+  --chart-5: 123 78 168;
 
   --radius-sm: 6px;
   --radius-md: 10px;
@@ -82,69 +88,96 @@
   --shadow-sm: 0 1px 2px rgb(20 32 28 / 0.06), 0 1px 1px rgb(20 32 28 / 0.04);
   --shadow-md: 0 2px 4px rgb(20 32 28 / 0.05), 0 8px 20px -6px rgb(20 32 28 / 0.10);
   --shadow-lg: 0 4px 8px rgb(20 32 28 / 0.06), 0 20px 40px -12px rgb(20 32 28 / 0.16);
+
+  /* Motion. One curve for entrances (decelerating, never bouncy in a clinical
+     tool) and three durations, so a panel, a menu and a row all move alike. */
+  --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+  --ease-in-out: cubic-bezier(0.4, 0, 0.2, 1);
+  --dur-fast: 120ms;
+  --dur-base: 200ms;
+  --dur-slow: 320ms;
+
+  /* Depth for surfaces that sit above the page rather than in it. */
+  --shadow-xs: 0 1px 1px rgb(20 32 28 / 0.04);
+  --shadow-hover: 0 2px 6px rgb(20 32 28 / 0.07), 0 12px 28px -8px rgb(20 32 28 / 0.16);
+  --shadow-primary: 0 1px 2px rgb(15 107 92 / 0.28), 0 4px 12px -4px rgb(15 107 92 / 0.32);
+
+  /* The rail is painted as a gradient so a 250px column of flat dark green
+     does not read as a dead bar down the side of the screen. */
+  --rail-gradient: linear-gradient(175deg, rgb(15 66 57) 0%, rgb(13 59 52) 45%, rgb(10 47 41) 100%);
+  --hero-gradient: linear-gradient(135deg, rgb(var(--primary-soft)) 0%, rgb(var(--surface)) 62%);
+  --skeleton-sheen: rgb(255 255 255 / 0.55);
 }
 
 [data-theme="dark"] {
-  --bg: #0E1513;
-  --surface: #16201D;
-  --surface-2: #1D2926;
-  --surface-3: #253330;
-  --border: #2A3A36;
-  --border-strong: #3A4D48;
+  --bg: 14 21 19;
+  --surface: 22 32 29;
+  --surface-2: 29 41 38;
+  --surface-3: 37 51 48;
+  --border: 42 58 54;
+  --border-strong: 58 77 72;
 
-  --fg: #E9F1EE;
-  --fg-muted: #A2B3AE;
-  --fg-subtle: #859692;
+  --fg: 233 241 238;
+  --fg-muted: 162 179 174;
+  --fg-subtle: 133 150 146;
 
-  --rail: #0A1614;
-  --rail-2: #071110;
-  --rail-fg: #E9F1EE;
-  --rail-muted: #7F9A93;
-  --rail-active: #143A33;
-  --rail-border: #1D2E2A;
+  --rail: 10 22 20;
+  --rail-2: 7 17 16;
+  --rail-fg: 233 241 238;
+  --rail-muted: 127 154 147;
+  --rail-active: 20 58 51;
+  --rail-border: 29 46 42;
 
-  --primary: #3FA890;
-  --primary-hover: #52BCA3;
-  --primary-fg: #06201A;
-  --primary-soft: #10302A;
-  --primary-soft-fg: #6FC7B2;
+  --primary: 63 168 144;
+  --primary-hover: 82 188 163;
+  --primary-fg: 6 32 26;
+  --primary-soft: 16 48 42;
+  --primary-soft-fg: 111 199 178;
 
-  --accent: #E2914A;
-  --accent-hover: #EEA766;
-  --accent-fg: #241002;
-  --accent-soft: #33240F;
-  --accent-soft-fg: #EDA966;
+  --accent: 226 145 74;
+  --accent-hover: 238 167 102;
+  --accent-fg: 36 16 2;
+  --accent-soft: 51 36 15;
+  --accent-soft-fg: 237 169 102;
 
-  --critical: #F2807A;
-  --critical-fg: #2A0B08;
-  --critical-soft: #381917;
-  --critical-soft-fg: #F79A94;
-  --high: #E2A155;
-  --high-fg: #241206;
-  --high-soft: #362512;
-  --high-soft-fg: #EAB474;
-  --moderate: #D8C25E;
-  --moderate-fg: #221E06;
-  --moderate-soft: #302B12;
-  --moderate-soft-fg: #E0CD79;
-  --normal: #5FBE85;
-  --normal-fg: #06210F;
-  --normal-soft: #142B1D;
-  --normal-soft-fg: #7FD09E;
-  --info: #78AEEB;
-  --info-fg: #06182B;
-  --info-soft: #142433;
-  --info-soft-fg: #94C1F1;
+  --critical: 242 128 122;
+  --critical-fg: 42 11 8;
+  --critical-soft: 56 25 23;
+  --critical-soft-fg: 247 154 148;
+  --high: 226 161 85;
+  --high-fg: 36 18 6;
+  --high-soft: 54 37 18;
+  --high-soft-fg: 234 180 116;
+  --moderate: 216 194 94;
+  --moderate-fg: 34 30 6;
+  --moderate-soft: 48 43 18;
+  --moderate-soft-fg: 224 205 121;
+  --normal: 95 190 133;
+  --normal-fg: 6 33 15;
+  --normal-soft: 20 43 29;
+  --normal-soft-fg: 127 208 158;
+  --info: 120 174 235;
+  --info-fg: 6 24 43;
+  --info-soft: 20 36 51;
+  --info-soft-fg: 148 193 241;
 
-  --ring: #3FA89066;
+  --ring: 63 168 144;
 
-  --chart-1: #3FA890;
-  --chart-2: #E2914A;
-  --chart-3: #78AEEB;
-  --chart-4: #D8C25E;
-  --chart-5: #B08BD8;
+  --chart-1: 63 168 144;
+  --chart-2: 226 145 74;
+  --chart-3: 120 174 235;
+  --chart-4: 216 194 94;
+  --chart-5: 176 139 216;
 
   --shadow-sm: 0 1px 2px rgb(0 0 0 / 0.4);
   --shadow-md: 0 2px 4px rgb(0 0 0 / 0.35), 0 8px 20px -6px rgb(0 0 0 / 0.5);
   --shadow-lg: 0 4px 8px rgb(0 0 0 / 0.4), 0 20px 40px -12px rgb(0 0 0 / 0.6);
+
+  --shadow-xs: 0 1px 1px rgb(0 0 0 / 0.35);
+  --shadow-hover: 0 2px 6px rgb(0 0 0 / 0.4), 0 12px 28px -8px rgb(0 0 0 / 0.55);
+  --shadow-primary: 0 1px 2px rgb(0 0 0 / 0.5), 0 4px 12px -4px rgb(63 168 144 / 0.28);
+
+  --rail-gradient: linear-gradient(175deg, rgb(12 27 24) 0%, rgb(10 22 20) 45%, rgb(7 17 16) 100%);
+  --hero-gradient: linear-gradient(135deg, rgb(var(--primary-soft)) 0%, rgb(var(--surface)) 62%);
+  --skeleton-sheen: rgb(255 255 255 / 0.06);
 }

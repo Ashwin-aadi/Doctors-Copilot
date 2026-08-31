@@ -31,19 +31,22 @@ export function PageHeader({
   className,
 }: PageHeaderProps) {
   return (
-    <div className={cn("flex flex-col gap-3", className)}>
+    <div className={cn("flex flex-col gap-3 animate-fade-in", className)}>
       {back && (
         <Link
           to={back.to}
-          className="inline-flex w-fit items-center gap-1 text-xs font-medium text-fg-muted transition-colors hover:text-fg"
+          className="group inline-flex w-fit items-center gap-1 text-xs font-medium text-fg-muted transition-colors hover:text-fg"
         >
-          <ChevronLeft className="h-3.5 w-3.5" aria-hidden="true" />
+          <ChevronLeft
+            className="h-3.5 w-3.5 transition-transform duration-150 ease-out group-hover:-translate-x-0.5"
+            aria-hidden="true"
+          />
           {back.label}
         </Link>
       )}
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="min-w-0">
-          <h2 className="text-xl font-semibold tracking-tight text-fg">{title}</h2>
+          <h2 className="text-2xl font-semibold tracking-tight text-fg">{title}</h2>
           {titleAlt && (
             <p lang="hi" className="text-sm text-fg-subtle">
               {titleAlt}

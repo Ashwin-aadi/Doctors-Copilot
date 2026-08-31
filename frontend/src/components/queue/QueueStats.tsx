@@ -25,7 +25,7 @@ export function QueueStats({ entries }: QueueStatsProps) {
   ).length;
 
   return (
-    <div className="grid grid-cols-2 gap-3 xl:grid-cols-4">
+    <div className="stagger grid grid-cols-2 gap-3 xl:grid-cols-4">
       <StatTile
         label={t("queue.waitingCount")}
         value={waiting}

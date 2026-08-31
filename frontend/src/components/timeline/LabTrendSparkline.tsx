@@ -26,7 +26,11 @@ export function LabTrendSparkline({
   const last = points[points.length - 1].value;
   const rising = last > first;
   const worsening = rising === higherIsWorse;
-  const stroke = last === first ? "var(--fg-muted)" : worsening ? "var(--critical)" : "var(--normal)";
+  const stroke = last === first
+    ? "rgb(var(--fg-muted))"
+    : worsening
+      ? "rgb(var(--critical))"
+      : "rgb(var(--normal))";
 
   const direction = last === first ? "unchanged" : rising ? "rising" : "falling";
   const description = `${label ? `${label}: ` : ""}${direction} across ${points.length} readings, latest ${last}`;

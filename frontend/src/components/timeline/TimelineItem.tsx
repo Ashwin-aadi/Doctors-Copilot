@@ -31,12 +31,12 @@ export function TimelineItem({ entry, defaultOpen = false, onOpen, className }: 
   }
 
   return (
-    <li className={cn("relative flex gap-3 pb-5 pl-1", className)}>
+    <li className={cn("group/item relative flex gap-3 pb-5 pl-1", className)}>
       <span
         aria-hidden="true"
         className="absolute left-[13px] top-8 bottom-0 w-px bg-border last:hidden"
       />
-      <span className="z-10 flex h-7 w-7 shrink-0 items-center justify-center rounded-full border border-border bg-surface text-fg-muted">
+      <span className="z-10 flex h-7 w-7 shrink-0 items-center justify-center rounded-full border border-border bg-surface text-fg-muted shadow-xs transition-colors duration-150 group-hover/item:border-primary group-hover/item:text-primary">
         {ICONS[entry.kind]}
       </span>
 
@@ -64,11 +64,13 @@ export function TimelineItem({ entry, defaultOpen = false, onOpen, className }: 
             >
               {open ? "Hide details" : "Show details"}
               <ChevronDown
-                className={cn("h-3 w-3 transition-transform", open && "rotate-180")}
+                className={cn("h-3 w-3 transition-transform duration-200", open && "rotate-180")}
                 aria-hidden="true"
               />
             </button>
-            {open && <p className="mt-1 text-sm leading-relaxed text-fg">{entry.detail}</p>}
+            {open && (
+              <p className="mt-1 animate-rise-in text-sm leading-relaxed text-fg">{entry.detail}</p>
+            )}
           </>
         )}
       </div>

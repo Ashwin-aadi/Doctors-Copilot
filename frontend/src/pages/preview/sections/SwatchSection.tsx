@@ -22,7 +22,7 @@ export function SwatchSection() {
         <div key={s.token} className="flex flex-col gap-1.5">
           <div
             className="h-14 rounded-md border border-border"
-            style={{ backgroundColor: `var(${s.token})` }}
+            style={{ backgroundColor: `rgb(var(${s.token}))` }}
           />
           <p className="text-xs font-medium text-fg">{s.label}</p>
           <p className="text-xs text-fg-subtle">{s.token}</p>

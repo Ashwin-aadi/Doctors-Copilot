@@ -32,7 +32,7 @@ export function Sidebar({ collapsed, onToggleCollapsed, onNavigate }: SidebarPro
   const { user } = useAuth();
 
   return (
-    <div className="flex h-full flex-col bg-rail text-rail-fg">
+    <div className="flex h-full flex-col bg-rail bg-rail-gradient text-rail-fg">
       <div
         className={cn(
           "flex h-16 items-center gap-2.5 border-b border-rail-border px-4",
@@ -42,9 +42,9 @@ export function Sidebar({ collapsed, onToggleCollapsed, onNavigate }: SidebarPro
         <Link
           to="/"
           onClick={onNavigate}
-          className="flex min-w-0 items-center gap-2.5 font-semibold text-rail-fg"
+          className="group/brand flex min-w-0 items-center gap-2.5 font-semibold text-rail-fg"
         >
-          <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-primary text-primary-fg">
+          <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-primary text-primary-fg shadow-primary transition-transform duration-200 ease-out group-hover/brand:scale-105">
             <Stethoscope className="h-5 w-5" aria-hidden="true" />
           </span>
           {!collapsed && (
@@ -72,7 +72,7 @@ export function Sidebar({ collapsed, onToggleCollapsed, onNavigate }: SidebarPro
             screen without reading anything else, so it lives in the rail. */}
         <div
           className={cn(
-            "rounded-md bg-rail-2 p-3",
+            "rounded-lg border border-rail-border bg-rail-2/80 p-3",
             collapsed && "flex justify-center p-2",
           )}
         >
@@ -81,7 +81,15 @@ export function Sidebar({ collapsed, onToggleCollapsed, onNavigate }: SidebarPro
           ) : (
             <>
               <p className="flex items-center gap-2 text-xs font-semibold text-rail-fg">
-                <PhoneCall className="h-4 w-4 text-critical" aria-hidden="true" />
+                <span className="relative flex h-4 w-4 items-center justify-center">
+                  {/* A slow ring behind the handset: the one always-live thing
+                      in the rail, so it should look live. */}
+                  <span
+                    aria-hidden="true"
+                    className="absolute inset-0 rounded-full bg-critical/40 animate-pulse-ring"
+                  />
+                  <PhoneCall className="relative h-4 w-4 text-critical" aria-hidden="true" />
+                </span>
                 {t("emergencyCard.title")}
               </p>
               <p className="mt-1.5 text-[11px] leading-relaxed text-rail-muted">
@@ -102,7 +110,7 @@ export function Sidebar({ collapsed, onToggleCollapsed, onNavigate }: SidebarPro
           onClick={onToggleCollapsed}
           aria-label={collapsed ? t("nav.expand") : t("nav.collapse")}
           className={cn(
-            "mt-3 hidden w-full items-center gap-2 rounded-md px-3 py-2 text-xs font-medium text-rail-muted transition-colors hover:bg-rail-active hover:text-rail-fg lg:flex",
+            "mt-3 hidden w-full items-center gap-2 rounded-md px-3 py-2 text-xs font-medium text-rail-muted transition-colors duration-150 hover:bg-rail-active hover:text-rail-fg lg:flex",
             collapsed && "justify-center px-0",
           )}
         >

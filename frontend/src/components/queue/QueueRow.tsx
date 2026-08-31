@@ -26,8 +26,11 @@ export function QueueRow({ entry, isHead, onCallNext, onEscalate, callingNext, e
     <TableRow
       className={cn(
         "transition-colors duration-300",
-        entry.emergency && "bg-critical-soft/60",
-        isHead && !entry.emergency && "bg-primary-soft/40",
+        // An escalated row keeps a solid left edge -- the tint alone washes out
+        // on a long board seen from across the counter.
+        entry.emergency &&
+          "bg-critical-soft/60 shadow-[inset_3px_0_0_0_rgb(var(--critical))]",
+        isHead && !entry.emergency && "bg-primary-soft/40 shadow-[inset_3px_0_0_0_rgb(var(--primary))]",
       )}
     >
       <TableCell>{entry.position}</TableCell>
@@ -35,7 +38,7 @@ export function QueueRow({ entry, isHead, onCallNext, onEscalate, callingNext, e
         {onOpen ? (
           <button
             type="button"
-            className="text-primary underline underline-offset-2 hover:no-underline"
+            className="font-medium text-primary underline decoration-primary/40 underline-offset-2 transition-colors hover:text-primary-hover hover:decoration-primary"
             data-testid="queue-open-visit"
             onClick={onOpen}
           >

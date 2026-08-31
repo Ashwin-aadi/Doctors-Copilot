@@ -17,16 +17,20 @@ export interface VisitStepperProps {
 type StagePhase = "done" | "current" | "previewed" | "upcoming";
 
 const MARKER_CLASS: Record<StagePhase, string> = {
-  done: "border-primary bg-primary text-primary-fg",
-  current: "border-primary bg-surface text-primary",
+  done: "border-primary bg-primary text-primary-fg shadow-primary",
+  current: "border-primary bg-surface text-primary ring-4 ring-primary/15",
   previewed: "border-primary/40 bg-surface text-primary",
   upcoming: "border-border bg-surface text-fg-subtle",
 };
 
+// The filled track means one thing only: how far the visit has actually got.
+// A previewed stage leaves it untouched -- walking forward to read a stage is
+// not progress, and filling the track for it told the doctor the reports were
+// in when nothing had been uploaded.
 const CONNECTOR_CLASS: Record<StagePhase, string> = {
   done: "bg-primary",
   current: "bg-primary",
-  previewed: "bg-primary/35",
+  previewed: "bg-border",
   upcoming: "bg-border",
 };
 
@@ -54,8 +58,8 @@ export function VisitStepper({ state, viewing, onStageClick, className }: VisitS
       {VISIT_STATES.map((s, i) => {
         // One position on the track per stage. A stage past the visit's own
         // state but not past what is on screen is "previewed": the user walked
-        // forward to look at it. Drawing that stretch as untouched track made
-        // the stepper look stuck at the visit's own state.
+        // forward to look at it. It is marked on the marker, never on the
+        // track -- see CONNECTOR_CLASS.
         const phase: StagePhase =
           i < currentIndex
             ? "done"
@@ -72,7 +76,8 @@ export function VisitStepper({ state, viewing, onStageClick, className }: VisitS
           <span
             aria-hidden="true"
             className={cn(
-              "flex h-7 w-7 shrink-0 items-center justify-center rounded-full border-2 text-[11px] font-semibold transition-colors",
+              "flex h-7 w-7 shrink-0 items-center justify-center rounded-full border-2 text-[11px] font-semibold",
+              "transition-[background-color,border-color,color,box-shadow] duration-300 ease-out",
               MARKER_CLASS[phase],
               viewed && "ring-2 ring-ring ring-offset-2 ring-offset-surface",
             )}
@@ -114,12 +119,12 @@ export function VisitStepper({ state, viewing, onStageClick, className }: VisitS
             className="relative flex min-w-0 flex-1 items-center md:flex-col"
           >
             {/* Connector, drawn behind the markers. Solid as far as the visit
-                has actually reached, faded across a previewed stretch. */}
+                has actually reached, empty beyond it. */}
             {i > 0 && (
               <span
                 aria-hidden="true"
                 className={cn(
-                  "absolute hidden h-0.5 md:block",
+                  "absolute hidden h-0.5 rounded-full transition-colors duration-300 md:block",
                   "left-[-50%] right-[50%] top-[13px]",
                   CONNECTOR_CLASS[phase],
                 )}
@@ -130,8 +135,8 @@ export function VisitStepper({ state, viewing, onStageClick, className }: VisitS
                 type="button"
                 onClick={() => onStageClick?.(s)}
                 className={cn(
-                  "relative z-[1] flex w-full min-w-0 items-center gap-2 rounded-md px-2 py-1.5 transition-colors md:justify-center",
-                  "hover:bg-surface-2",
+                  "relative z-[1] flex w-full min-w-0 items-center gap-2 rounded-md px-2 py-1.5 md:justify-center",
+                  "transition-colors duration-150 hover:bg-surface-2",
                 )}
               >
                 {inner}
