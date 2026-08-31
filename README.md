@@ -52,6 +52,12 @@ configured.
 Run `make smoke` after the stack is up to exercise `/health`, the OpenAPI
 contract surface, and a full pre-assessment triage session end to end.
 
+**Setting this up for the first time?** Read `docs/LOCAL_SETUP.md` first. Two
+`.env` files are needed and neither is in git, Windows needs one package that
+`requirements.txt` does not list, and the API has to be started with `run.py`
+rather than `uvicorn`. That document covers all of it, plus a symptom-to-cause
+table.
+
 ## Deploy
 
 The whole stack runs in containers behind nginx, with one command:
