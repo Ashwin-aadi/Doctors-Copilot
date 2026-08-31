@@ -78,4 +78,9 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     configure_logging()
     logger.info("startup")
     yield
+    # The gateway keeps provider connections alive between calls; hand them back
+    # on the way out rather than leaving sockets for the worker to be killed with.
+    from app.llm.gateway import aclose_clients
+
+    await aclose_clients()
     logger.info("shutdown")

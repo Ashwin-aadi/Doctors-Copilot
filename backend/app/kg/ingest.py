@@ -12,11 +12,13 @@ from uuid import UUID
 
 from sqlalchemy import select
 
+from app.core.cache import invalidate
 from app.core.logging import get_logger
 from app.db.models.clinical import LabResult, Prescription, Visit
 from app.db.models.patient import Patient
 from app.db.session import SessionLocal
 from app.kg.client import run_write
+from app.kg.queries import patient_context_key
 from app.kg.schema import ensure_schema
 
 log = get_logger(__name__)
@@ -183,4 +185,8 @@ async def sync_patient(patient_id: UUID) -> None:
                     eid=str(latest.id),
                 )
 
+    # The projection just changed, so any cached context read off it is now
+    # wrong. Drop it rather than letting a visit transition be invisible for the
+    # length of the TTL.
+    await invalidate(patient_context_key(patient_id))
     log.info("kg_synced", patient_id=str(patient_id))

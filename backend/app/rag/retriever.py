@@ -4,6 +4,7 @@ from functools import lru_cache
 
 from rank_bm25 import BM25Okapi
 
+from app.core.cache import cached_json, fingerprint
 from app.core.config import get_settings
 from app.core.logging import get_logger
 from app.rag.store import Hit, VectorStore
@@ -13,6 +14,13 @@ settings = get_settings()
 
 _RRF_K = 60
 _CANDIDATES = 40
+
+# A retrieval is an embedding pass, a BM25 scan and a cross-encoder rerank over
+# 40 candidates -- the most expensive part of building a brief, and entirely
+# determined by its arguments. Rebuilding the same brief, or asking the same
+# question twice, should not pay for it twice. The corpora are ingested ahead of
+# time and effectively static between deploys, so five minutes is conservative.
+_RETRIEVAL_TTL_SECONDS = 300
 
 _bm25_cache: dict[str, tuple[int, BM25Okapi | None, list[str], list[str], list[dict]]] = {}
 
@@ -81,6 +89,26 @@ def _rerank(query: str, hits: list[Hit], k: int) -> list[Hit]:
 
 
 async def hybrid(collection: str, query: str, k: int = 8, where: dict | None = None) -> list[Hit]:
+    # Per-patient collections are written on every document, lab and
+    # prescription, so a cached answer there could hide a report the patient
+    # just uploaded. Only the ingested-ahead-of-time corpora are cacheable.
+    if collection.startswith("patient_"):
+        return await _hybrid_uncached(collection, query, k, where)
+    return await cached_json(
+        f"cache:rag:hybrid:{fingerprint(collection, k, where, query)}",
+        ttl_seconds=_RETRIEVAL_TTL_SECONDS,
+        produce=lambda: _hybrid_uncached(collection, query, k, where),
+        dump=lambda hits: [
+            {"id": h.id, "text": h.text, "score": h.score, "metadata": h.metadata}
+            for h in hits
+        ],
+        load=lambda rows: [Hit(**row) for row in rows],
+    )
+
+
+async def _hybrid_uncached(
+    collection: str, query: str, k: int, where: dict | None
+) -> list[Hit]:
     store = VectorStore()
     dense_hits = store.query(collection, query, k=_CANDIDATES, where=where)
     bm25_hits = _bm25_search(collection, query, _CANDIDATES)

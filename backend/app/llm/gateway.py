@@ -32,6 +32,38 @@ _OLLAMA_TIMEOUT = 180.0
 _MAX_RATE_LIMIT_WAIT = 20.0
 ModelT = TypeVar("ModelT", bound=BaseModel)
 
+# One pooled client per (event loop, timeout) instead of a fresh one per call.
+# Opening a client per request threw away the connection after every completion,
+# so each call paid a fresh DNS lookup and TLS handshake to the provider -- on
+# the order of a couple of hundred milliseconds, on top of an already slow
+# generation, repeated for every turn of a triage conversation.
+#
+# The loop is part of the key because a client binds to the loop that created
+# it: the test suite runs cases on separate loops, and reusing a client across
+# them fails on the transport rather than merely performing badly.
+_clients: dict[tuple[int, float], httpx.AsyncClient] = {}
+_POOL_LIMITS = httpx.Limits(max_connections=20, max_keepalive_connections=10)
+
+
+def _client(timeout: float) -> httpx.AsyncClient:
+    key = (id(asyncio.get_running_loop()), timeout)
+    client = _clients.get(key)
+    if client is None or client.is_closed:
+        client = httpx.AsyncClient(timeout=timeout, limits=_POOL_LIMITS)
+        _clients[key] = client
+    return client
+
+
+async def aclose_clients() -> None:
+    """Close every pooled client. Called from the app lifespan on shutdown."""
+    for client in list(_clients.values()):
+        if not client.is_closed:
+            try:
+                await client.aclose()
+            except Exception as exc:  # noqa: BLE001
+                log.warning("llm_client_close_failed", error=str(exc))
+    _clients.clear()
+
 
 def _retry_after_seconds(resp: httpx.Response) -> float | None:
     """Seconds Groq asked us to wait, or None if it did not say."""
@@ -76,46 +108,46 @@ async def _groq_chat(
     # so short calls (a single triage question) still leave room for an answer.
     if "gpt-oss" in settings.groq_model:
         payload["reasoning_effort"] = "low"
-    async with httpx.AsyncClient(timeout=_TIMEOUT) as client:
-        resp = await client.post(
-            "https://api.groq.com/openai/v1/chat/completions",
-            headers=_groq_headers(),
-            json=payload,
-        )
-        # Groq's free tier rate-limits in bursts and says exactly how long to
-        # wait. Sitting out a short cooldown costs seconds; falling through to
-        # the extractive tier costs the caller a generated answer entirely, and
-        # for a brief that means an ungrounded one the doctor cannot use.
-        if resp.status_code == 429:
-            wait = _retry_after_seconds(resp)
-            if wait is not None and wait <= _MAX_RATE_LIMIT_WAIT:
-                log.warning("llm_rate_limited", provider="groq", retry_after=wait)
-                await asyncio.sleep(wait)
-                resp = await client.post(
-                    "https://api.groq.com/openai/v1/chat/completions",
-                    headers=_groq_headers(),
-                    json=payload,
-                )
-        resp.raise_for_status()
-        data = resp.json()
-        usage = data.get("usage", {})
-        log.info(
-            "llm_call",
-            provider="groq",
-            model=settings.groq_model,
-            prompt_tokens=usage.get("prompt_tokens"),
-            completion_tokens=usage.get("completion_tokens"),
-        )
-        choice = data["choices"][0]
-        text = choice["message"]["content"] or ""
-        if not text.strip():
-            # An empty completion is a failure, not an answer -- fall through to
-            # the next provider rather than handing callers a blank string.
-            raise LlmEmptyResponse(
-                f"groq returned an empty completion (finish_reason="
-                f"{choice.get('finish_reason')!r}, max_tokens={max_tokens})"
+    client = _client(_TIMEOUT)
+    resp = await client.post(
+        "https://api.groq.com/openai/v1/chat/completions",
+        headers=_groq_headers(),
+        json=payload,
+    )
+    # Groq's free tier rate-limits in bursts and says exactly how long to
+    # wait. Sitting out a short cooldown costs seconds; falling through to
+    # the extractive tier costs the caller a generated answer entirely, and
+    # for a brief that means an ungrounded one the doctor cannot use.
+    if resp.status_code == 429:
+        wait = _retry_after_seconds(resp)
+        if wait is not None and wait <= _MAX_RATE_LIMIT_WAIT:
+            log.warning("llm_rate_limited", provider="groq", retry_after=wait)
+            await asyncio.sleep(wait)
+            resp = await client.post(
+                "https://api.groq.com/openai/v1/chat/completions",
+                headers=_groq_headers(),
+                json=payload,
             )
-        return text
+    resp.raise_for_status()
+    data = resp.json()
+    usage = data.get("usage", {})
+    log.info(
+        "llm_call",
+        provider="groq",
+        model=settings.groq_model,
+        prompt_tokens=usage.get("prompt_tokens"),
+        completion_tokens=usage.get("completion_tokens"),
+    )
+    choice = data["choices"][0]
+    text = choice["message"]["content"] or ""
+    if not text.strip():
+        # An empty completion is a failure, not an answer -- fall through to
+        # the next provider rather than handing callers a blank string.
+        raise LlmEmptyResponse(
+            f"groq returned an empty completion (finish_reason="
+            f"{choice.get('finish_reason')!r}, max_tokens={max_tokens})"
+        )
+    return text
 
 
 @retry(stop=stop_after_attempt(2), wait=wait_exponential(multiplier=1, min=1, max=4), reraise=True)
@@ -134,12 +166,12 @@ async def _ollama_chat(
     }
     if json_mode:
         payload["format"] = "json"
-    async with httpx.AsyncClient(timeout=_OLLAMA_TIMEOUT) as client:
-        resp = await client.post(f"{settings.ollama_url}/api/chat", json=payload)
-        resp.raise_for_status()
-        data = resp.json()
-        log.info("llm_call", provider="ollama", model=settings.ollama_model)
-        return data["message"]["content"]
+    client = _client(_OLLAMA_TIMEOUT)
+    resp = await client.post(f"{settings.ollama_url}/api/chat", json=payload)
+    resp.raise_for_status()
+    data = resp.json()
+    log.info("llm_call", provider="ollama", model=settings.ollama_model)
+    return data["message"]["content"]
 
 
 def _extractive_fallback(prompt: str, system: str | None) -> str:

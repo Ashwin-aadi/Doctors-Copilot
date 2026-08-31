@@ -6,7 +6,14 @@ because the graph is unreachable.
 
 from uuid import UUID
 
+from app.core.cache import cached_json
 from app.kg.client import run_query
+
+# The visit screen asks for the same context from several panels at once, and
+# the brief asks again while building. Short enough that a sync during the visit
+# is picked up on the next panel, long enough to collapse one screen's worth of
+# duplicate graph round trips into a single query.
+_CONTEXT_TTL_SECONDS = 60
 
 _CONTEXT_QUERY = """
 MATCH (p:Patient {id: $pid})
@@ -37,7 +44,21 @@ def _drop_empty(items: list[dict], key: str = "name") -> list[dict]:
     return [item for item in items if item.get(key)]
 
 
+def patient_context_key(patient_id: UUID) -> str:
+    return f"cache:kg:patient_context:{patient_id}"
+
+
 async def patient_context(patient_id: UUID) -> dict:
+    return await cached_json(
+        patient_context_key(patient_id),
+        ttl_seconds=_CONTEXT_TTL_SECONDS,
+        produce=lambda: _patient_context_uncached(patient_id),
+        dump=lambda value: value,
+        load=lambda value: value,
+    )
+
+
+async def _patient_context_uncached(patient_id: UUID) -> dict:
     rows = await run_query(_CONTEXT_QUERY, pid=str(patient_id))
     if not rows:
         return {"conditions": [], "medications": [], "allergies": [], "recent_labs": []}
