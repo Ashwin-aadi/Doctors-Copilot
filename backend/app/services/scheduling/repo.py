@@ -98,7 +98,11 @@ def _clinic_locale_default(is_emergency_capable: bool) -> tuple[str, list[str]]:
 
 
 def _doctor_row(d: Doctor) -> DoctorRow:
-    languages, registration_council = _DOCTOR_LOCALE_OVERRIDES.get(d.id, _DOCTOR_LOCALE_DEFAULT)
+    # Prefer the stored profile; the override table only still covers rows
+    # seeded before the columns shipped.
+    fallback = _DOCTOR_LOCALE_OVERRIDES.get(d.id, _DOCTOR_LOCALE_DEFAULT)
+    languages = list(d.languages or []) or fallback[0]
+    registration_council = d.registration_council or fallback[1]
     return DoctorRow(
         doctor_id=d.id,
         name=d.name,
@@ -113,9 +117,11 @@ def _doctor_row(d: Doctor) -> DoctorRow:
 
 
 def _clinic_row(c: Clinic) -> ClinicRow:
-    facility_type, schemes = _CLINIC_LOCALE_OVERRIDES.get(
+    fallback = _CLINIC_LOCALE_OVERRIDES.get(
         c.id, _clinic_locale_default(c.is_emergency_capable)
     )
+    facility_type = c.facility_type or fallback[0]
+    schemes = list(c.schemes or []) or fallback[1]
     return ClinicRow(
         clinic_id=c.id,
         name=c.name,

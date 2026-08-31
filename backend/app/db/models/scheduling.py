@@ -17,6 +17,10 @@ class Clinic(Base, UUIDPKMixin):
     is_emergency_capable: Mapped[bool] = mapped_column(Boolean, default=False)
     state: Mapped[str | None] = mapped_column(String(64), nullable=True)
     pin_code: Mapped[str | None] = mapped_column(String(6), nullable=True)
+    # Facility tier: phc, chc, sdh, dh, private_clinic or private_hospital.
+    facility_type: Mapped[str | None] = mapped_column(String(32), nullable=True)
+    # Health-financing schemes the facility is empanelled under, e.g. pmjay.
+    schemes: Mapped[list] = mapped_column(JSONB, default=list)
 
 
 class Doctor(Base, UUIDPKMixin):
@@ -28,6 +32,10 @@ class Doctor(Base, UUIDPKMixin):
     qualifications: Mapped[str | None] = mapped_column(String(500), nullable=True)
     # National Medical Commission registration number.
     nmc_reg_no: Mapped[str | None] = mapped_column(String(32), nullable=True)
+    # State medical council that issued the registration.
+    registration_council: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    # ISO 639-1 codes for the languages the doctor consults in.
+    languages: Mapped[list] = mapped_column(JSONB, default=list)
     # Consultation fee in INR.
     fee: Mapped[float] = mapped_column(Float, default=0.0)
     rating: Mapped[float] = mapped_column(Float, default=0.0)
