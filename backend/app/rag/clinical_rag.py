@@ -17,6 +17,7 @@ from app.core.cache import fingerprint, get_json, set_json
 from app.core.errors import ApiError
 from app.core.logging import get_logger
 from app.db.models.clinical import LabResult, TriageSession, Visit
+from app.db.models.document import Document
 from app.db.models.patient import Patient
 from app.kg.queries import patient_context
 from app.llm.gateway import json_complete
@@ -172,7 +173,8 @@ async def _brief_cache_key(db: AsyncSession, visit: Visit) -> str:
     rows = (
         await db.execute(
             select(LabResult.id, LabResult.observed_at)
-            .where(LabResult.patient_id == visit.patient_id)
+            .join(Document, Document.id == LabResult.document_id)
+            .where(Document.visit_id == visit.id)
             .order_by(LabResult.id)
         )
     ).all()
@@ -223,10 +225,16 @@ async def _generate_brief(
         if triage_session and triage_session.result:
             triage = triage_session.result
 
+    # This visit's reports only. Reading every LabResult the patient has ever
+    # had put other episodes' blood work in the brief, and on a patient with a
+    # long history the prompt grew until Groq rejected the request outright
+    # (413), which is what made every brief fall back to the extractive path.
+    # Standing history still reaches the prompt through `patient_context`.
     lab_rows = (
         await db.execute(
             select(LabResult)
-            .where(LabResult.patient_id == visit.patient_id)
+            .join(Document, Document.id == LabResult.document_id)
+            .where(Document.visit_id == visit.id)
             .order_by(LabResult.observed_at.desc().nullslast())
         )
     ).scalars().all()

@@ -68,6 +68,12 @@ class LabOrder(Base, UUIDPKMixin, TimestampMixin):
     approved_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     content_hash: Mapped[str | None] = mapped_column(String(64), nullable=True)
     locked: Mapped[bool] = mapped_column(Boolean, default=False)
+    # The signed order this one replaces, when a doctor stepped the visit back
+    # and reopened it. A signed order is never edited, so an amendment is a new
+    # row pointing at the one it supersedes.
+    supersedes_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("lab_orders.id", ondelete="SET NULL"), nullable=True
+    )
 
 
 class Prescription(Base, UUIDPKMixin, TimestampMixin):

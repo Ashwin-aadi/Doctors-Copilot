@@ -57,6 +57,7 @@ class _FakeDb:
         self.visit = visit
         self.guard_object = guard_object
         self.row_found = row_found
+        self.added: list = []
 
     async def get(self, model, id_):
         if model is Visit:
@@ -74,6 +75,12 @@ class _FakeDb:
                 return row
 
         return _R()
+
+    def add(self, obj):
+        self.added.append(obj)
+
+    async def flush(self):
+        return None
 
     async def commit(self):
         return None
@@ -195,7 +202,9 @@ async def test_results_uploaded_requires_a_completed_document():
         await visit_service.advance(db, db.visit.id, VisitState.RESULTS_UPLOADED)
 
     assert excinfo.value.status_code == 409
-    assert "document" in excinfo.value.message
+    # The guard is scoped to the visit, and says so: a report uploaded for a
+    # different episode of care must not read as this visit's.
+    assert "this visit" in excinfo.value.message
 
 
 @pytest.mark.asyncio
@@ -297,10 +306,115 @@ async def test_rewind_to_the_current_state_is_a_no_op():
 @pytest.mark.asyncio
 async def test_rewind_leaves_a_signed_lab_order_locked():
     """Moving back reworks the stage, never the signature on it."""
-    order = LabOrder(id=uuid4(), visit_id=uuid4(), patient_id=uuid4(), items=[], locked=True)
+    order = LabOrder(
+        id=uuid4(),
+        visit_id=uuid4(),
+        patient_id=uuid4(),
+        items=[{"name": "CBC", "reason": "baseline"}],
+        locked=True,
+        content_hash="deadbeef",
+        approved_at=datetime.now(UTC),
+    )
     visit = _visit(VisitState.RESULTS_UPLOADED, lab_order_id=order.id)
     db = _FakeDb(visit, guard_object=order)
 
     await visit_service.rewind(db, visit.id, VisitState.LABS_SUGGESTED)
 
     assert order.locked is True
+    assert order.content_hash == "deadbeef"
+    assert order.items == [{"name": "CBC", "reason": "baseline"}]
+
+
+@pytest.mark.asyncio
+async def test_rewind_to_the_lab_order_stage_reopens_it_as_an_editable_amendment():
+    """The doctor steps back to change the order, so an order has to be there
+    to change -- as a new draft, since the signed one cannot be edited."""
+    order = LabOrder(
+        id=uuid4(),
+        visit_id=uuid4(),
+        patient_id=uuid4(),
+        items=[{"name": "CBC", "reason": "baseline"}],
+        locked=True,
+    )
+    visit = _visit(VisitState.RESULTS_UPLOADED, lab_order_id=order.id)
+    db = _FakeDb(visit, guard_object=order)
+
+    await visit_service.rewind(db, visit.id, VisitState.LABS_SUGGESTED)
+
+    amendments = [obj for obj in db.added if isinstance(obj, LabOrder)]
+    assert len(amendments) == 1
+    amendment = amendments[0]
+    assert amendment.locked is False
+    assert amendment.status == "draft"
+    assert amendment.supersedes_id == order.id
+    assert amendment.items == order.items
+    # The visit works on the amendment from here; the signed order stays put.
+    assert visit.lab_order_id == amendment.id
+
+
+@pytest.mark.asyncio
+async def test_reopened_order_items_are_a_copy_not_a_reference():
+    """Editing the amendment must not reach through into the signed row."""
+    order = LabOrder(
+        id=uuid4(),
+        visit_id=uuid4(),
+        patient_id=uuid4(),
+        items=[{"name": "CBC", "reason": "baseline"}],
+        locked=True,
+    )
+    visit = _visit(VisitState.LABS_APPROVED, lab_order_id=order.id)
+    db = _FakeDb(visit, guard_object=order)
+
+    await visit_service.rewind(db, visit.id, VisitState.LABS_SUGGESTED)
+
+    amendment = next(o for o in db.added if isinstance(o, LabOrder))
+    amendment.items.append({"name": "Dengue NS1", "reason": "fever"})
+    amendment.items[0]["reason"] = "changed"
+
+    assert order.items == [{"name": "CBC", "reason": "baseline"}]
+
+
+@pytest.mark.asyncio
+async def test_rewind_leaves_an_unsigned_draft_alone():
+    """A draft is already editable; replacing it would throw away an edit the
+    doctor is part-way through."""
+    draft = LabOrder(
+        id=uuid4(), visit_id=uuid4(), patient_id=uuid4(), items=[], locked=False, status="draft"
+    )
+    visit = _visit(VisitState.LABS_APPROVED, lab_order_id=draft.id)
+    db = _FakeDb(visit, guard_object=draft)
+
+    await visit_service.rewind(db, visit.id, VisitState.LABS_SUGGESTED)
+
+    assert [o for o in db.added if isinstance(o, LabOrder)] == []
+    assert visit.lab_order_id == draft.id
+
+
+@pytest.mark.asyncio
+async def test_rewind_behind_the_lab_order_stage_also_reopens_it():
+    """Stepping back past the order stage reopens it too. Waiting until the
+    visit walks forward again would just restore the read-only order the trip
+    back was meant to escape."""
+    order = LabOrder(id=uuid4(), visit_id=uuid4(), patient_id=uuid4(), items=[], locked=True)
+    visit = _visit(VisitState.LABS_APPROVED, lab_order_id=order.id)
+    db = _FakeDb(visit, guard_object=order)
+
+    await visit_service.rewind(db, visit.id, VisitState.TRIAGED)
+
+    amendment = next(o for o in db.added if isinstance(o, LabOrder))
+    assert amendment.locked is False
+    assert visit.lab_order_id == amendment.id
+
+
+@pytest.mark.asyncio
+async def test_rewind_forward_of_the_lab_order_stage_leaves_it_signed():
+    """Stepping back to a stage after the order was signed is about the
+    reports or the brief, not the order."""
+    order = LabOrder(id=uuid4(), visit_id=uuid4(), patient_id=uuid4(), items=[], locked=True)
+    visit = _visit(VisitState.CONSULTED, lab_order_id=order.id)
+    db = _FakeDb(visit, guard_object=order)
+
+    await visit_service.rewind(db, visit.id, VisitState.RESULTS_UPLOADED)
+
+    assert [o for o in db.added if isinstance(o, LabOrder)] == []
+    assert visit.lab_order_id == order.id

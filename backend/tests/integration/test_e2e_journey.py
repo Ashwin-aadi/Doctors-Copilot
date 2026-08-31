@@ -290,6 +290,9 @@ async def test_journey_walks_triaged_to_prescribed(client, doctor_headers):
             Document(
                 id=JOURNEY_DOCUMENT,
                 patient_id=PATIENT_1,
+                # The report belongs to this visit, not merely to the patient:
+                # every visit surface and the RESULTS_UPLOADED guard scope by it.
+                visit_id=JOURNEY_VISIT,
                 file_id=JOURNEY_FILE,
                 status="done",
                 engine="tesseract",

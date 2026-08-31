@@ -177,4 +177,7 @@ async def get_lab_order(
             "items": order.items,
             "approved_by": order.approved_by,
             "approved_at": order.approved_at,
+            # Set when this order amends one the doctor had already signed, so
+            # the panel can say so rather than presenting it as the first.
+            "supersedes_id": order.supersedes_id,
         }

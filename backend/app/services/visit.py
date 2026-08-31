@@ -17,8 +17,9 @@ Anything else is a 409 CONFLICT. Every accepted transition publishes
 
 from __future__ import annotations
 
+from copy import deepcopy
 from datetime import UTC, datetime
-from uuid import UUID
+from uuid import UUID, uuid4
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -54,7 +55,7 @@ TRANSITIONS: dict[VisitState, VisitState] = {
 # it PRESCRIBED before a prescription has actually been signed and locked.
 _GUARD_MESSAGES: dict[VisitState, str] = {
     VisitState.LABS_APPROVED: "lab order must be approved and locked first",
-    VisitState.RESULTS_UPLOADED: "no completed document for this patient yet",
+    VisitState.RESULTS_UPLOADED: "no completed report uploaded for this visit yet",
     VisitState.PRESCRIBED: "prescription must be approved and locked first",
 }
 
@@ -99,9 +100,12 @@ async def _guard_satisfied(db: AsyncSession, visit: Visit, target: VisitState) -
         return bool(order and order.locked)
 
     if target is VisitState.RESULTS_UPLOADED:
+        # This visit's own report. A document uploaded for a different episode
+        # of care used to satisfy this, letting a visit with nothing uploaded
+        # walk straight past the stage that collects the reports.
         done = await db.execute(
             select(Document.id)
-            .where(Document.patient_id == visit.patient_id, Document.status == "done")
+            .where(Document.visit_id == visit.id, Document.status == "done")
             .limit(1)
         )
         return done.scalar_one_or_none() is not None
@@ -115,6 +119,55 @@ async def _guard_satisfied(db: AsyncSession, visit: Visit, target: VisitState) -
         return signed.scalar_one_or_none() is not None
 
     return True
+
+
+# The stage the lab order is drafted and signed at. Stepping back to it, or
+# past it, is what puts the order back in the doctor's hands.
+_LAB_ORDER_STAGE = VisitState.LABS_SUGGESTED
+
+
+async def _reopen_lab_order(db: AsyncSession, visit: Visit, target: VisitState) -> UUID | None:
+    """Give a visit stepped back to the lab-order stage an editable order.
+
+    The doctor's reason for stepping back is almost always the order itself --
+    the wrong test, a test the lab cannot run, one that should have been added.
+    Leaving the signed order in place makes the trip back pointless: the panel
+    renders read-only and there is nothing to change.
+
+    A signed order is not reopened in place. It carries a practitioner's
+    signature over a content hash, and `lab_order_lock` raises `record_locked`
+    on any UPDATE to it, so editing one would either destroy what the signature
+    covers or fail at the database. Instead the visit gets a *new draft*
+    carrying the signed order's items, pointing back at it through
+    `supersedes_id`. The doctor edits and re-signs that; the original stays on
+    the record exactly as it was signed.
+
+    Returns the id of the order that was superseded, or None if there was
+    nothing to reopen -- no order yet, or one still an unsigned draft, which is
+    already editable and is left alone so an in-progress edit is not discarded.
+    """
+    if is_earlier(_LAB_ORDER_STAGE, target) or visit.lab_order_id is None:
+        return None
+
+    signed = await db.get(LabOrder, visit.lab_order_id)
+    if signed is None or not signed.locked:
+        return None
+
+    amendment = LabOrder(
+        id=uuid4(),
+        visit_id=signed.visit_id,
+        patient_id=signed.patient_id,
+        # A copy, not a reference: the amendment's items must be free to
+        # diverge without touching the signed row's JSONB.
+        items=deepcopy(signed.items or []),
+        status="draft",
+        locked=False,
+        supersedes_id=signed.id,
+    )
+    db.add(amendment)
+    await db.flush()
+    visit.lab_order_id = amendment.id
+    return signed.id
 
 
 async def rewind(
@@ -136,6 +189,9 @@ async def rewind(
     a practitioner's signature and a content hash, so it is amended, never
     silently reopened. Moving back only changes which stage the visit is
     working at; every guard is re-checked on the way forward again.
+
+    Stepping back to the lab-order stage does reopen the order for editing, by
+    the amendment route: see `_reopen_lab_order`.
     """
     visit = await _load(db, visit_id)
     current = VisitState(visit.state)
@@ -153,6 +209,7 @@ async def rewind(
 
     visit.state = target.value
     visit.updated_at = datetime.now(UTC)
+    amended_from = await _reopen_lab_order(db, visit, target)
     await db.commit()
     await db.refresh(visit)
 
@@ -162,6 +219,7 @@ async def rewind(
         **{"from": current.value},
         to=target.value,
         actor_id=str(actor_id) if actor_id else None,
+        lab_order_amended_from=str(amended_from) if amended_from else None,
     )
 
     await publish(
@@ -280,9 +338,16 @@ def _lab_out(lab: LabResult) -> LabResultOut:
     )
 
 
-async def _documents(db: AsyncSession, patient_id: UUID) -> list[DocumentOut]:
+async def _documents(db: AsyncSession, visit_id: UUID) -> list[DocumentOut]:
+    """The reports uploaded for this visit.
+
+    Scoped to the visit, not the patient. A patient accumulates documents
+    across every episode of care they have ever had; showing all of them here
+    put another visit's blood work in this visit's report summary, and fed the
+    lot to the copilot brief.
+    """
     documents = (
-        await db.execute(select(Document).where(Document.patient_id == patient_id))
+        await db.execute(select(Document).where(Document.visit_id == visit_id))
     ).scalars().all()
     if not documents:
         return []
@@ -418,7 +483,7 @@ async def assemble(db: AsyncSession, visit_id: UUID, *, with_brief: bool = True)
         state=state,
         triage=triage,
         lab_order_id=visit.lab_order_id,
-        documents=await _documents(db, visit.patient_id),
+        documents=await _documents(db, visit.id),
         brief=brief,
         safety=await _safety(db, visit),
         queue=await _queue_entry(db, visit.patient_id),

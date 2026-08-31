@@ -29,6 +29,10 @@ class DocumentUploadIn(BaseModel):
     # Which line of the lab order this report answers, when the patient
     # uploaded it from the order itself rather than as a loose file.
     test_name: str | None = None
+    # The episode of care this report belongs to. Optional so a loose upload
+    # outside any visit still works, but without it the report never appears
+    # on a visit -- every visit surface is scoped by it.
+    visit_id: UUID | None = None
 
 
 @router.post("/upload", response_model=DocumentOut)
@@ -47,11 +51,13 @@ async def upload_document(
         upload = form.get("file")
         raw_patient_id = form.get("patient_id")
         raw_test_name = form.get("test_name")
+        raw_visit_id = form.get("visit_id")
         if upload is None or raw_patient_id is None:
             raise ApiError("VALIDATION_FAILED", "file and patient_id are required", 422)
 
         patient_id = UUID(str(raw_patient_id))
         test_name = str(raw_test_name) if raw_test_name else None
+        visit_id = UUID(str(raw_visit_id)) if raw_visit_id else None
         data = await upload.read()
 
         settings = get_settings()
@@ -78,12 +84,17 @@ async def upload_document(
         patient_id = body.patient_id
         file_id = body.file_id
         test_name = body.test_name
+        visit_id = body.visit_id
         file_obj = await db.get(FileObject, file_id)
         if file_obj is None:
             raise ApiError("NOT_FOUND", "file not found", status_code=404)
 
     document = Document(
-        patient_id=patient_id, file_id=file_id, status="queued", test_name=test_name
+        patient_id=patient_id,
+        visit_id=visit_id,
+        file_id=file_id,
+        status="queued",
+        test_name=test_name,
     )
     db.add(document)
     await db.commit()

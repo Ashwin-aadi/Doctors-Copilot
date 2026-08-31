@@ -22,6 +22,11 @@ class Document(Base, UUIDPKMixin):
     __tablename__ = "documents"
 
     patient_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("patients.id"))
+    # The episode of care this report belongs to. Without it a visit shows the
+    # patient's whole document history as if it were its own.
+    visit_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("visits.id", ondelete="SET NULL"), nullable=True, index=True
+    )
     file_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("file_objects.id"))
     status: Mapped[str] = mapped_column(String(32), default="queued")
     engine: Mapped[str | None] = mapped_column(String(64), nullable=True)
