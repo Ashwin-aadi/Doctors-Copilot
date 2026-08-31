@@ -2,12 +2,20 @@ FROM python:3.12-slim AS base
 
 WORKDIR /app
 
+# libmagic1 is the native library behind python-magic, which the upload path
+# imports at module scope to sniff a file's real type -- without it the whole
+# API fails to boot, not just uploads. poppler-utils and tesseract back the PDF
+# and OCR stages of the lab report pipeline.
 RUN apt-get update && apt-get install -y --no-install-recommends \
-    build-essential curl \
+    build-essential curl libmagic1 poppler-utils tesseract-ocr \
     && rm -rf /var/lib/apt/lists/*
 
 COPY backend/requirements.txt backend/requirements.txt
-RUN pip install --no-cache-dir -r backend/requirements.txt
+# The dependency set is large and includes torch, so a single truncated download
+# out of hundreds fails the whole build with what looks alarmingly like a
+# checksum mismatch -- pip compares against the index's own hash and an empty
+# response hashes to something that is simply not the package. Retry instead.
+RUN pip install --no-cache-dir --retries 10 --timeout 120 -r backend/requirements.txt
 
 COPY backend backend
 COPY scripts scripts

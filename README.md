@@ -51,3 +51,18 @@ configured.
 
 Run `make smoke` after the stack is up to exercise `/health`, the OpenAPI
 contract surface, and a full pre-assessment triage session end to end.
+
+## Deploy
+
+The whole stack runs in containers behind nginx, with one command:
+
+```bash
+cp .env.example .env          # set SECRET_KEY and GROQ_API_KEY
+make prod-up                  # build and start everything
+./scripts/deploy_check.sh     # assert it is actually serving
+make prod-seed                # demo data
+```
+
+Web app on :80, API on :8000; override with `WEB_HOST_PORT` / `API_HOST_PORT`.
+Migrations are applied by the container on start. See `docs/DEPLOYMENT.md` for
+volumes, troubleshooting and what to change before exposing it publicly.
