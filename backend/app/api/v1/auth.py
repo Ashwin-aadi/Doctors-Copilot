@@ -173,7 +173,10 @@ async def register(
     authorization: str | None = Header(default=None),
     db: AsyncSession = Depends(get_db),
 ) -> TokenResponse:
-    _reject_full_aadhaar(body.name, body.abha_number, body.abha_address, body.phone)
+    # Not the phone: a mobile written with its country code is twelve digits,
+    # which the Aadhaar pattern matches. `_normalize_phone` is the stricter
+    # check anyway -- nothing but a real ten-digit IN mobile survives it.
+    _reject_full_aadhaar(body.name, body.abha_number, body.abha_address)
 
     email = body.email.lower()
     phone = _normalize_phone(body.phone)

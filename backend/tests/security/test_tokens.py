@@ -24,19 +24,19 @@ def test_verify_password_rejects_garbage_hash() -> None:
     assert not security.verify_password("whatever12", "not-a-bcrypt-hash")
 
 
-@pytest.mark.parametrize(
-    "password",
-    ["short1a", "1234567890123", "onlylettersnodigits", "password123"],
-    ids=["too-short", "no-letters", "no-digits", "common-password"],
-)
-def test_password_policy_rejects_weak_passwords(password: str) -> None:
+def test_password_policy_rejects_only_an_empty_password() -> None:
     with pytest.raises(ApiError) as exc_info:
-        security.validate_password_policy(password)
+        security.validate_password_policy("")
     assert exc_info.value.code == "VALIDATION_FAILED"
 
 
-def test_password_policy_accepts_strong_password() -> None:
-    security.validate_password_policy("Str0ngPass99")
+@pytest.mark.parametrize(
+    "password",
+    ["short1a", "1234567890123", "onlylettersnodigits", "password123", "Str0ngPass99"],
+    ids=["short", "no-letters", "no-digits", "common", "long-and-mixed"],
+)
+def test_password_policy_accepts_anything_non_empty(password: str) -> None:
+    security.validate_password_policy(password)
 
 
 def test_access_token_claims() -> None:

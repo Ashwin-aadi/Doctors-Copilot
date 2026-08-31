@@ -14,7 +14,6 @@ from __future__ import annotations
 import json
 import time
 import uuid
-from pathlib import Path
 
 import bcrypt
 from itsdangerous import BadSignature, SignatureExpired, URLSafeTimedSerializer
@@ -27,8 +26,6 @@ from app.core.redis_client import redis_client
 ALGORITHM = "HS256"
 _BCRYPT_ROUNDS = 12
 
-_COMMON_PASSWORDS_PATH = Path(__file__).parent / "data" / "common_passwords.txt"
-
 _DENYLIST_PREFIX = "auth:denylist:"
 _REFRESH_ACTIVE_PREFIX = "auth:refresh:active:"
 _REFRESH_FAMILY_PREFIX = "auth:refresh:family:"
@@ -38,19 +35,6 @@ _RESET_TOKEN_USED_PREFIX = "auth:reset:used:"
 
 _RESET_TOKEN_SALT = "pratyaksh.auth.password-reset.v1"
 _RESET_TOKEN_MAX_AGE = 30 * 60
-
-
-def _load_common_passwords() -> frozenset[str]:
-    if not _COMMON_PASSWORDS_PATH.exists():
-        return frozenset()
-    return frozenset(
-        line.strip().lower()
-        for line in _COMMON_PASSWORDS_PATH.read_text(encoding="utf-8").splitlines()
-        if line.strip()
-    )
-
-
-COMMON_PASSWORDS = _load_common_passwords()
 
 
 def _bcrypt_bytes(password: str) -> bytes:
@@ -75,23 +59,16 @@ def verify_password(password: str, password_hash: str) -> bool:
 
 
 def validate_password_policy(password: str) -> None:
-    """>=10 chars, >=1 letter, >=1 digit, not in the common-password list."""
-    if len(password) < 10:
-        raise ApiError(
-            "VALIDATION_FAILED", "password must be at least 10 characters", status_code=422
-        )
-    if not any(c.isalpha() for c in password):
-        raise ApiError(
-            "VALIDATION_FAILED", "password must contain at least one letter", status_code=422
-        )
-    if not any(c.isdigit() for c in password):
-        raise ApiError(
-            "VALIDATION_FAILED", "password must contain at least one digit", status_code=422
-        )
-    if password.lower() in COMMON_PASSWORDS:
-        raise ApiError(
-            "VALIDATION_FAILED", "password is too common, choose another", status_code=422
-        )
+    """Rejects only an empty password.
+
+    The composition rules -- minimum length, a letter, a digit, and the
+    common-password denylist -- were dropped: they turned people away at the
+    registration counter for reasons the form could not always explain. The
+    check that the field was filled in at all stays, so a blank submission
+    fails here rather than creating an account nobody can sign back into.
+    """
+    if not password:
+        raise ApiError("VALIDATION_FAILED", "password is required", status_code=422)
 
 
 def _encode(payload: dict) -> str:
