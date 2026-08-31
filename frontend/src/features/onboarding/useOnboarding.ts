@@ -1,7 +1,8 @@
 import { useState } from "react";
 import { useMutation } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
-import { createPatient, postConsent } from "../../lib/api/endpoints/patients";
+import { createPatient, updatePatient, postConsent } from "../../lib/api/endpoints/patients";
+import { me } from "../../lib/api/endpoints/auth";
 import { useAuthStore } from "../../store/auth";
 import { isValidPincode } from "../../lib/format";
 import {
@@ -59,7 +60,11 @@ export function useOnboarding() {
 
   const mutation = useMutation({
     mutationFn: async () => {
-      const patient = await createPatient({
+      // Registering as a patient already creates the profile row, so this
+      // form is usually filling one in rather than making one. Posting a
+      // second profile is what the account gets back a 409 for.
+      const existing = (await me()).patient;
+      const payload = {
         name: values.name,
         dob: values.dob || null,
         sex: values.sex || null,
@@ -70,7 +75,10 @@ export function useOnboarding() {
         conditions: values.conditions,
         allergies: values.allergies,
         medications: values.medications,
-      });
+      };
+      const patient = existing
+        ? await updatePatient(existing.id, payload)
+        : await createPatient(payload);
       await postConsent(patient.id, {
         purpose: ["triage", "care_coordination"],
         data_categories: ["demographics", "symptoms", "lab_reports", "prescriptions"],

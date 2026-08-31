@@ -20,6 +20,7 @@ export interface OnboardingPageProps {
   values: OnboardingValues;
   errors: OnboardingErrors;
   submitAttempted?: boolean;
+  submitting?: boolean;
   onChange: <K extends keyof OnboardingValues>(field: K, value: OnboardingValues[K]) => void;
   onNext: () => void;
   onBack: () => void;
@@ -31,6 +32,7 @@ export function OnboardingPage({
   values,
   errors,
   submitAttempted = false,
+  submitting = false,
   onChange,
   onNext,
   onBack,
@@ -75,7 +77,12 @@ export function OnboardingPage({
           Back
         </Button>
         {isLast ? (
-          <Button type="button" onClick={onSubmit} disabled={!values.consentAccepted}>
+          <Button
+            type="button"
+            onClick={onSubmit}
+            loading={submitting}
+            disabled={!values.consentAccepted || submitting}
+          >
             Finish
           </Button>
         ) : (

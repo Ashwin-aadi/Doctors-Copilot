@@ -25,6 +25,13 @@ export function createPatient(payload: PatientPayload): Promise<PatientOut> {
   });
 }
 
+export function updatePatient(patientId: string, payload: PatientPayload): Promise<PatientOut> {
+  return request<PatientOut>(`/api/v1/patients/${patientId}`, {
+    method: "PATCH",
+    body: JSON.stringify(payload),
+  });
+}
+
 export interface ConsentPayload {
   version?: string;
   purpose?: string[];

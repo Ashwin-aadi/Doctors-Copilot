@@ -44,7 +44,7 @@ export function LabOrderUploadPanel({
 }: LabOrderUploadPanelProps) {
   const { t } = useTranslation();
   const queryClient = useQueryClient();
-  const { items, addFiles } = useUpload(patientId);
+  const { items, addFiles } = useUpload(patientId, visitId);
   // Removals are reflected at once; the visit payload catches up on refetch.
   const [removed, setRemoved] = useState<string[]>([]);
 

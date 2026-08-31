@@ -9,11 +9,6 @@ import { useAuthStore } from "../../store/auth";
 import { useCaptcha } from "../../hooks/useCaptcha";
 import { ROUTES } from "../../router/routes";
 
-// `RegisterPage` (Abhishek's) doesn't collect phone/name, which
-// `POST /auth/register` requires. See docs/DECISIONS.md 2026-08-26,
-// UI-BUGS for abhishek. We submit what the form actually collected — no
-// fabricated phone/name — so the real backend validation error surfaces
-// honestly instead of a silently-broken flow.
 export function RegisterContainer() {
   const navigate = useNavigate();
   const { t } = useTranslation();
@@ -26,7 +21,18 @@ export function RegisterContainer() {
       // The server may not be enforcing the captcha; sending an empty token
       // then is correct, and blocking on one the user was never shown is not.
       if (captcha.enabled && !captcha.token) throw new Error("captcha token missing");
-      return register({ email: values.email, password: values.password, role: values.role, phone: "", name: "" }, captcha.token ?? "");
+      return register(
+        {
+          email: values.email,
+          password: values.password,
+          role: values.role,
+          // The server parses this in the IN region, so it takes the digits with
+          // or without +91 -- but not the spaces a keypad leaves in.
+          phone: values.phone.replace(/[\s-]/g, ""),
+          name: values.name.trim(),
+        },
+        captcha.token ?? "",
+      );
     },
     onSuccess: (res) => {
       setSession(

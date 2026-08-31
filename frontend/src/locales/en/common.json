@@ -42,7 +42,7 @@
     "VALIDATION_FAILED": "Some details were invalid.",
     "NOT_FOUND": "We couldn't find that.",
     "LOCKED": "This record is locked.",
-    "CONFLICT": "That slot was just taken. Please choose another.",
+    "CONFLICT": "This changed while you were looking. Please refresh and try again.",
     "RATE_LIMITED": "Too many attempts. Please wait and try again.",
     "UPSTREAM_UNAVAILABLE": "Service temporarily unavailable. Please retry.",
     "MODEL_UNAVAILABLE": "AI assistance is temporarily unavailable.",
@@ -60,6 +60,7 @@
     "locationNote": "Doctor ranking currently uses your location only; PIN-code ranking is coming soon.",
     "nmc": "NMC Reg. No.",
     "distance": "{{km}} away",
+    "nextSlot": "Next available",
     "book": "Book this slot",
     "queuePosition": "Queue position {{position}}",
     "estimatedWait": "Estimated wait: {{minutes}} min",
@@ -110,7 +111,12 @@
     "subtitle": "Live OPD queue for your clinic, ordered by triage priority and waiting time.",
     "boardSubtitle": "Red-coded and escalated patients are called first.",
     "minutesHint": "minutes",
-    "urgentCount": "Urgent"
+    "urgentCount": "Urgent",
+    "legendTitle": "Triage colour code",
+    "legendRed": "Immediate — see now",
+    "legendYellow": "Urgent — see soon",
+    "legendGreen": "Non-urgent — routine OPD",
+    "emptyHelp": "Patients appear here as soon as triage is completed at the counter."
   },
   "documents": {
     "title": "Upload reports",

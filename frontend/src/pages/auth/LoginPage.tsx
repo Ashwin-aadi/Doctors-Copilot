@@ -69,7 +69,6 @@ export function LoginPage({
           <PasswordField
             value={password}
             onChange={setPassword}
-            showStrength={false}
             autoComplete="current-password"
           />
 

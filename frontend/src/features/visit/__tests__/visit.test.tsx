@@ -1,5 +1,5 @@
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
-import { render, screen, fireEvent, waitFor } from "@testing-library/react";
+import { render, screen, fireEvent, waitFor, within } from "@testing-library/react";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { http, HttpResponse } from "msw";
@@ -322,6 +322,71 @@ describe("VisitContainer", () => {
     // The container must not surface an error page for a lost race.
     await waitFor(() => expect(calls).toBeGreaterThan(1));
     expect(screen.queryByText(/CONFLICT/)).toBeNull();
+  });
+
+  it("says why an advance was refused instead of failing silently", async () => {
+    mockComposedSurfaces();
+    server.use(
+      http.get(`${env.apiBase}/api/v1/visits/:id`, () => HttpResponse.json(visit("LABS_APPROVED"))),
+      http.post(`${env.apiBase}/api/v1/visits/:id/advance`, () =>
+        HttpResponse.json(
+          {
+            error: {
+              code: "CONFLICT",
+              message: "no completed document for this patient yet",
+              request_id: "r",
+              details: {},
+            },
+          },
+          { status: 409 },
+        ),
+      ),
+      http.get(`${env.apiBase}/api/v1/patients/:id`, () =>
+        HttpResponse.json({ id: PATIENT_ID, name: "Asha", allergies: [], conditions: [], medications: [] }),
+      ),
+    );
+
+    renderVisit();
+    fireEvent.click(await screen.findByTestId("advance-visit"));
+
+    // The guard names the missing precondition; a button that just stops
+    // spinning tells the clinician nothing about what to do next.
+    expect(await screen.findByText(/no completed document for this patient yet/i)).toBeTruthy();
+  });
+
+  it("drops a refusal when the user moves to another stage", async () => {
+    mockComposedSurfaces();
+    server.use(
+      http.get(`${env.apiBase}/api/v1/visits/:id`, () => HttpResponse.json(visit("LABS_APPROVED"))),
+      http.post(`${env.apiBase}/api/v1/visits/:id/advance`, () =>
+        HttpResponse.json(
+          {
+            error: {
+              code: "CONFLICT",
+              message: "no completed document for this patient yet",
+              request_id: "r",
+              details: {},
+            },
+          },
+          { status: 409 },
+        ),
+      ),
+      http.get(`${env.apiBase}/api/v1/patients/:id`, () =>
+        HttpResponse.json({ id: PATIENT_ID, name: "Asha", allergies: [], conditions: [], medications: [] }),
+      ),
+    );
+
+    renderVisit();
+    fireEvent.click(await screen.findByTestId("advance-visit"));
+    await screen.findByText(/no completed document for this patient yet/i);
+
+    // Previewing a later stage is a different screen; the warning about the
+    // stage just left must not follow the user onto it.
+    const stepper = within(screen.getByRole("list", { name: "Visit progress" }));
+    fireEvent.click(stepper.getByRole("button", { name: /Report uploaded/i }));
+    await waitFor(() =>
+      expect(screen.queryByText(/no completed document for this patient yet/i)).toBeNull(),
+    );
   });
 
   it("shows the error envelope's code when the visit cannot be read", async () => {

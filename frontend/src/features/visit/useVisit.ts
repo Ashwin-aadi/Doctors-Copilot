@@ -1,4 +1,4 @@
-import { useCallback } from "react";
+import { useCallback, useEffect } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useSearchParams } from "react-router-dom";
 import {
@@ -82,6 +82,7 @@ export function useVisit(visitId: string | null) {
   });
 
   const visit = query.data ?? null;
+  const advanceReset = advance.reset;
 
   // Each stage deep-links, so a doctor can be sent straight to the brief.
   const stageParam = searchParams.get("stage") as VisitState | null;
@@ -90,12 +91,24 @@ export function useVisit(visitId: string | null) {
 
   const setStage = useCallback(
     (next: VisitState) => {
+      // The refusal belongs to the stage it was raised on. Carrying it to the
+      // next screen leaves a warning about a precondition the user is no
+      // longer looking at.
+      advanceReset();
       const params = new URLSearchParams(searchParams);
       params.set("stage", next);
       setSearchParams(params, { replace: true });
     },
-    [searchParams, setSearchParams],
+    [advanceReset, searchParams, setSearchParams],
   );
+
+  // A refusal names a precondition that was missing at the time. Once the
+  // visit itself changes -- a report finished processing, someone else moved
+  // it on -- that statement is no longer known to be true, so it goes.
+  const visitState = visit?.state ?? null;
+  useEffect(() => {
+    advanceReset();
+  }, [advanceReset, visitState]);
 
   return {
     visit,

@@ -12,7 +12,9 @@ import { Button } from "../../components/ui/Button";
 import { FormError } from "../../components/forms/FormError";
 
 export interface RegisterValues {
+  name: string;
   email: string;
+  phone: string;
   password: string;
   role: string;
 }
@@ -40,13 +42,15 @@ export function RegisterPage({
   onCaptchaToken,
   onCaptchaRefresh,
 }: RegisterPageProps) {
+  const [name, setName] = useState("");
   const [email, setEmail] = useState("");
+  const [phone, setPhone] = useState("");
   const [password, setPassword] = useState("");
   const [role, setRole] = useState("patient");
 
   function handleSubmit(e: FormEvent) {
     e.preventDefault();
-    onSubmit({ email, password, role });
+    onSubmit({ name, email, phone, password, role });
   }
 
   return (
@@ -69,6 +73,16 @@ export function RegisterPage({
             />
           </FormField>
 
+          <FormField label="Full name">
+            <Input
+              autoComplete="name"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              placeholder="Ananya Sharma"
+              required
+            />
+          </FormField>
+
           <FormField label="Email">
             <Input
               type="email"
@@ -76,6 +90,18 @@ export function RegisterPage({
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               placeholder="you@clinic.in"
+              required
+            />
+          </FormField>
+
+          <FormField label="Mobile number" hint="10 digits, starting 6-9. +91 is assumed.">
+            <Input
+              type="tel"
+              inputMode="numeric"
+              autoComplete="tel"
+              value={phone}
+              onChange={(e) => setPhone(e.target.value)}
+              placeholder="98765 43210"
               required
             />
           </FormField>

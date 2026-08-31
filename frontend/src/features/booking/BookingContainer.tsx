@@ -24,8 +24,6 @@ export function BookingContainer() {
     captcha,
   } = useBooking();
 
-  const selectedDoctor = doctors.find((d) => d.doctor_id === selectedDoctorId) ?? null;
-
   if (bookingResult) {
     return (
       <div className="mx-auto max-w-lg p-4">
@@ -50,7 +48,7 @@ export function BookingContainer() {
   }
 
   return (
-    <div className="mx-auto grid w-full max-w-5xl gap-5 px-4 py-6 sm:px-6 md:grid-cols-[2fr_1fr]">
+    <div className="mx-auto w-full max-w-3xl px-4 py-6 sm:px-6">
       <DoctorPicker
         pincode={pincode}
         onPincodeChange={setPincode}
@@ -60,18 +58,16 @@ export function BookingContainer() {
         loading={doctorsLoading}
         selectedDoctorId={selectedDoctorId}
         onSelect={selectDoctor}
-      />
-      <div>
-        {selectedDoctor && (
+        renderBookingPanel={(doctor) => (
           <SlotPicker
-            doctor={selectedDoctor}
+            doctor={doctor}
             captcha={captcha}
             booking={booking}
             bookingError={bookingError}
             onBook={bookSelected}
           />
         )}
-      </div>
+      />
     </div>
   );
 }

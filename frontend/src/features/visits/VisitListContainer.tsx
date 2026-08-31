@@ -9,13 +9,12 @@ import {
   ClipboardList,
   FileText,
   Hourglass,
-  Search,
   Upload,
 } from "lucide-react";
 import { Card, CardBody } from "../../components/ui/Card";
 import { Badge } from "../../components/ui/Badge";
 import { Button } from "../../components/ui/Button";
-import { Input } from "../../components/ui/Input";
+import { FilterBar, FilterChip, SearchInput } from "../../components/ui/Filters";
 import { Skeleton } from "../../components/ui/Skeleton";
 import { EmptyState } from "../../components/ui/EmptyState";
 import { ErrorState } from "../../components/ui/ErrorState";
@@ -132,12 +131,14 @@ export function VisitListContainer() {
     );
   }
 
-  const FILTERS: Array<{ key: Filter; label: string; count: number }> = [
+  // The dot carries the same colour the filter selects for, so the row reads
+  // as a legend as much as a control.
+  const FILTERS: Array<{ key: Filter; label: string; count: number; dot?: string }> = [
     { key: "all", label: t("visits.filterAll"), count: stats.total },
-    { key: "open", label: t("visits.filterOpen"), count: stats.open },
-    { key: "waiting", label: t("visits.filterWaiting"), count: stats.waiting },
-    { key: "urgent", label: t("visits.filterUrgent"), count: stats.urgent },
-    { key: "closed", label: t("visits.filterClosed"), count: stats.closed },
+    { key: "open", label: t("visits.filterOpen"), count: stats.open, dot: "bg-primary" },
+    { key: "waiting", label: t("visits.filterWaiting"), count: stats.waiting, dot: "bg-high" },
+    { key: "urgent", label: t("visits.filterUrgent"), count: stats.urgent, dot: "bg-critical" },
+    { key: "closed", label: t("visits.filterClosed"), count: stats.closed, dot: "bg-normal" },
   ];
 
   return (
@@ -154,7 +155,7 @@ export function VisitListContainer() {
         }
       />
 
-      <div className="grid grid-cols-2 gap-3 xl:grid-cols-4">
+      <div className="stagger grid grid-cols-2 gap-3 xl:grid-cols-4">
         <StatTile
           label={t("visits.statOpen")}
           value={stats.open}
@@ -186,45 +187,30 @@ export function VisitListContainer() {
         />
       </div>
 
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div className="flex flex-wrap gap-1.5" role="group" aria-label={t("visits.filterLabel")}>
-          {FILTERS.map((f) => (
-            <button
-              key={f.key}
-              type="button"
-              aria-pressed={filter === f.key}
-              onClick={() => setFilter(f.key)}
-              className={cn(
-                "rounded-full border px-3 py-1.5 text-xs font-medium transition-colors",
-                filter === f.key
-                  ? "border-primary bg-primary text-primary-fg"
-                  : "border-border bg-surface text-fg-muted hover:border-border-strong hover:text-fg",
-              )}
-            >
-              {f.label}
-              <span className={cn("ml-1.5", filter === f.key ? "opacity-80" : "text-fg-subtle")}>
-                {f.count}
-              </span>
-            </button>
-          ))}
-        </div>
-
-        {visits.length > 4 && (
-          <div className="relative w-full sm:w-64">
-            <Search
-              className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-fg-subtle"
-              aria-hidden="true"
-            />
-            <Input
+      <FilterBar
+        label={t("visits.filterLabel")}
+        trailing={
+          visits.length > 4 && (
+            <SearchInput
               value={search}
-              onChange={(e) => setSearch(e.target.value)}
+              onChange={setSearch}
               placeholder={isClinician ? t("visits.searchPatients") : t("visits.searchVisits")}
-              aria-label={isClinician ? t("visits.searchPatients") : t("visits.searchVisits")}
-              className="pl-9"
             />
-          </div>
-        )}
-      </div>
+          )
+        }
+      >
+        {FILTERS.map((f) => (
+          <FilterChip
+            key={f.key}
+            active={filter === f.key}
+            count={f.count}
+            dot={f.dot}
+            onClick={() => setFilter(f.key)}
+          >
+            {f.label}
+          </FilterChip>
+        ))}
+      </FilterBar>
 
       {filtered.length === 0 && (
         <Card>
@@ -250,7 +236,7 @@ export function VisitListContainer() {
         </Card>
       )}
 
-      <div className="flex flex-col gap-3">
+      <div className="stagger flex flex-col gap-3">
         {filtered.map((visit) => {
           const href = isClinician ? `/doctor/visit/${visit.id}` : `/visit/${visit.id}`;
           const stage = VISIT_STATE_LABELS[visit.state];
@@ -259,7 +245,7 @@ export function VisitListContainer() {
             <Card
               key={visit.id}
               variant="raised"
-              className="relative overflow-hidden"
+              className="lift relative overflow-hidden"
             >
               {/* Triage colour as an edge, not a fill: it has to be scannable
                   down a list without tinting the whole row. */}
@@ -307,7 +293,7 @@ export function VisitListContainer() {
                   >
                     <span
                       className={cn(
-                        "block h-full rounded-full transition-all",
+                        "block h-full rounded-full transition-[width] duration-500 ease-out",
                         isClosed(visit) ? "bg-normal" : "bg-primary",
                       )}
                       style={{ width: `${percent}%` }}

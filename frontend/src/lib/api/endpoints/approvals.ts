@@ -25,6 +25,9 @@ export interface LabOrderOut {
   items: LabOrderItem[];
   approved_by: string | null;
   approved_at: string | null;
+  /** The signed order this one replaces, when a doctor stepped the visit back
+   *  and reopened it. Null for a first draft. */
+  supersedes_id?: string | null;
 }
 
 export interface LabOrderApproved {

@@ -4,6 +4,7 @@ import { RootLayout } from "../app/RootLayout";
 import { NotFound } from "../app/NotFound";
 import { Skeleton } from "../components/ui/Skeleton";
 import { ProtectedRoute } from "./ProtectedRoute";
+import { GuestRoute } from "./GuestRoute";
 import { ROUTES, PATIENT_ROLES, DOCTOR_STAFF_ROLES, CLINICAL_ROLES } from "./routes";
 
 const isDev = import.meta.env.DEV;
@@ -89,8 +90,22 @@ export function AppRouter() {
     <Suspense fallback={<SuspenseFallback />}>
       <Routes>
         <Route element={<RootLayout />}>
-          <Route path={ROUTES.login} element={<LoginContainer />} />
-          <Route path={ROUTES.register} element={<RegisterContainer />} />
+          <Route
+            path={ROUTES.login}
+            element={
+              <GuestRoute>
+                <LoginContainer />
+              </GuestRoute>
+            }
+          />
+          <Route
+            path={ROUTES.register}
+            element={
+              <GuestRoute>
+                <RegisterContainer />
+              </GuestRoute>
+            }
+          />
           <Route path={ROUTES.forgotPassword} element={<ForgotPasswordContainer />} />
           <Route path={ROUTES.resetPassword} element={<ResetPasswordContainer />} />
 

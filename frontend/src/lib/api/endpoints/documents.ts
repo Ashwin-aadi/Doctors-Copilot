@@ -13,10 +13,18 @@ export function startDocumentUpload(
   fileId: string,
   patientId: string,
   testName?: string | null,
+  /** The visit this report belongs to. Every visit surface is scoped by it,
+   *  so a report uploaded without one never shows up on a chart. */
+  visitId?: string | null,
 ): Promise<DocumentOut> {
   return request<DocumentOut>("/api/v1/documents/upload", {
     method: "POST",
-    body: JSON.stringify({ file_id: fileId, patient_id: patientId, test_name: testName ?? null }),
+    body: JSON.stringify({
+      file_id: fileId,
+      patient_id: patientId,
+      test_name: testName ?? null,
+      visit_id: visitId ?? null,
+    }),
   });
 }
 

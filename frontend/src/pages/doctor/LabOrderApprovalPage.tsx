@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { ShieldCheck } from "lucide-react";
+import { History, ShieldCheck } from "lucide-react";
 import { formatInr } from "../../lib/format";
 import { Card, CardBody, CardHeader, CardTitle } from "../../components/ui/Card";
 import { CardSkeleton } from "../../components/ui/states/CardSkeleton";
@@ -127,6 +127,8 @@ export function LabOrderApprovalPage({
     setAddQuery("");
   }
 
+  const amending = Boolean(order.supersedes_id) && !order.locked;
+
   function handleApproveConfirm() {
     if (captchaRequired && !captchaToken) return;
     onApprove(captchaToken ?? "");
@@ -136,7 +138,11 @@ export function LabOrderApprovalPage({
     <Card variant="raised">
       <CardHeader>
         <CardTitle>Lab order</CardTitle>
-        {order.locked ? <Badge tone="normal">Approved</Badge> : <Badge tone="moderate">Draft</Badge>}
+        {order.locked ? (
+          <Badge tone="normal">Approved</Badge>
+        ) : (
+          <Badge tone="moderate">{amending ? "Amendment" : "Draft"}</Badge>
+        )}
       </CardHeader>
       <CardBody className="flex flex-col gap-4">
         {order.locked &&
@@ -156,6 +162,20 @@ export function LabOrderApprovalPage({
               <p>Approved and locked — create an amendment instead.</p>
             </div>
           ))}
+
+        {/* An amendment looks exactly like a first draft, which would let a
+            doctor re-sign without realising a signed order already stands
+            behind it. The earlier order keeps its signature and stays on the
+            record; this one supersedes it. */}
+        {amending && (
+          <div className="flex items-start gap-3 rounded-md border border-moderate/30 bg-moderate-soft p-3 text-sm text-fg">
+            <History className="mt-0.5 h-4 w-4 shrink-0 text-moderate" aria-hidden="true" />
+            <p>
+              Amending an order you already signed. The signed version stays on the record;
+              approving this one replaces it for the rest of the visit.
+            </p>
+          </div>
+        )}
 
         <ul role="list" aria-label="Recommended tests" className="flex flex-col gap-2" data-testid="lab-order-items">
           {order.items.length === 0 && <EmptyState title="No tests recommended yet" />}

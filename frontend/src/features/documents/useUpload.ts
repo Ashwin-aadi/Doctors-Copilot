@@ -30,7 +30,7 @@ export interface UploadItem {
  * Once an item reaches "uploaded", its OCR status is polled separately by
  * useDocumentPolling, keyed off `documentId`.
  */
-export function useUpload(patientId: string | null) {
+export function useUpload(patientId: string | null, visitId?: string | null) {
   const [items, setItems] = useState<UploadItem[]>([]);
   const handles = useRef(new Map<string, UploadHandle>());
   const cancelledIds = useRef(new Set<string>());
@@ -56,7 +56,7 @@ export function useUpload(patientId: string | null) {
           return;
         }
 
-        const doc = await startDocumentUpload(result.id, forPatientId, item.testName);
+        const doc = await startDocumentUpload(result.id, forPatientId, item.testName, visitId);
         updateItem(item.clientId, { status: "uploaded", documentId: doc.id, progress: 100 });
         void queryClient.invalidateQueries({ queryKey: qk.documents(forPatientId) });
       } catch (err) {
@@ -72,7 +72,7 @@ export function useUpload(patientId: string | null) {
         });
       }
     },
-    [queryClient, updateItem],
+    [queryClient, updateItem, visitId],
   );
 
   const addFiles = useCallback(

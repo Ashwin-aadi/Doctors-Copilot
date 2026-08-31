@@ -197,13 +197,21 @@ export interface UploadContainerProps {
    * on `/visit/:id` it is the visit's -- so the visit surface passes it in.
    */
   patientId?: string;
+  /**
+   * The visit these reports belong to, when the upload happens on a visit.
+   * Without it the document is stored unscoped and never appears on a chart.
+   */
+  visitId?: string;
 }
 
-export function UploadContainer({ patientId: patientIdProp }: UploadContainerProps = {}) {
+export function UploadContainer({
+  patientId: patientIdProp,
+  visitId,
+}: UploadContainerProps = {}) {
   const { t } = useTranslation();
   const params = useParams<{ id: string }>();
   const patientId = patientIdProp ?? params.id ?? null;
-  const { items, addFiles, cancelUpload } = useUpload(patientId);
+  const { items, addFiles, cancelUpload } = useUpload(patientId, visitId);
   const inputRef = useRef<HTMLInputElement>(null);
 
   return (

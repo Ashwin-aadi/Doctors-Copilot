@@ -7,14 +7,7 @@ import { login, me, mapMeToAuthUser } from "../../lib/api/endpoints/auth";
 import { ApiError } from "../../lib/api/errors";
 import { useAuthStore } from "../../store/auth";
 import { useCaptcha } from "../../hooks/useCaptcha";
-import { ROUTES } from "../../router/routes";
-
-function homeForRole(role: string): string {
-  // Admin has no screen of its own yet, so it lands on the clinical home
-  // rather than a route that renders nothing.
-  if (role === "doctor" || role === "staff" || role === "admin") return ROUTES.doctorHome;
-  return ROUTES.chat;
-}
+import { homeForRole } from "../../router/routes";
 
 export function LoginContainer() {
   const navigate = useNavigate();

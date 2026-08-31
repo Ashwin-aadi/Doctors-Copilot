@@ -2532,3 +2532,60 @@ LLM and degrade to an empty differential with `confidence=0.0` when the Groq
 free tier rate-limits. The degradation is honest (`uncertainty` distinguishes
 "stage unavailable" from "nothing supported") but the note loses its reasoning
 section. A local Ollama fallback would remove this.
+
+---
+
+## Synthetic doctor directory (`scripts/seed_doctors.py`)
+
+`seed.py` seeds six fixed-UUID doctors in three cities, which every test pins
+by id. That is enough to prove a booking works and far too thin to prove the
+ranking optimiser works: with one candidate per specialty, distance, fee,
+language and scheme empanelment all score identically and the ordering is
+meaningless.
+
+`scripts/seed_doctors.py` generates a second, larger directory alongside it —
+54 doctors across 11 facilities in 9 states, covering all 16 members of
+`CANONICAL_SPECIALTIES`. Generation is seeded (`RNG_SEED = 20260831`) and every
+row is written by primary key, so it is reproducible and idempotent, and its
+UUID ranges (clinics `...1001+`, doctors `...2001+`, doctor users `...4001+`,
+availability `...810000+`) do not overlap `seed.py`'s fixed records.
+
+Choices worth recording:
+
+- **Staffing follows the facility tier.** A PHC runs general medicine,
+  paediatrics and obstetrics only; super-specialties exist at district
+  hospitals and private facilities. A cardiology lookup near a PHC therefore
+  falls through to the district hospital, which is the referral pathway the
+  optimiser's `min_facility_type` gate is meant to model. Seeding a cardiologist
+  into every PHC would have made that gate untestable.
+- **Fees derive from tier, not specialty alone.** The specialty base tariff is
+  scaled by a per-tier multiplier (PHC 0.2 → private hospital 1.0) and rounded
+  to ₹50, giving a ₹100–₹1250 spread that the fee weight can actually separate.
+- **Super-specialists also hold the parent OPD.** A DM Cardiology entry carries
+  `["cardiology", "general_medicine"]` about 60% of the time, which is both
+  true of Indian practice and the only thing exercising the JSONB `contains`
+  query against a multi-element array.
+
+**Columns added.** `doctors.languages` and `clinics.schemes` (JSONB, revision
+`c9d2b7a34f18`), plus `Doctor.registration_council` and `Clinic.facility_type`
+on the ORM models — those two columns already existed in the database from
+`d4a1f6e29c88` but were only reachable through the Core table in
+`api/v1/doctors_profile.py`. `services/scheduling/repo.py` now prefers the
+stored values and falls back to its `_DOCTOR_LOCALE_OVERRIDES` /
+`_CLINIC_LOCALE_OVERRIDES` tables, so the rows seeded before the columns
+shipped keep their language and scheme data unchanged.
+
+**DRIFT: `clinics.facility_type` has two vocabularies.**
+`api/v1/doctors_profile.py:ClinicIn` validates
+`PHC | CHC | district_hospital | private_clinic | private_hospital`, while
+`services/scheduling/optimizer.py:_FACILITY_RANK` and
+`services/rules/packs/optimizer.yaml` rank on
+`phc | chc | sdh | dh | medical_college` (with `private_hospital` and
+`private_clinic` listed under `urban_facility_types`). A clinic created through
+the profile endpoint is invisible to the optimiser's tier gate, and vice versa.
+The seed writes the scheduling slugs, because ranking is what consumes the
+column. Expected shape: one lowercase set,
+`phc | chc | sdh | dh | medical_college | private_clinic | private_hospital`,
+with `_FACILITY_RANK` extended to rank the two private tiers (currently they
+score `-1` and are dropped by any `min_facility_type` rule). Owners: Pratyaksh
+(`api/v1/doctors_profile.py`), Niyati (`services/scheduling/optimizer.py`).

@@ -1,9 +1,8 @@
 import { useMemo, useState } from "react";
 import type { KeyboardEvent } from "react";
-import { Search } from "lucide-react";
 import { cn } from "../../lib/cn";
 import { formatDateIst } from "../../lib/format";
-import { Input } from "../../components/ui/Input";
+import { FilterBar, FilterChip, SearchInput } from "../../components/ui/Filters";
 import { TriageColourBadge } from "../../components/ui/TriageColourBadge";
 import { Table, TableBody, TableCell, TableHead, TableHeaderCell, TableRow } from "../../components/ui/Table";
 import { TableSkeleton } from "../../components/ui/states/TableSkeleton";
@@ -32,10 +31,10 @@ export interface PatientListPanelProps {
 
 type SortKey = "name" | "severity" | "lastVisit";
 
-const COLOUR_CHIPS: { colour: TriageColour; label: string }[] = [
-  { colour: "red", label: "Red" },
-  { colour: "yellow", label: "Yellow" },
-  { colour: "green", label: "Green" },
+const COLOUR_CHIPS: { colour: TriageColour; label: string; dot: string }[] = [
+  { colour: "red", label: "Red", dot: "bg-critical" },
+  { colour: "yellow", label: "Yellow", dot: "bg-moderate" },
+  { colour: "green", label: "Green", dot: "bg-normal" },
 ];
 
 const SEVERITY_CHIPS = [1, 2, 3, 4, 5];
@@ -68,6 +67,7 @@ export function PatientListPanel({
 }: PatientListPanelProps) {
   const [sortKey, setSortKey] = useState<SortKey>("severity");
   const [sortAsc, setSortAsc] = useState(true);
+  const hasFilters = filters.colours.length > 0 || filters.severities.length > 0;
 
   const visible = useMemo(() => {
     let rows = patients.filter((p) => matchesSearch(p, search));
@@ -99,56 +99,46 @@ export function PatientListPanel({
 
   return (
     <div className="flex flex-col gap-3">
-      <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
-        <div className="relative flex-1">
-          <Search className="pointer-events-none absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-fg-subtle" aria-hidden="true" />
-          <Input
-            aria-label="Search patients by name, mobile, or ABHA ID"
-            placeholder="Search by name, mobile, or ABHA ID"
-            className="pl-8"
-            value={search}
-            onChange={(e) => onSearchChange(e.target.value)}
-          />
-        </div>
-      </div>
+      <SearchInput
+        className="w-full sm:w-full"
+        value={search}
+        onChange={onSearchChange}
+        placeholder="Search by name, mobile, or ABHA ID"
+        label="Search patients by name, mobile, or ABHA ID"
+      />
 
-      <div className="flex flex-wrap items-center gap-2">
-        {COLOUR_CHIPS.map(({ colour, label }) => {
-          const active = filters.colours.includes(colour);
-          return (
-            <button
-              key={colour}
-              type="button"
-              aria-pressed={active}
-              onClick={() => onFilterChange({ ...filters, colours: toggle(filters.colours, colour) })}
-              className={cn(
-                "rounded-full border px-2.5 py-1 text-xs font-medium transition-colors",
-                active ? "border-primary bg-primary-soft text-primary-soft-fg" : "border-border text-fg-muted hover:bg-surface-2",
-              )}
-            >
-              {label}
-            </button>
-          );
-        })}
+      <FilterBar
+        label="Filter patients by triage colour and severity"
+        className="justify-start"
+        trailing={
+          hasFilters ? (
+            <Button size="sm" variant="ghost" onClick={() => onFilterChange({ colours: [], severities: [] })}>
+              Clear filters
+            </Button>
+          ) : undefined
+        }
+      >
+        {COLOUR_CHIPS.map(({ colour, label, dot }) => (
+          <FilterChip
+            key={colour}
+            dot={dot}
+            active={filters.colours.includes(colour)}
+            onClick={() => onFilterChange({ ...filters, colours: toggle(filters.colours, colour) })}
+          >
+            {label}
+          </FilterChip>
+        ))}
         <span className="mx-1 h-4 w-px bg-border" aria-hidden="true" />
-        {SEVERITY_CHIPS.map((esi) => {
-          const active = filters.severities.includes(esi);
-          return (
-            <button
-              key={esi}
-              type="button"
-              aria-pressed={active}
-              onClick={() => onFilterChange({ ...filters, severities: toggle(filters.severities, esi) })}
-              className={cn(
-                "rounded-full border px-2.5 py-1 text-xs font-medium transition-colors",
-                active ? "border-primary bg-primary-soft text-primary-soft-fg" : "border-border text-fg-muted hover:bg-surface-2",
-              )}
-            >
-              ESI {esi}
-            </button>
-          );
-        })}
-      </div>
+        {SEVERITY_CHIPS.map((esi) => (
+          <FilterChip
+            key={esi}
+            active={filters.severities.includes(esi)}
+            onClick={() => onFilterChange({ ...filters, severities: toggle(filters.severities, esi) })}
+          >
+            ESI {esi}
+          </FilterChip>
+        ))}
+      </FilterBar>
 
       {loading && <TableSkeleton rows={6} columns={4} />}
 
@@ -161,7 +151,25 @@ export function PatientListPanel({
       )}
 
       {!loading && !error && visible.length === 0 && (
-        <EmptyState title="No patients match" description="Try clearing the search or filters." />
+        <EmptyState
+          size="sm"
+          title="No patients match"
+          description="Try clearing the search or filters."
+          action={
+            (hasFilters || search) && (
+              <Button
+                size="sm"
+                variant="secondary"
+                onClick={() => {
+                  onSearchChange("");
+                  onFilterChange({ colours: [], severities: [] });
+                }}
+              >
+                Clear filters
+              </Button>
+            )
+          }
+        />
       )}
 
       {!loading && !error && visible.length > 0 && (

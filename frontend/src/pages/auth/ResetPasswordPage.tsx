@@ -50,7 +50,7 @@ export function ResetPasswordPage({
       <div className="flex flex-col gap-6">
         <div>
           <h2 className="text-2xl font-semibold text-fg">Set a new password</h2>
-          <p className="text-sm text-fg-muted">Choose a strong password for your account.</p>
+          <p className="text-sm text-fg-muted">Choose a new password for your account.</p>
         </div>
 
         <form className="flex flex-col gap-4" onSubmit={handleSubmit} noValidate>
@@ -59,7 +59,6 @@ export function ResetPasswordPage({
             label="Confirm password"
             value={confirm}
             onChange={setConfirm}
-            showStrength={false}
             error={mismatch ? "Passwords do not match" : undefined}
           />
           <FormError message={error} />

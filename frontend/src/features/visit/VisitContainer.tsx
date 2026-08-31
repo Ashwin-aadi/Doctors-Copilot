@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { useQuery } from "@tanstack/react-query";
-import { ArrowRight, FastForward, History } from "lucide-react";
+import { AlertTriangle, ArrowRight, FastForward, History } from "lucide-react";
 import { Card, CardHeader, CardTitle, CardBody } from "../../components/ui/Card";
 import { Button } from "../../components/ui/Button";
 import { Badge, type BadgeTone } from "../../components/ui/Badge";
@@ -31,6 +31,7 @@ import { MedSuggestionsCard } from "../prescription/MedSuggestions";
 import { PatientContextRail } from "./PatientContextRail";
 import { TranscriptCard } from "./TranscriptCard";
 import { useVisit, nextState } from "./useVisit";
+import { conditionName } from "./conditionName";
 import type { VisitState } from "../../lib/api/endpoints/visits";
 import { useVisitSocket } from "./useVisitSocket";
 
@@ -59,8 +60,19 @@ export function VisitContainer() {
   const role = useAuthStore((s) => s.user?.role);
   const isClinician = role === "doctor" || role === "staff";
 
-  const { visit, stage, setStage, actions, loading, error, advance, advancing, rewind, rewinding } =
-    useVisit(visitId);
+  const {
+    visit,
+    stage,
+    setStage,
+    actions,
+    loading,
+    error,
+    advance,
+    advancing,
+    advanceConflict,
+    rewind,
+    rewinding,
+  } = useVisit(visitId);
   // Sending a visit backwards is a real state change other people see, so it
   // is confirmed rather than fired on a stray click in the stepper.
   const [pendingRewind, setPendingRewind] = useState<VisitState | null>(null);
@@ -116,9 +128,12 @@ export function VisitContainer() {
   // the patient's own recorded conditions stand in until a brief exists. The
   // visit payload carries the brief from BRIEF_READY onwards, so the medicine
   // suggestions read it from there rather than paying for a second build.
-  const briefConditions = visit.brief?.differentials?.length
-    ? visit.brief.differentials
-    : conditions;
+  // A differential reads "Dengue fever - supported by thrombocytopenia and
+  // Indian epidemiology". Only the head names the condition; sending the whole
+  // sentence to the medicine search matched on its filler words instead.
+  const briefConditions = (
+    visit.brief?.differentials?.length ? visit.brief.differentials : conditions
+  ).map(conditionName);
 
   return (
     <div className="page">
@@ -147,6 +162,22 @@ export function VisitContainer() {
           ) : undefined
         }
       />
+
+      {/* A refused advance is a precondition that is not met yet -- no report
+          back, no signed prescription. The server names the missing one; a
+          generic "conflict" would leave the clinician clicking a button that
+          silently does nothing. */}
+      {advanceConflict && (
+        <Card variant="flat">
+          <CardBody className="flex items-start gap-2 px-3 py-3 sm:px-5">
+            <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-high" aria-hidden="true" />
+            <p className="text-sm text-fg-muted">
+              {advanceConflict.message ||
+                t("errorCodes.CONFLICT", { defaultValue: t("errorCodes.INTERNAL") })}
+            </p>
+          </CardBody>
+        </Card>
+      )}
 
       <Card variant="raised">
         <CardBody className="px-3 py-4 sm:px-5">
@@ -240,15 +271,12 @@ export function VisitContainer() {
             ))}
 
           {/* --- Tests approved: what was ordered and what has come back. */}
-          {view === "LABS_APPROVED" && (
-            <LabReportSummary
-              labOrderId={visit.lab_order_id ?? null}
-              documents={visit.documents ?? []}
-            />
-          )}
-
-          {/* --- Report uploaded: collecting the reports, and only that. */}
-          {view === "RESULTS_UPLOADED" &&
+          {/* --- Tests approved and Report uploaded: collecting the reports.
+              Both stages collect, because leaving the approved stage requires
+              a report that has come back -- a read-only list here would leave
+              the doctor with a precondition and no way to satisfy it. The
+              panel doubles as the order's progress ("2 of 4 uploaded"). */}
+          {(view === "LABS_APPROVED" || view === "RESULTS_UPLOADED") &&
             (visit.lab_order_id ? (
               <LabOrderUploadPanel
                 visitId={visit.id}
@@ -257,8 +285,16 @@ export function VisitContainer() {
                 documents={visit.documents ?? []}
               />
             ) : (
-              <UploadContainer patientId={visit.patient_id} />
+              <UploadContainer patientId={visit.patient_id} visitId={visit.id} />
             ))}
+
+          {view === "LABS_APPROVED" && (
+            <LabReportSummary
+              labOrderId={visit.lab_order_id ?? null}
+              documents={visit.documents ?? []}
+              ordersHidden
+            />
+          )}
 
           {/* --- Summary ready: the brief, the values it was built from, and the
               medicines it points towards. */}

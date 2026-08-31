@@ -18,6 +18,9 @@ import { qk } from "../../lib/queryKeys";
 export interface LabReportSummaryProps {
   labOrderId: string | null;
   documents: DocumentOut[];
+  /** Drop the ordered-tests card, for stages that already show the order in
+   *  an upload panel. Without it the same list appears twice on one screen. */
+  ordersHidden?: boolean;
 }
 
 const flagTone: Record<string, "critical" | "high" | "moderate" | "normal" | "neutral"> = {
@@ -38,11 +41,16 @@ function referenceRange(lab: LabResult): string {
 /**
  * What the signed order asked for and what has come back for it, read-only.
  *
- * This is the stage where the doctor checks the order is being fulfilled, not
- * where anything is collected -- the upload controls live on the results
- * stage, so nothing here can change the record.
+ * This is where the doctor checks the order is being fulfilled, not where
+ * anything is collected -- nothing here can change the record. On the stages
+ * that do collect, `ordersHidden` drops the ordered-tests card so the upload
+ * panel beside it owns that list.
  */
-export function LabReportSummary({ labOrderId, documents }: LabReportSummaryProps) {
+export function LabReportSummary({
+  labOrderId,
+  documents,
+  ordersHidden = false,
+}: LabReportSummaryProps) {
   const { t } = useTranslation();
 
   const orderQuery = useQuery({
@@ -61,7 +69,7 @@ export function LabReportSummary({ labOrderId, documents }: LabReportSummaryProp
 
   return (
     <div className="flex flex-col gap-4">
-      {labOrderId && (
+      {labOrderId && !ordersHidden && (
         <Card>
           <CardHeader className="flex flex-wrap items-center justify-between gap-2">
             <CardTitle>{t("labSummary.orderedTitle")}</CardTitle>

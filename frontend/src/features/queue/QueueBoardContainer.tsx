@@ -1,7 +1,7 @@
 import { useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Wifi, WifiOff } from "lucide-react";
+import { Users, Wifi, WifiOff } from "lucide-react";
 import { Card, CardBody, CardHeader, CardTitle } from "../../components/ui/Card";
 import { PageHeader } from "../../components/ui/PageHeader";
 import { Button } from "../../components/ui/Button";
@@ -12,6 +12,7 @@ import { ErrorState } from "../../components/ui/ErrorState";
 import { Badge } from "../../components/ui/Badge";
 import { QueueRow } from "../../components/queue/QueueRow";
 import { QueueStats } from "../../components/queue/QueueStats";
+import { TriageLegend } from "../../components/queue/TriageLegend";
 import { getQueue, nextInQueue, escalateQueue, type QueueEntry } from "../../lib/api/endpoints/queue";
 import { useAuthStore } from "../../store/auth";
 import { qk } from "../../lib/queryKeys";
@@ -96,6 +97,12 @@ export function QueueBoardContainer() {
         actions={
           status === "open" ? (
             <Badge tone="normal">
+              <span className="relative flex h-2 w-2" aria-hidden="true">
+                {/* A live board should look live: the ring only runs while the
+                    socket is actually open. */}
+                <span className="absolute inset-0 rounded-full bg-normal/50 animate-pulse-ring" />
+                <span className="relative h-2 w-2 rounded-full bg-normal" />
+              </span>
               <Wifi className="h-3 w-3" aria-hidden="true" />
               {t("queue.connected")}
             </Badge>
@@ -110,11 +117,14 @@ export function QueueBoardContainer() {
 
       <QueueStats entries={entries} />
 
+      {entries.length > 0 && <TriageLegend entries={entries} />}
+
       {queueQuery.isLoading && (
         <div className="flex flex-col gap-2">
-          <Skeleton className="h-10 w-full" />
-          <Skeleton className="h-10 w-full" />
-          <Skeleton className="h-10 w-full" />
+          <Skeleton className="h-12 w-full" />
+          <Skeleton className="h-12 w-full" />
+          <Skeleton className="h-12 w-full" />
+          <Skeleton className="h-12 w-full" />
         </div>
       )}
 
@@ -130,7 +140,11 @@ export function QueueBoardContainer() {
       )}
 
       {!queueQuery.isLoading && !queueQuery.error && entries.length === 0 && (
-        <EmptyState title={t("queue.empty")} />
+        <EmptyState
+          icon={<Users className="h-6 w-6" />}
+          title={t("queue.empty")}
+          description={t("queue.emptyHelp", { defaultValue: "" }) || undefined}
+        />
       )}
 
       {!queueQuery.isLoading && !queueQuery.error && entries.length > 0 && (
