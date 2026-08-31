@@ -38,6 +38,24 @@ MAX_CANDIDATES = 10
 _MANDATORY_RATIONALE = "This is decision support requiring doctor approval."
 _FTS_SANITIZE_RE = re.compile(r"[^a-z0-9 ]+")
 
+# A differential arrives as a sentence -- "Renal colic (ureteric stone) -
+# considered given urology triage and need for imaging". Only the head names
+# the condition; the rest explains the reasoning and is pure noise to a
+# full-text search over drug labels.
+_CONDITION_TAIL_RE = re.compile(r"\s+[-–—:(]|\s+(?:supported|considered|possible|plausible|likely|given|due)")
+
+# Words that appear in nearly every drug label. OR-ing them in was what made
+# every condition return the same handful of high-frequency labels regardless
+# of what was actually asked.
+_STOPWORDS = frozenset(
+    """a an and are as at be by for from given in into is it its of on or that the their then
+    there these this to was were will with need needs needed patient patients adult adults
+    treatment treat therapy use used using indicated indication management care clinical
+    symptoms symptom signs detect detection marker markers evaluation evaluate assess
+    warrants without with less more likely possible plausible considered supported due
+    presenting present history risk""".split()
+)
+
 
 @lru_cache(maxsize=1)
 def _india_rows() -> list[dict]:
@@ -70,9 +88,25 @@ def _db_connect() -> sqlite3.Connection | None:
     return sqlite3.connect(DB_PATH)
 
 
+def _condition_terms(condition: str) -> list[str]:
+    """The content words that actually name the condition."""
+    head = _CONDITION_TAIL_RE.split(condition.strip(), maxsplit=1)[0]
+    words = _FTS_SANITIZE_RE.sub(" ", head.lower()).split()
+    return [w for w in words if w not in _STOPWORDS and len(w) > 2]
+
+
+def _condition_label(condition: str) -> str:
+    """The condition as it should read on a suggestion card: the name only,
+    without the differential's trailing reasoning."""
+    head = _CONDITION_TAIL_RE.split(condition.strip(), maxsplit=1)[0].strip(" .,;:-")
+    return head or condition.strip()
+
+
 def _fts_query(condition: str) -> str:
-    terms = _FTS_SANITIZE_RE.sub(" ", condition.lower()).split()
-    return " OR ".join(terms) if terms else condition.lower()
+    """FTS5 treats space-separated terms as AND, which is the point: a label
+    has to mention every word of the condition, not any one of them."""
+    terms = _condition_terms(condition)
+    return " ".join(terms) if terms else _FTS_SANITIZE_RE.sub(" ", condition.lower()).strip()
 
 
 def _label_url(conn: sqlite3.Connection, ingredient: str) -> str:
@@ -135,19 +169,23 @@ async def suggest_medications(req: MedSuggestRequest) -> list[MedCandidate]:
     if conn is None:
         return []
 
-    raw: dict[str, tuple[float, str]] = {}
+    # Keep the condition each candidate was actually retrieved for. Naming
+    # every condition on every card made all the rationales identical and told
+    # the doctor nothing about why this drug was suggested.
+    raw: dict[str, tuple[float, str, str]] = {}
     for condition in req.conditions:
+        matched_for = _condition_label(condition)
         for ingredient, match, text in _retrieve_candidates(conn, condition):
             existing = raw.get(ingredient)
             if existing is None or match > existing[0]:
-                raw[ingredient] = (match, text)
+                raw[ingredient] = (match, text, matched_for)
 
     if not raw:
         conn.close()
         return []
 
     candidates: list[MedCandidate] = []
-    for ingredient, (match, _indications_text) in raw.items():
+    for ingredient, (match, _indications_text, matched_for) in raw.items():
         check_meds = [*req.current_medications, ingredient]
         report = await check_interactions(
             InteractionRequest(medications=check_meds, allergies=req.allergies, conditions=[])
@@ -180,7 +218,7 @@ async def suggest_medications(req: MedSuggestRequest) -> list[MedCandidate]:
             safety_flags.append("pregnancy caution")
 
         india = _india_lookup(ingredient)
-        rationale_parts = [f"Matches indication for {', '.join(req.conditions)}."]
+        rationale_parts = [f"Label lists an indication for {matched_for}."]
         if india.get("brand"):
             rationale_parts.append(f"Commonly available in India as {india['brand']}.")
         rationale_parts.append(_MANDATORY_RATIONALE)

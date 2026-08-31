@@ -67,3 +67,11 @@ aptt: {unit: sec, default: {low: 25, high: 35}}
 amylase: {unit: U/L, default: {low: 28, high: 100}}
 lipase: {unit: U/L, default: {low: 13, high: 60}}
 ldh: {unit: U/L, default: {low: 140, high: 280}}
+# Adult male endocrine panel; the female bounds differ by cycle phase, so only
+# the male range is asserted as a default and a report's own printed interval
+# always takes precedence over these.
+testosterone_total: {unit: ng/mL, default: {low: 2.50, high: 8.40}, male: {low: 2.50, high: 8.40}}
+shbg: {unit: nmol/L, default: {low: 18, high: 54}}
+lh: {unit: mIU/mL, default: {low: 1.7, high: 8.6}}
+fsh: {unit: mIU/mL, default: {low: 1.5, high: 12.4}}
+prolactin: {unit: ng/mL, default: {low: 4.0, high: 15.2}}

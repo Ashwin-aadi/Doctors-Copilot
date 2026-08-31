@@ -252,3 +252,27 @@ lipase:
 ldh:
   loinc: "2532-0"
   aliases: ["LDH", "Lactate Dehydrogenase"]
+
+# Male hormone / endocrine panel. Ordered from a urology or endocrine OPD --
+# the varicocele and infertility work-ups both land here -- and previously
+# absent, so a testosterone result either fell through or fuzzy-matched onto
+# an unrelated haematology test.
+testosterone_total:
+  loinc: "2986-8"
+  aliases: ["Testosterone", "Total Testosterone", "Serum Testosterone", "Testosterone (Total)", "T. Testosterone"]
+
+shbg:
+  loinc: "13967-5"
+  aliases: ["SHBG", "Sex Hormone Binding Globulin", "Sex Hormone-Binding Globulin"]
+
+lh:
+  loinc: "10501-5"
+  aliases: ["LH", "Luteinizing Hormone", "Luteinising Hormone", "Serum LH"]
+
+fsh:
+  loinc: "15067-2"
+  aliases: ["FSH", "Follicle Stimulating Hormone", "Follicle-Stimulating Hormone", "Serum FSH"]
+
+prolactin:
+  loinc: "2842-3"
+  aliases: ["Prolactin", "Serum Prolactin", "PRL"]

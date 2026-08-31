@@ -29,7 +29,16 @@ from app.ml.ocr import OcrResult
 from app.schemas.document import LabResultOut
 
 DATA_DIR = Path(__file__).resolve().parents[3] / "ml" / "data"
-ALIAS_MATCH_THRESHOLD = 80
+# WRatio rewards a shared leading token, so at 80 "Total Testosterone" matched
+# "Total Leukocyte Count (TLC)" at 85.5 and was recorded as a white-cell count.
+# Every legitimate alias on the Indian report templates this parses scores 90+
+# (almost all exactly 100); the dangerous near-misses sit at 80-86.
+ALIAS_MATCH_THRESHOLD = 90
+
+# Below this length a name carries too little signal to fuzzy-match safely:
+# "LH" scores 80 against "LDH" and they are unrelated analytes. Short names
+# must match an alias exactly.
+EXACT_ONLY_NAME_LENGTH = 4
 HEADER_MATCH_THRESHOLD = 80
 CRITICAL_RANGE_MULTIPLIER = 1.5
 
@@ -76,10 +85,27 @@ _REFERENCE_RANGES = _load_yaml("reference_ranges.yaml")
 _CRITICAL_RULES = _load_yaml("critical_rules.yaml")
 
 
+def _normalise_name(raw: str) -> str:
+    """Casefold and drop punctuation, so "SGPT (ALT)" and "sgpt alt" agree."""
+    return " ".join(re.sub(r"[^a-z0-9]+", " ", raw.lower()).split())
+
+
+_EXACT_INDEX: dict[str, str] = {_normalise_name(a): c for a, c in _ALIAS_INDEX.items()}
+
+
 def _match_canonical(raw_name: str) -> tuple[str, float] | None:
     raw_name = raw_name.strip()
     if not raw_name:
         return None
+
+    # An exact alias always wins, and is the only thing trusted for a name too
+    # short to fuzzy-match safely.
+    exact = _EXACT_INDEX.get(_normalise_name(raw_name))
+    if exact is not None:
+        return exact, 1.0
+    if len(_normalise_name(raw_name).replace(" ", "")) <= EXACT_ONLY_NAME_LENGTH:
+        return None
+
     match = process.extractOne(raw_name, _ALIAS_CHOICES, scorer=fuzz.WRatio)
     if match is None or match[1] < ALIAS_MATCH_THRESHOLD:
         return None
@@ -326,6 +352,79 @@ def _line_mode_entries(
     return entries
 
 
+# A value on its own line: "4.72", "<0.5", "11,800".
+_STACKED_VALUE_RE = re.compile(rf"^[<>]?\s*(?:{_NUM})$")
+# A unit on its own line: "ng/mL", "cells/cu mm", "%".
+_STACKED_UNIT_RE = re.compile(r"^[A-Za-zµ%][A-Za-zµ%/\^0-9\. ]{0,14}$")
+
+
+def _stacked_mode_entries(
+    page: dict[str, Any], page_idx: int, fallback_conf: float
+) -> list[dict[str, Any]]:
+    """Read a results table that arrived one cell per line.
+
+    Extracting text from a PDF whose results are laid out in a table gives back
+    every cell on its own line -- name, then value, then reference interval,
+    then unit -- with nothing left on the line to anchor a name-value pair to.
+    `_line_mode_entries` needs both on one line and `_table_mode_entries` needs
+    geometry the text-only path never produces, so a perfectly clean digital
+    lab report parsed to nothing at all.
+
+    A row is recognised as a known test name on one line followed by a bare
+    number on the next; an interval and a unit are taken from the two lines
+    after it when they look like one. Requiring the name to resolve to a
+    canonical test is what keeps this from reading prose as results.
+    """
+    lines = [ln.strip() for ln in page["text"].splitlines()]
+    entries: list[dict[str, Any]] = []
+
+    for i, line in enumerate(lines[:-1]):
+        if not line or _STACKED_VALUE_RE.match(line):
+            continue
+        value = _parse_value(lines[i + 1])
+        if value is None or not _STACKED_VALUE_RE.match(lines[i + 1]):
+            continue
+        match = _match_canonical(line)
+        if match is None:
+            continue
+        canonical_name, alias_score = match
+
+        low = high = None
+        unit = None
+        # The interval and unit follow the value, in either order on some
+        # templates; only the two lines after it are considered, so a value
+        # from the next row can never be read as this row's range.
+        for candidate in lines[i + 2 : i + 4]:
+            if not candidate:
+                continue
+            if low is None and high is None:
+                parsed_low, parsed_high = _parse_range(candidate)
+                if parsed_low is not None or parsed_high is not None:
+                    low, high = parsed_low, parsed_high
+                    continue
+            if unit is None and _STACKED_UNIT_RE.match(candidate):
+                unit = candidate
+
+        if low is None and high is None:
+            low, high, default_unit = _default_range(canonical_name)
+            unit = unit or default_unit
+
+        entries.append(
+            {
+                "test_name": line,
+                "normalized_name": canonical_name,
+                "value": value,
+                "unit": unit,
+                "ref_low": low,
+                "ref_high": high,
+                "flag": _flag(canonical_name, value, unit, low, high),
+                "confidence": min(fallback_conf, alias_score),
+                "page": page_idx + 1,
+            }
+        )
+    return entries
+
+
 def parse_labs(ocr: OcrResult) -> list[LabResultOut]:
     all_entries: list[dict[str, Any]] = []
     for page_idx, page in enumerate(ocr["pages"]):
@@ -333,6 +432,7 @@ def parse_labs(ocr: OcrResult) -> list[LabResultOut]:
         conf_by_text = _block_conf_lookup(page)
         all_entries.extend(_table_mode_entries(page, page_idx, conf_by_text, fallback_conf))
         all_entries.extend(_line_mode_entries(page, page_idx, fallback_conf))
+        all_entries.extend(_stacked_mode_entries(page, page_idx, fallback_conf))
 
     best_by_name: dict[str, dict[str, Any]] = {}
     for entry in all_entries:
