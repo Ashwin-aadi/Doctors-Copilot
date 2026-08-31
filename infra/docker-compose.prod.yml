@@ -66,7 +66,7 @@ services:
       # The retrieval index and the model weights are large and slow to rebuild.
       # Bind them so a rebuilt image reuses whatever the host already has, and
       # falls back to ingesting/downloading when the host has nothing.
-      - ./chroma:/app/infra/chroma
+      - ../backend/infra/chroma:/app/backend/infra/chroma
       - ../ml/.cache:/app/ml/.cache
     healthcheck:
       test: ["CMD-SHELL", "curl -fsS http://localhost:8000/health || exit 1"]
