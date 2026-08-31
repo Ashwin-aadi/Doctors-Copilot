@@ -65,15 +65,60 @@ def test_validate_upload_bytes_rejects_oversize() -> None:
     assert exc_info.value.code == "VALIDATION_FAILED"
 
 
-@pytest.mark.parametrize("token", [b"/JavaScript", b"/Launch", b"/EmbeddedFile"])
-def test_reject_malicious_pdf_tokens(token: bytes) -> None:
+@pytest.fixture
+def strict_uploads(monkeypatch: pytest.MonkeyPatch):
+    """The PDF scan only runs in production; these assert what it does there."""
+
+    class _Prod:
+        app_env = "prod"
+
+    monkeypatch.setattr(storage, "get_settings", lambda: _Prod())
+
+
+@pytest.mark.parametrize("token", [b"/JavaScript", b"/Launch"])
+def test_reject_malicious_pdf_tokens(strict_uploads, token: bytes) -> None:
     with pytest.raises(ApiError) as exc_info:
-        storage.reject_malicious_pdf(_FAKE_PDF_HEADER + token + b" 0 0 R")
+        storage.reject_malicious_pdf(_FAKE_PDF_HEADER + b"<< /Type /Catalog " + token + b" 0 0 R >>")
     assert exc_info.value.code == "VALIDATION_FAILED"
+    # The reject has to name the token, or the uploader has nothing to check.
+    assert token.decode() in exc_info.value.message
 
 
-def test_reject_malicious_pdf_allows_clean_pdf() -> None:
+def test_reject_malicious_pdf_allows_clean_pdf(strict_uploads) -> None:
     storage.reject_malicious_pdf(_FAKE_PDF_HEADER + b"1 0 obj << /Type /Catalog >> endobj")
+
+
+def test_reject_malicious_pdf_ignores_stream_bodies(strict_uploads) -> None:
+    """Compressed image and font bytes can spell anything by chance; only the
+    object structure around them decides whether a PDF executes."""
+    buried = (
+        _FAKE_PDF_HEADER
+        + b"1 0 obj << /Type /Catalog >> endobj\n"
+        + b"2 0 obj << /Length 20 >> stream\n/JavaScript 9 0 R\nendstream endobj"
+    )
+    storage.reject_malicious_pdf(buried)
+
+
+@pytest.mark.parametrize(
+    "key",
+    [
+        b"/EmbeddedFiles 5 0 R",   # ordinary, usually empty, name tree
+        b"/EmbeddedFile 5 0 R",    # an attachment is data, not active content
+        b"/JavaScriptFoo 1",       # a different name that merely starts the same
+    ],
+)
+def test_reject_malicious_pdf_allows_benign_keys(strict_uploads, key: bytes) -> None:
+    storage.reject_malicious_pdf(_FAKE_PDF_HEADER + b"1 0 obj << /Type /Catalog " + key + b" >> endobj")
+
+
+def test_reject_malicious_pdf_skipped_outside_production(monkeypatch: pytest.MonkeyPatch) -> None:
+    """A demo stack takes reports from whatever produced them."""
+
+    class _Dev:
+        app_env = "dev"
+
+    monkeypatch.setattr(storage, "get_settings", lambda: _Dev())
+    storage.reject_malicious_pdf(_FAKE_PDF_HEADER + b"<< /Type /Catalog /JavaScript 9 0 R >>")
 
 
 def test_strip_exif_returns_decodable_image() -> None:

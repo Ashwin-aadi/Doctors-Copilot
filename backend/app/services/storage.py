@@ -24,6 +24,7 @@ from __future__ import annotations
 
 import hashlib
 import io
+import re
 from pathlib import Path
 from typing import BinaryIO
 from uuid import UUID
@@ -56,7 +57,25 @@ ALLOWED_MIME_EXT: dict[str, str] = {
     "image/tiff": "tiff",
 }
 
-_MALICIOUS_PDF_TOKENS: tuple[bytes, ...] = (b"/JavaScript", b"/Launch", b"/EmbeddedFile")
+# Names that make a PDF *execute* something when opened. `/EmbeddedFile` used
+# to sit here and no longer does: an attachment is packaged data, not active
+# content, and the substring also matched the `/EmbeddedFiles` name-tree key
+# that ordinary producers emit empty. It rejected clean lab reports and stopped
+# nothing a reader would run.
+_MALICIOUS_PDF_TOKENS: tuple[bytes, ...] = (b"/JavaScript", b"/Launch")
+
+# A PDF name ends at whitespace or a delimiter, so `/JavaScriptFoo` is a
+# different name and must not match. Anchoring on that is what stops a
+# legitimate key that merely starts with one of these from being rejected.
+_PDF_NAME_DELIMITERS = rb"[\s/<>\[\]()]"
+_MALICIOUS_PDF_RE = re.compile(
+    rb"(" + rb"|".join(re.escape(t) for t in _MALICIOUS_PDF_TOKENS) + rb")(?=" + _PDF_NAME_DELIMITERS + rb"|$)"
+)
+
+# Stream bodies are compressed image and font data -- arbitrary bytes that can
+# spell anything by chance. Active content lives in the object structure, so
+# that is the only part worth scanning.
+_PDF_STREAM_RE = re.compile(rb"[^a-zA-Z]stream\b.*?\bendstream", re.DOTALL)
 
 _PIL_SAVE_FORMAT: dict[str, str] = {
     "image/png": "PNG",
@@ -78,18 +97,37 @@ def sniff_mime(data: bytes) -> str:
     return magic.from_buffer(data[:_SNIFF_BYTES], mime=True)
 
 
+def strip_pdf_streams(data: bytes) -> bytes:
+    """Blank out stream bodies, keeping the object structure around them."""
+    return _PDF_STREAM_RE.sub(b" stream endstream ", data)
+
+
 def reject_malicious_pdf(data: bytes) -> None:
     """Raise VALIDATION_FAILED if a PDF carries an active-content token.
-    A crude byte-substring scan, not a PDF parser -- deliberately so: a
-    parser can be confused by malformed structure into missing an object a
-    naive scan still catches."""
-    for token in _MALICIOUS_PDF_TOKENS:
-        if token in data:
-            raise ApiError(
-                "VALIDATION_FAILED",
-                "PDF contains a disallowed active-content token",
-                status_code=422,
-            )
+
+    Still a byte scan rather than a PDF parser -- deliberately so: a parser can
+    be confused by malformed structure into missing an object a scan catches.
+    But the scan is now anchored to whole PDF names in the object structure,
+    outside stream bodies. The unanchored whole-file version rejected ordinary
+    lab reports whenever a compressed image happened to contain the bytes, or a
+    producer wrote a key that merely began with one of these names.
+
+    Skipped outside production: a demo or dev stack takes reports from whatever
+    generated them, and a false reject there costs a real upload while blocking
+    nothing that a server-side OCR pipeline would execute.
+    """
+    if get_settings().app_env != "prod":
+        return
+
+    match = _MALICIOUS_PDF_RE.search(strip_pdf_streams(data))
+    if match:
+        raise ApiError(
+            "VALIDATION_FAILED",
+            # Naming the token is what makes a reject actionable; "a disallowed
+            # token" left the uploader with nothing to check.
+            f"PDF contains a disallowed active-content token ({match.group(1).decode()})",
+            status_code=422,
+        )
 
 
 def strip_exif(data: bytes, mime: str) -> bytes:
